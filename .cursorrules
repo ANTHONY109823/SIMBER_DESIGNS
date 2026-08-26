@@ -1,0 +1,19 @@
+# Reglas de Desarrollo para Simber designs (C# + Blazor + pgvector)
+
+## 1. Arquitectura y Manejo de Archivos Pesados (100 MB)
+- BAJO NINGUNA CIRCUNSTANCIA guardes archivos WinRAR/ZIP en el repositorio de Git ni en PostgreSQL (BYTEA).
+- Todas las subidas y descargas deben realizarse mediante URLs firmadas (Presigned URLs) de Cloudflare R2 utilizando el SDK compatible con S3.
+- Las descargas deben validar estrictamente el límite diario del usuario en PostgreSQL antes de solicitar la URL firmada de 10 minutos a R2.
+
+## 2. Base de Datos y pgvector (Búsqueda Estilo Google Lens)
+- Usamos PostgreSQL con la extensión pgvector y Entity Framework Core.
+- El vector de embeddings es de 512 dimensiones (modelo CLIP).
+- Al realizar consultas por imagen, utiliza siempre búsquedas con operador de distancia coseno `embedding <=> @Vector::vector` y asegura que el índice de Postgres HNSW esté configurado.
+
+## 3. Seguridad y Pagos
+- El controlador de Webhooks de Lemon Squeezy debe verificar rigurosamente la firma criptográfica HMAC-SHA256 usando `CryptographicOperations.FixedTimeEquals` para mitigar ataques de temporización (timing attacks).
+- Los pagos locales por QR (Yape) se procesan de forma asíncrona: se sube la captura a Cloudflare R2, se registra con estado `Pending` en Postgres y se activa a través de la consola administrativa.
+
+## 4. Estilo de Código (C# & Blazor)
+- Sigue las convenciones modernas de .NET 8/9 (Minimal APIs, C# 12+, inyección de dependencias estricta, programación asíncrona con async/await).
+- Las interfaces de Blazor deben ser 100% responsivas utilizando clases utilitarias de Tailwind CSS.

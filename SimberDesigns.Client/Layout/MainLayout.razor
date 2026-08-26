@@ -1,0 +1,59 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject JwtAuthStateProvider Auth
+@inject NavigationManager Nav
+
+<div class="min-h-screen bg-ink text-cream">
+    <header class="sticky top-0 z-30 border-b border-white/10 bg-ink/90 backdrop-blur">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+            <a href="/" class="font-serif text-2xl tracking-wide uppercase">Simber <span class="text-gold">Designs</span></a>
+            <nav class="hidden items-center gap-6 text-sm md:flex">
+                <NavLink href="/catalog">Catálogo</NavLink>
+                <NavLink href="/pricing">Precios</NavLink>
+                <AuthorizeView>
+                    <Authorized>
+                        <NavLink href="/orders">Mis pedidos</NavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <NavLink href="/admin/payments">Pagos Yape</NavLink>
+                    </Authorized>
+                </AuthorizeView>
+            </nav>
+            <div class="flex items-center gap-3 text-sm">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="hidden text-cream/70 sm:inline">@context.User.Identity?.Name</span>
+                        <button class="rounded-full border border-white/20 px-4 py-2" @onclick="Logout">Salir</button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="rounded-full px-4 py-2" href="/login">Entrar</a>
+                        <a class="rounded-full bg-gold px-4 py-2 text-ink" href="/register">Crear cuenta</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+        <nav class="flex gap-4 overflow-x-auto border-t border-white/10 px-4 py-3 text-sm md:hidden">
+            <NavLink href="/catalog">Catálogo</NavLink>
+            <NavLink href="/pricing">Precios</NavLink>
+            <NavLink href="/orders">Pedidos</NavLink>
+        </nav>
+    </header>
+
+    <main>
+        @Body
+    </main>
+
+    <footer class="mt-16 border-t border-white/10 px-6 py-10 text-center text-sm text-cream/50">
+        Simber Designs · vectores deportivos · R2, nunca Git ni Postgres
+    </footer>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("/", forceLoad: true);
+    }
+}

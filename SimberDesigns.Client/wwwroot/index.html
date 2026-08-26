@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simber Designs</title>
+    <base href="/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#070b14',
+                        gold: '#ff6a1a',
+                        cream: '#e8eef8',
+                        cyan: '#2ee6ff'
+                    },
+                    fontFamily: {
+                        serif: ['Rajdhani', 'sans-serif'],
+                        sans: ['Outfit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="SimberDesigns.Client.styles.css" rel="stylesheet" />
+</head>
+
+<body class="bg-ink font-sans text-cream antialiased">
+    <div id="app">
+        <div class="flex min-h-screen items-center justify-center">
+            <p class="font-serif text-2xl tracking-wide">Simber Designs</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Ocurrió un error inesperado.
+        <a href="." class="reload">Recargar</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="js/clipboard-paste.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

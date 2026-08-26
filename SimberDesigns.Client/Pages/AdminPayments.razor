@@ -1,0 +1,316 @@
+@page "/admin/payments"
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<div class="min-h-screen bg-slate-900 text-slate-100 font-sans p-6">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 mb-6">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                <span class="p-2 bg-emerald-500 rounded-lg text-slate-950 text-xl font-black">SD</span>
+                Simber Designs - Panel de Control
+            </h1>
+            <p class="text-slate-400 mt-1">Verificación y aprobación de transacciones locales por QR (Yape, Transferencia, Plin)</p>
+        </div>
+        <div class="mt-4 md:mt-0 flex items-center gap-4">
+            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-sm">
+                <span class="text-slate-400">Pendientes de revisión:</span>
+                <span class="text-amber-400 font-bold ml-2">@_pendingTransactions.Count</span>
+            </div>
+            <button @onclick="LoadTransactions" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4H15v1.5H21V4z"/></svg>
+                Sincronizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Column: Transactions List -->
+        <div class="lg:col-span-7 bg-slate-800/50 backdrop-blur rounded-xl border border-slate-850 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Historial de Solicitudes Manuales
+                </h2>
+                <!-- Filter Tabs -->
+                <div class="flex gap-2">
+                    <button @onclick='() => SetFilter("Pending")' class="px-3 py-1 rounded text-xs font-semibold @(ActiveFilter == "Pending" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-slate-800 text-slate-400 hover:bg-slate-700")">
+                        Pendientes
+                    </button>
+                    <button @onclick='() => SetFilter("Completed")' class="px-3 py-1 rounded text-xs font-semibold @(ActiveFilter == "Completed" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400 hover:bg-slate-700")">
+                        Aprobados
+                    </button>
+                    <button @onclick='() => SetFilter("Rejected")' class="px-3 py-1 rounded text-xs font-semibold @(ActiveFilter == "Rejected" ? "bg-rose-500/20 text-rose-400 border border-rose-500/30" : "bg-slate-800 text-slate-400 hover:bg-slate-700")">
+                        Rechazados
+                    </button>
+                </div>
+            </div>
+
+            <!-- List View -->
+            <div class="space-y-3 overflow-y-auto max-h-[600px] pr-2">
+                @if (FilteredTransactions.Any())
+                {
+                    @foreach (var tx in FilteredTransactions)
+                    {
+                        <div @onclick="() => SelectTransaction(tx)" 
+                             class="p-4 rounded-lg cursor-pointer transition border @(SelectedTransaction?.Id == tx.Id ? "bg-slate-750 border-indigo-500 shadow-md" : "bg-slate-800/80 border-slate-700 hover:border-slate-600 hover:bg-slate-750")">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2.5 rounded-full @GetPackageColorClass(tx.PackageName)">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-white text-sm">@tx.UserName</h3>
+                                        <p class="text-xs text-slate-400">@tx.UserEmail</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-extrabold text-white">S/ @tx.LocalAmount.ToString("0.00") PEN</span>
+                                    <p class="text-xs text-slate-400 mt-0.5">@tx.PackageName (+$@tx.CreditsToReceive)</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-700/50 text-xs">
+                                <span class="text-slate-400 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    @tx.CreatedAt.ToString("g")
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full font-semibold @GetStatusBadgeClass(tx.Status)">
+                                    @tx.Status
+                                </span>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center py-12 border-2 border-dashed border-slate-800 rounded-lg">
+                        <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <p class="text-slate-400 text-sm">No se encontraron transacciones en esta categoría.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Verification Workspace -->
+        <div class="lg:col-span-5">
+            @if (SelectedTransaction != null)
+            {
+                <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 sticky top-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-700/60">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">Detalle de Acreditación</h2>
+                            <p class="text-xs text-indigo-400 font-medium">Ref ID: @SelectedTransaction.Id.ToString().Substring(0, 8)...</p>
+                        </div>
+                        <button @onclick="CloseDetails" class="text-slate-400 hover:text-white transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- User and Transaction Data Info Card -->
+                    <div class="grid grid-cols-2 gap-4 bg-slate-750 p-4 rounded-lg border border-slate-700/80 mb-5 text-sm">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Usuario solicitante:</span>
+                            <span class="font-bold text-white block truncate">@SelectedTransaction.UserName</span>
+                            <span class="text-xs text-slate-400">@SelectedTransaction.UserEmail</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 block">Mapeo de recarga:</span>
+                            <span class="font-bold text-emerald-400 block">+@SelectedTransaction.CreditsToReceive Créditos Simber</span>
+                            <span class="text-xs text-slate-400">Equivalente a $@SelectedTransaction.CreditsToReceive.ToString("0.00") USD</span>
+                        </div>
+                        <div class="pt-2 border-t border-slate-700/50">
+                            <span class="text-xs text-slate-400 block">Método de pago local:</span>
+                            <span class="font-bold text-white flex items-center gap-1.5 mt-0.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+                                Yape (S/ @SelectedTransaction.LocalAmount.ToString("0.00") PEN)
+                            </span>
+                        </div>
+                        <div class="pt-2 border-t border-slate-700/50">
+                            <span class="text-xs text-slate-400 block">Estado actual:</span>
+                            <span class="font-bold text-white flex items-center gap-1 mt-0.5">
+                                <span class="px-2 py-0.5 rounded text-xs @GetStatusBadgeClass(SelectedTransaction.Status)">
+                                    @SelectedTransaction.Status
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Receipt Upload Image -->
+                    <div class="mb-5">
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                            Comprobante de Pago (Subido a Cloudflare R2)
+                        </label>
+                        <div class="relative bg-slate-950 rounded-lg overflow-hidden border-2 border-slate-700 max-h-[300px] flex items-center justify-center group">
+                            <img src="@SelectedTransaction.PaymentReceiptUrl" 
+                                 alt="Comprobante de pago QR" 
+                                 class="max-w-full max-h-[300px] object-contain transition group-hover:scale-[1.03] duration-300" />
+                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                <a href="@SelectedTransaction.PaymentReceiptUrl" target="_blank" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    Abrir en pantalla completa
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (SelectedTransaction.Status == "Pending")
+                    {
+                        <!-- Rejection Input Reason -->
+                        <div class="mb-5">
+                            <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                                Comentario o Motivo de Rechazo
+                            </label>
+                            <textarea @bind="RejectionReason" 
+                                      placeholder="Si vas a rechazar el pago, escribe el motivo aquí (Ej. El código de operación ya fue usado, captura falsa, etc.)" 
+                                      class="w-full h-18 bg-slate-900 border border-slate-750 rounded-lg p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"></textarea>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <button @onclick="RejectPayment" 
+                                    class="bg-rose-600 hover:bg-rose-500 active:bg-rose-750 text-white font-bold py-3 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Rechazar Pago
+                            </button>
+                            <button @onclick="ApprovePayment" 
+                                    class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-750 text-slate-950 font-black py-3 px-4 rounded-lg transition text-sm flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Aprobar Acreditación
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-4 bg-slate-750/50 border border-slate-700/40 rounded-lg text-center text-sm">
+                            <p class="text-slate-400">Esta solicitud ya fue procesada por un administrador.</p>
+                            @if (!string.IsNullOrEmpty(SelectedTransaction.RejectionNotes) && SelectedTransaction.Status == "Rejected")
+                            {
+                                <div class="mt-2 text-left bg-rose-500/10 p-3 rounded border border-rose-500/20 text-rose-300 text-xs">
+                                    <strong>Razón del rechazo:</strong> @SelectedTransaction.RejectionNotes
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="hidden lg:flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-xl h-[550px] p-6 text-center">
+                    <svg class="w-16 h-16 text-slate-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    <h3 class="text-lg font-bold text-slate-300">Auditoría en Espera</h3>
+                    <p class="text-slate-500 text-sm max-w-xs mt-1">Selecciona una transacción de la lista para verificar el comprobante de pago subido por el usuario.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string ActiveFilter { get; set; } = "Pending";
+    private string RejectionReason { get; set; } = string.Empty;
+    private TransactionModel? SelectedTransaction { get; set; }
+
+    private List<TransactionModel> _pendingTransactions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactions();
+        SelectedTransaction = FilteredTransactions.FirstOrDefault();
+    }
+
+    private async Task SetFilter(string filter)
+    {
+        ActiveFilter = filter;
+        SelectedTransaction = FilteredTransactions.FirstOrDefault();
+        await Task.CompletedTask;
+    }
+
+    private IEnumerable<TransactionModel> FilteredTransactions =>
+        _pendingTransactions.Where(t => t.Status.Equals(ActiveFilter, StringComparison.OrdinalIgnoreCase));
+
+    private void SelectTransaction(TransactionModel tx)
+    {
+        SelectedTransaction = tx;
+        RejectionReason = string.Empty;
+    }
+
+    private void CloseDetails()
+    {
+        SelectedTransaction = null;
+    }
+
+    private async Task LoadTransactions()
+    {
+        var items = await Api.GetAdminPaymentsAsync() ?? [];
+        _pendingTransactions = items.Select(t => new TransactionModel
+        {
+            Id = t.Id,
+            UserName = t.UserName,
+            UserEmail = t.UserEmail,
+            LocalAmount = t.Amount,
+            CreditsToReceive = t.CreditsToReceive,
+            PackageName = t.PackageName,
+            PaymentReceiptUrl = string.IsNullOrWhiteSpace(t.PaymentReceiptUrl)
+                ? ""
+                : t.PaymentReceiptUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                    ? t.PaymentReceiptUrl
+                    : $"https://r2.dev.simber-designs.local/{Uri.EscapeDataString(t.PaymentReceiptUrl)}",
+            Status = t.Status,
+            RejectionNotes = t.Notes,
+            CreatedAt = t.CreatedAt
+        }).ToList();
+    }
+
+    private async Task ApprovePayment()
+    {
+        if (SelectedTransaction == null) return;
+        await Api.ApproveAsync(SelectedTransaction.Id);
+        await LoadTransactions();
+        RejectionReason = string.Empty;
+        SelectedTransaction = FilteredTransactions.FirstOrDefault();
+    }
+
+    private async Task RejectPayment()
+    {
+        if (SelectedTransaction == null) return;
+        if (string.IsNullOrWhiteSpace(RejectionReason))
+        {
+            return;
+        }
+
+        await Api.RejectAsync(SelectedTransaction.Id, RejectionReason);
+        await LoadTransactions();
+        RejectionReason = string.Empty;
+        SelectedTransaction = FilteredTransactions.FirstOrDefault();
+    }
+
+    private string GetStatusBadgeClass(string status) => status switch
+    {
+        "Pending" => "bg-amber-500/10 text-amber-400 border border-amber-500/25",
+        "Completed" => "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25",
+        "Rejected" => "bg-rose-500/10 text-rose-400 border border-rose-500/25",
+        _ => "bg-slate-700 text-slate-300"
+    };
+
+    private string GetPackageColorClass(string packageName)
+    {
+        if (packageName.Contains("Elite")) return "bg-amber-500/10 text-amber-400 border border-amber-500/30";
+        if (packageName.Contains("VIP")) return "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30";
+        return "bg-slate-700/50 text-slate-300 border border-slate-600/30";
+    }
+
+    public class TransactionModel
+    {
+        public Guid Id { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string UserEmail { get; set; } = string.Empty;
+        public decimal LocalAmount { get; set; }
+        public decimal CreditsToReceive { get; set; }
+        public string PackageName { get; set; } = string.Empty;
+        public string PaymentReceiptUrl { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
+        public string? RejectionNotes { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}

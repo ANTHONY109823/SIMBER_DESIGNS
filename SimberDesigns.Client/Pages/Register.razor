@@ -1,0 +1,40 @@
+@page "/register"
+@inject SimberApi Api
+@inject JwtAuthStateProvider Auth
+@inject NavigationManager Nav
+
+<PageTitle>Crear cuenta · Simber Designs</PageTitle>
+
+<section class="mx-auto max-w-md px-6 py-16">
+    <h1 class="font-serif text-4xl text-white">Crear cuenta</h1>
+    <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
+        <InputText class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Nombre" @bind-Value="FullName" />
+        <InputText class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Email" @bind-Value="Email" />
+        <InputText type="password" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Contraseña" @bind-Value="Password" />
+        <button class="w-full rounded-full bg-orange-600 py-3 text-sm font-semibold text-white" type="submit">Registrarme</button>
+    </EditForm>
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <p class="mt-4 text-sm text-rose-400">@Error</p>
+    }
+</section>
+
+@code {
+    private string FullName { get; set; } = "";
+    private string Email { get; set; } = "";
+    private string Password { get; set; } = "";
+    private string? Error;
+
+    private async Task Submit()
+    {
+        var result = await Api.RegisterAsync(Email, Password, FullName);
+        if (result is null)
+        {
+            Error = "No se pudo crear la cuenta. ¿El email ya existe?";
+            return;
+        }
+
+        await Auth.SignInAsync(result.Token);
+        Nav.NavigateTo("/");
+    }
+}

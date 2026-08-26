@@ -1,0 +1,6 @@
+@SimberDesigns.Server_HostAddress = http://localhost:5086
+
+GET {{SimberDesigns.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

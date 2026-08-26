@@ -1,0 +1,180 @@
+using Dapper;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Pgvector;
+using SimberDesigns.Server.Models;
+using SimberDesigns.Server.Services;
+
+namespace SimberDesigns.Server.Data;
+
+public static class DbInitializer
+{
+    public static async Task InitializeAsync(WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbInitializer");
+
+        try
+        {
+            await ApplySchemaAsync(db, app.Environment, logger);
+            await SeedAsync(db, logger);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "No se pudo inicializar PostgreSQL. Levanta el contenedor con `docker compose up -d` y vuelve a ejecutar la API.");
+        }
+    }
+
+    private static async Task ApplySchemaAsync(AppDbContext db, IWebHostEnvironment env, ILogger logger)
+    {
+        var sqlPath = FindSchemaPath(env);
+        if (sqlPath is null)
+        {
+            logger.LogWarning("No se encontró simber-designs-db-schema.sql.");
+            return;
+        }
+
+        await db.Database.OpenConnectionAsync();
+        var connection = (NpgsqlConnection)db.Database.GetDbConnection();
+
+        var hasPackages = await connection.ExecuteScalarAsync<bool>(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = 'credit_packages'
+            )
+            """);
+        var hasLegacyPlan = await connection.ExecuteScalarAsync<bool>(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'plan'
+            )
+            """);
+
+        if (hasPackages && !hasLegacyPlan)
+        {
+            logger.LogInformation("Esquema de créditos/membresías ya aplicado.");
+            return;
+        }
+
+        var sql = await File.ReadAllTextAsync(sqlPath);
+        await connection.ExecuteAsync(sql);
+        logger.LogInformation("Esquema canónico aplicado desde {Path}.", sqlPath);
+    }
+
+    private static string? FindSchemaPath(IWebHostEnvironment env)
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "simber-designs-db-schema.sql"),
+            Path.Combine(env.ContentRootPath, "simber-designs-db-schema.sql"),
+            Path.Combine(env.ContentRootPath, "..", "simber-designs-db-schema.sql")
+        };
+
+        return candidates.Select(Path.GetFullPath).FirstOrDefault(File.Exists);
+    }
+
+    private static async Task SeedAsync(AppDbContext db, ILogger logger)
+    {
+        var hasher = new PasswordHasher<User>();
+
+        if (!await db.Users.AnyAsync())
+        {
+            var admin = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "admin@simber.designs",
+                FullName = "Administrador Simber",
+                Role = Roles.Admin,
+                CreditsBalance = 0,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            admin.PasswordHash = hasher.HashPassword(admin, "Admin123!");
+
+            var demo = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "demo@simber.designs",
+                FullName = "Cliente Demo",
+                Role = Roles.Customer,
+                CreditsBalance = 30,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            demo.PasswordHash = hasher.HashPassword(demo, "Demo123!");
+
+            db.Users.AddRange(admin, demo);
+            db.Subscriptions.Add(new Subscription
+            {
+                Id = Guid.NewGuid(),
+                UserId = demo.Id,
+                Tier = MembershipTiers.Vip,
+                Status = SubscriptionStatuses.Active,
+                DailyDownloadLimit = MembershipLimits.ForTier(MembershipTiers.Vip),
+                StartsAt = DateTime.UtcNow.AddDays(-10),
+                ExpiresAt = DateTime.UtcNow.AddMonths(1),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            logger.LogInformation("Usuarios de desarrollo: admin@simber.designs / Admin123! y demo@simber.designs / Demo123!");
+        }
+
+        if (!await db.Designs.AnyAsync())
+        {
+            db.Designs.AddRange(
+                CreateDesign("Jersey Argentina World Cup 2026 Special Edition", "jersey-argentina-3", "Jersey", "Concepto Albiceleste para sublimación."),
+                CreateDesign("Inter Milan Concept Snake Black & Gold", "inter-milan-snake", "Concept Kits", "Serpiente grunge sobre negro y oro."),
+                CreateDesign("Motocross Fox Racing Team Concept", "motocross-fox-3", "Motocross", "Moldería motocross lista para corte."),
+                CreateDesign("Basketball Wolves Dark Grunge Pattern", "basketball-wolves-grunge", "Basketball", "Patrón grunge para paneles laterales."),
+                CreateDesign("Voleibol Power Strike Neon Orange", "voleibol-power-strike", "Voleibol", "Acentos naranja neón para dorsal y costados."),
+                CreateDesign("Panama Home Kit World Cup 26 Aero", "panama-homekit-2026", "Jersey", "Kit local aero con degradado rojo.")
+            );
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static Design CreateDesign(string title, string slug, string category, string description)
+    {
+        return new Design
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            Slug = slug,
+            Description = description,
+            Category = category,
+            PriceUsd = 2m,
+            CreditsCost = 2m,
+            R2Key = $"designs/{slug}.rar",
+            PreviewUrl = $"https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=60&sig={slug}",
+            IsFreeDaily = true,
+            Embedding = new Vector(RandomUnitVector(512, slug.GetHashCode())),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public static float[] RandomUnitVector(int dimensions, int? seed = null)
+    {
+        var random = seed is null ? Random.Shared : new Random(seed.Value);
+        var values = Enumerable.Range(0, dimensions).Select(_ => (float)(random.NextDouble() * 2 - 1)).ToArray();
+        var norm = MathF.Sqrt(values.Sum(v => v * v));
+        if (norm == 0)
+        {
+            values[0] = 1;
+            return values;
+        }
+
+        for (var i = 0; i < values.Length; i++)
+        {
+            values[i] /= norm;
+        }
+
+        return values;
+    }
+}

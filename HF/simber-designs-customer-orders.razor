@@ -1,0 +1,595 @@
+@using System;
+@using System.Collections.Generic;
+@using System.Threading.Tasks;
+@using System.Net.Http;
+@using System.Net.Http.Json;
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<div class="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <!-- Contenedor Principal -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- CABECERA DE PERFIL Y RESUMEN -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-8 shadow-xl">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <!-- Información del Usuario -->
+                <div class="flex items-center gap-4">
+                    <div class="h-16 w-16 rounded-full bg-gradient-to-tr from-orange-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-blue-500/10">
+                        @UserInitials
+                    </div>
+                    <div>
+                        <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Panel del Cliente</span>
+                        <h1 class="text-2xl font-bold text-white">@CustomerName</h1>
+                        <p class="text-sm text-slate-400">@CustomerEmail</p>
+                    </div>
+                </div>
+
+                <!-- Tarjetas de Estado (Suscripción y Créditos) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-auto">
+                    <!-- Créditos (Estilo Foraes) -->
+                    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 flex items-center gap-4 min-w-[200px]">
+                        <div class="p-3 bg-orange-500/10 rounded-lg text-orange-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Mis Créditos</p>
+                            <p class="text-xl font-extrabold text-orange-400">@CreditsBalance.ToString("N0") <span class="text-xs text-slate-500">pts</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Membresía (Estilo VectorSport) -->
+                    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 flex items-center gap-4 min-w-[220px]">
+                        <div class="p-3 bg-blue-500/10 rounded-lg text-blue-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">Plan de Membresía</p>
+                            <p class="text-md font-bold text-white">@SubscriptionTier</p>
+                            <!-- Barra de Progreso de Descarga -->
+                            @if (HasActiveSubscription)
+                            {
+                                <div class="mt-1">
+                                    <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                                        <span>Descargas hoy:</span>
+                                        <span class="font-medium text-blue-400">@DownloadsToday / @DailyDownloadLimit</span>
+                                    </div>
+                                    <div class="w-32 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: @DownloadProgressPercent%"></div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-[10px] text-red-400 font-medium">Sin suscripción activa</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE PESTAÑAS (TABS) -->
+        <div class="flex border-b border-slate-800 mb-6 gap-2 overflow-x-auto pb-px">
+            <button @onclick='() => ChangeTab("downloads")' 
+                    class="py-3 px-6 font-medium text-sm border-b-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 @(ActiveTab == "downloads" ? "border-blue-500 text-white" : "border-transparent text-slate-400 hover:text-slate-200")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Mis Diseños y Descargas
+            </button>
+            <button @onclick='() => ChangeTab("payments")' 
+                    class="py-3 px-6 font-medium text-sm border-b-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 @(ActiveTab == "payments" ? "border-blue-500 text-white" : "border-transparent text-slate-400 hover:text-slate-200")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Historial de Compras / QR
+                @if (PendingPaymentsCount > 0)
+                {
+                    <span class="bg-orange-500 text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                        @PendingPaymentsCount
+                    </span>
+                }
+            </button>
+            <button @onclick='() => ChangeTab("credits")' 
+                    class="py-3 px-6 font-medium text-sm border-b-2 transition-all duration-200 whitespace-nowrap flex items-center gap-2 @(ActiveTab == "credits" ? "border-blue-500 text-white" : "border-transparent text-slate-400 hover:text-slate-200")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Auditoría de Créditos
+            </button>
+        </div>
+
+        <!-- CONTENIDO DE LAS PESTAÑAS -->
+        @if (ActiveTab == "downloads")
+        {
+            <!-- PESTAÑA: DESCARGAS Y DISEÑOS -->
+            <div class="space-y-6">
+                <!-- Alerta Explicativa sobre Límites de Descarga -->
+                @if (HasActiveSubscription)
+                {
+                    <div class="bg-blue-950/40 border border-blue-900/50 rounded-xl p-4 flex items-start gap-3">
+                        <svg class="w-5 h-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-xs text-blue-300 leading-relaxed">
+                            <strong>Beneficio VIP Activo:</strong> Puedes descargar cualquier vector deportivo libre de costo directamente utilizando tu límite diario de descargas. Los archivos WinRAR de <strong>100 MB</strong> se sirven de forma segura y directa mediante enlaces firmados y encriptados de Cloudflare R2 con vigencia de 10 minutos.
+                        </p>
+                    </div>
+                }
+
+                @if (PurchasedDesigns == null || PurchasedDesigns.Count == 0)
+                {
+                    <!-- Estado Vacío -->
+                    <div class="text-center py-16 bg-slate-900 border border-slate-800 rounded-2xl">
+                        <div class="h-16 w-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold text-white">No tienes diseños adquiridos todavía</h3>
+                        <p class="text-sm text-slate-400 max-w-sm mx-auto mt-2">Canjea tus créditos o utiliza tu membresía deportiva en el catálogo para desbloquear plantillas premium de sublimación.</p>
+                        <a href="/catalog" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm rounded-xl transition-all shadow-lg shadow-blue-600/15">
+                            Explorar Catálogo
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <!-- Grilla de Diseños Adquiridos -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @foreach (var design in PurchasedDesigns)
+                        {
+                            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-slate-700/80 transition-all duration-300 flex flex-col group">
+                                <!-- Imagen de Previsualización (Mockup) -->
+                                <div class="relative aspect-[4/3] bg-slate-950 overflow-hidden">
+                                    <img src="@design.PreviewUrl" alt="@design.Title" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
+                                    <!-- Badge de Adquisición -->
+                                    <span class="absolute top-3 left-3 bg-slate-900/90 text-blue-400 text-[10px] font-bold px-2.5 py-1 rounded-full border border-blue-500/20 backdrop-blur-sm">
+                                        @(design.UnlockedViaSubscription ? "Membresía" : "Canje de Créditos")
+                                    </span>
+                                </div>
+
+                                <!-- Detalles del Diseño -->
+                                <div class="p-5 flex-1 flex flex-col justify-between gap-4">
+                                    <div>
+                                        <h3 class="font-bold text-white text-md line-clamp-1">@design.Title</h3>
+                                        <p class="text-xs text-slate-400 mt-1">Formato: EPS / PDF Editable (100 MB)</p>
+                                    </div>
+
+                                    <!-- Botón de Descarga Segura Directo a R2 -->
+                                    <button @onclick="() => TriggerSecureDownload(design.Id)" 
+                                            disabled="@IsDownloadingMap.GetValueOrDefault(design.Id, false)"
+                                            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 @(IsDownloadingMap.GetValueOrDefault(design.Id, false) ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-slate-800 hover:bg-blue-600 text-white hover:shadow-lg hover:shadow-blue-600/10") rounded-xl text-sm font-semibold transition-all duration-200">
+                                        @if (IsDownloadingMap.GetValueOrDefault(design.Id, false))
+                                        {
+                                            <div class="h-4 w-4 border-2 border-slate-500 border-t-white rounded-full animate-spin"></div>
+                                            <span>Generando enlace seguro...</span>
+                                        }
+                                        else
+                                        {
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                            <span>Descargar Diseño</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (ActiveTab == "payments")
+        {
+            <!-- PESTAÑA: HISTORIAL DE COMPRAS / RECARGAS QR -->
+            <div class="space-y-6">
+                <!-- Banner Informativo del Flujo Local -->
+                <div class="bg-orange-950/30 border border-orange-900/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <h4 class="text-sm font-bold text-orange-400">¿Realizaste una recarga por Yape/QR o transferencia?</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                            Las recargas manuales locales son verificadas por el staff en un rango de 5 a 30 minutos (máximo 24 horas). Podrás ver el comprobante que enviaste y el estado de la verificación aquí abajo.
+                        </p>
+                    </div>
+                    <a href="/pricing" class="inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 font-bold tracking-wider uppercase transition-all whitespace-nowrap shrink-0">
+                        Nueva Recarga Local
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </div>
+
+                @if (Transactions == null || Transactions.Count == 0)
+                {
+                    <div class="text-center py-16 bg-slate-900 border border-slate-800 rounded-2xl">
+                        <h3 class="text-lg font-bold text-white">No tienes transacciones registradas</h3>
+                        <p class="text-sm text-slate-400 mt-1">Tus transacciones de pagos automáticos o manuales aparecerán reflejadas aquí.</p>
+                    </div>
+                }
+                else
+                {
+                    <!-- Tabla de Transacciones -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-950/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                        <th class="py-4 px-6">ID de Referencia</th>
+                                        <th class="py-4 px-6">Detalle / Paquete</th>
+                                        <th class="py-4 px-6">Canal / Gateway</th>
+                                        <th class="py-4 px-6">Monto</th>
+                                        <th class="py-4 px-6">Fecha</th>
+                                        <th class="py-4 px-6">Estado</th>
+                                        <th class="py-4 px-6 text-right">Comprobante</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/60 text-sm">
+                                    @foreach (var tx in Transactions)
+                                    {
+                                        <tr class="hover:bg-slate-850/30 transition-colors">
+                                            <!-- Referencia -->
+                                            <td class="py-4 px-6 font-mono text-xs text-slate-300">
+                                                @(!string.IsNullOrEmpty(tx.ExternalReferenceId) ? tx.ExternalReferenceId : tx.Id.ToString().Substring(0, 8) + "...")
+                                            </td>
+
+                                            <!-- Detalle -->
+                                            <td class="py-4 px-6">
+                                                <span class="font-semibold text-white">@tx.DetailName</span>
+                                            </td>
+
+                                            <!-- Gateway -->
+                                            <td class="py-4 px-6">
+                                                <div class="flex items-center gap-1.5 text-xs">
+                                                    @if (tx.Gateway == "LemonSqueezy")
+                                                    {
+                                                        <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold border border-blue-500/15">Lemon Squeezy</span>
+                                                    }
+                                                    else if (tx.Gateway == "LocalQR")
+                                                    {
+                                                        <span class="px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 font-semibold border border-orange-500/15">Código QR Manual</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">@tx.Gateway</span>
+                                                    }
+                                                </div>
+                                            </td>
+
+                                            <!-- Monto -->
+                                            <td class="py-4 px-6 font-bold text-white">
+                                                @tx.Amount.ToString("C") <span class="text-xs text-slate-500 font-medium">@tx.Currency</span>
+                                            </td>
+
+                                            <!-- Fecha -->
+                                            <td class="py-4 px-6 text-slate-400 text-xs">
+                                                @tx.CreatedAt.ToString("g")
+                                            </td>
+
+                                            <!-- Estado -->
+                                            <td class="py-4 px-6">
+                                                @if (tx.Status == "Completed")
+                                                {
+                                                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                                        Aprobado
+                                                    </span>
+                                                }
+                                                else if (tx.Status == "Pending")
+                                                {
+                                                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/20 animate-pulse">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
+                                                        Pendiente
+                                                    </span>
+                                                }
+                                                else if (tx.Status == "Rejected")
+                                                {
+                                                    <div class="space-y-1">
+                                                        <span class="inline-flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
+                                                            <span class="h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                                                            Rechazado
+                                                        </span>
+                                                        @if (!string.IsNullOrEmpty(tx.AdminNote))
+                                                        {
+                                                            <p class="text-[10px] text-red-400/85 max-w-[180px] leading-tight">@tx.AdminNote</p>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 bg-slate-800 px-2.5 py-1 rounded-full">
+                                                        @tx.Status
+                                                    </span>
+                                                }
+                                            </td>
+
+                                            <!-- Comprobante (Acción) -->
+                                            <td class="py-4 px-6 text-right">
+                                                @if (!string.IsNullOrEmpty(tx.PaymentReceiptUrl))
+                                                {
+                                                    <button @onclick="() => OpenReceiptModal(tx.PaymentReceiptUrl)" 
+                                                            class="inline-flex items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300 hover:underline transition-all">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                        Ver Comprobante
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-xs text-slate-600">—</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (ActiveTab == "credits")
+        {
+            <!-- PESTAÑA: AUDITORÍA DE CRÉDITOS (LIBRO DIARIO DE CRÉDITOS) -->
+            <div class="space-y-6">
+                <!-- Alerta Explicativa sobre Créditos -->
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-start gap-3">
+                    <div class="p-2 bg-orange-500/10 rounded-lg text-orange-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-white">Transparencia y Libro de Auditoría de Créditos</h4>
+                        <p class="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                            Cada movimiento de entrada (recarga de saldo) y salida (canje de vectores en el catálogo) de tus créditos está auditado. Los créditos de Simber designs no tienen fecha de vencimiento y se guardan de forma inmutable en el sistema contable de PostgreSQL.
+                        </p>
+                    </div>
+                </div>
+
+                @if (CreditLogs == null || CreditLogs.Count == 0)
+                {
+                    <div class="text-center py-16 bg-slate-900 border border-slate-800 rounded-2xl">
+                        <h3 class="text-lg font-bold text-white">No hay movimientos en tus créditos</h3>
+                        <p class="text-sm text-slate-400 mt-1">Los canjes de diseños y recargas aparecerán listados aquí.</p>
+                    </div>
+                }
+                else
+                {
+                    <!-- Lista de Auditoría -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="p-6 border-b border-slate-800">
+                            <h3 class="font-bold text-white text-md">Movimientos de Cuenta</h3>
+                        </div>
+                        <div class="divide-y divide-slate-800/60">
+                            @foreach (var log in CreditLogs)
+                            {
+                                <div class="p-5 flex items-center justify-between gap-4 hover:bg-slate-850/10 transition-all">
+                                    <div class="flex items-center gap-4">
+                                        <!-- Icono de Dirección (Entrada o Salida) -->
+                                        @if (log.CreditsChanged > 0)
+                                        {
+                                            <div class="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 shrink-0">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                </svg>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="h-10 w-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-400 shrink-0">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                                </svg>
+                                            </div>
+                                        }
+                                        <div>
+                                            <h4 class="font-semibold text-white text-sm">@log.Description</h4>
+                                            <p class="text-xs text-slate-400 mt-0.5">Fecha: @log.CreatedAt.ToString("g")</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Variación de Créditos -->
+                                    <span class="text-md font-bold @(log.CreditsChanged > 0 ? "text-emerald-400" : "text-orange-400")">
+                                        @(log.CreditsChanged > 0 ? $"+{log.CreditsChanged:N0}" : $"{log.CreditsChanged:N0}") pts
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+</div>
+
+<!-- MODAL: VISOR DE COMPROBANTE DE PAGO -->
+@if (ShowReceiptModal)
+{
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="relative bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl">
+            <!-- Cabecera del Modal -->
+            <div class="flex items-center justify-between p-6 border-b border-slate-800">
+                <h3 class="text-lg font-bold text-white">Comprobante de Pago Cargado</h3>
+                <button @onclick="CloseReceiptModal" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Visor de la Imagen del Comprobante -->
+            <div class="p-6 bg-slate-950 flex items-center justify-center aspect-[3/4] overflow-hidden">
+                <img src="@ActiveReceiptUrl" alt="Comprobante Bancario" class="max-w-full max-h-full object-contain rounded-lg border border-slate-850" />
+            </div>
+
+            <!-- Footer del Modal -->
+            <div class="p-6 border-t border-slate-800 flex justify-end">
+                <button @onclick="CloseReceiptModal" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm rounded-xl transition-all">
+                    Cerrar Visor
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ESTADOS DEL COMPONENTE
+    private string ActiveTab = "downloads";
+    private bool ShowReceiptModal = false;
+    private string ActiveReceiptUrl = string.Empty;
+
+    // DATOS DE PRUEBA / MOCK (Reemplazar con peticiones HTTP reales al Backend en C#)
+    private string CustomerName = "Carlos Mendoza";
+    private string CustomerEmail = "carlos.mendoza@sublimacionperu.com";
+    private string UserInitials => !string.IsNullOrEmpty(CustomerName) ? $"{CustomerName.Split(' ')[0][0]}{CustomerName.Split(' ')[1][0]}" : "US";
+    private decimal CreditsBalance = 45; 
+    private string SubscriptionTier = "Membresía VIP (Activa)";
+    private bool HasActiveSubscription = true;
+    private int DownloadsToday = 12;
+    private int DailyDownloadLimit = 25;
+    private int DownloadProgressPercent => DailyDownloadLimit > 0 ? (DownloadsToday * 100) / DailyDownloadLimit : 0;
+    private int PendingPaymentsCount => Transactions?.FindAll(t => t.Status == "Pending").Count ?? 0;
+
+    private List<PurchasedDesignModel> PurchasedDesigns = new();
+    private List<TransactionModel> Transactions = new();
+    private List<CreditLogModel> CreditLogs = new();
+
+    // Diccionario para controlar el estado de descarga de cada botón
+    private Dictionary<Guid, bool> IsDownloadingMap = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // En producción: Cargar los datos desde el servidor ASP.NET Core
+        // await LoadCustomerDataAsync();
+        
+        LoadMockData();
+    }
+
+    private void ChangeTab(string tabName)
+    {
+        ActiveTab = tabName;
+    }
+
+    private void OpenReceiptModal(string url)
+    {
+        ActiveReceiptUrl = url;
+        ShowReceiptModal = true;
+    }
+
+    private void CloseReceiptModal()
+    {
+        ShowReceiptModal = false;
+        ActiveReceiptUrl = string.Empty;
+    }
+
+    /// <summary>
+    /// Invoca el endpoint de descarga segura para obtener la URL firmada temporal de R2
+    /// </summary>
+    private async Task TriggerSecureDownload(Guid designId)
+    {
+        IsDownloadingMap[designId] = true;
+        StateHasChanged();
+
+        try
+        {
+            // Simulación de la petición de URL firmada al controlador 'DesignsController' (simber-designs-api.cs)
+            // var response = await Http.GetFromJsonAsync<DownloadUrlResponse>($"api/designs/{designId}/download");
+            // var downloadUrl = response.DownloadUrl;
+            
+            await Task.Delay(1500); // Simulación del retardo de la petición a Cloudflare R2
+            var mockSecureR2Url = $"https://cloudflare-r2.simberdesigns.com/downloads/secure_key_100mb.rar?expiry=173456789&signature=sha256_mock_sig";
+
+            // Abre el enlace seguro en una nueva pestaña del navegador para iniciar la descarga del archivo de 100 MB de forma transparente
+            await JSRuntime.InvokeVoidAsync("open", mockSecureR2Url, "_blank");
+            
+            // Incrementamos contador local de descargas diarias si correspondía a un canje de membresía
+            var design = PurchasedDesigns.Find(d => d.Id == designId);
+            if (design != null && design.UnlockedViaSubscription)
+            {
+                DownloadsToday++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al descargar el archivo de 100 MB: {ex.Message}");
+        }
+        finally
+        {
+            IsDownloadingMap[designId] = false;
+            StateHasChanged();
+        }
+    }
+
+    private void LoadMockData()
+    {
+        var design1Id = Guid.NewGuid();
+        var design2Id = Guid.NewGuid();
+        var design3Id = Guid.NewGuid();
+
+        // 1. Diseños desbloqueados por el usuario
+        PurchasedDesigns = new List<PurchasedDesignModel>
+        {
+            new() { Id = design1Id, Title = "Jersey Argentina 3 - Copa Mundial 2026", Slug = "jersey-argentina-3", PreviewUrl = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop", UnlockedViaSubscription = true },
+            new() { Id = design2Id, Title = "Motocross Fox Concept - Especial Sublimación", Slug = "motocross-fox-special", PreviewUrl = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600&auto=format&fit=crop", UnlockedViaSubscription = false },
+            new() { Id = design3Id, Title = "Inter Milan Concept Serpente 2022", Slug = "inter-milan-serpente", PreviewUrl = "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=600&auto=format&fit=crop", UnlockedViaSubscription = true }
+        };
+
+        // 2. Historial de Transacciones (Automatizadas LS + QR Local)
+        Transactions = new List<TransactionModel>
+        {
+            new() { Id = Guid.NewGuid(), DetailName = "Paquete VIP (30 Créditos)", Amount = 25.00m, Currency = "USD", Gateway = "LocalQR", Status = "Pending", PaymentReceiptUrl = "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&auto=format&fit=crop", CreatedAt = DateTime.UtcNow.AddMinutes(-20) },
+            new() { Id = Guid.NewGuid(), DetailName = "Membresía VIP Mensual", Amount = 16.00m, Currency = "USD", Gateway = "LemonSqueezy", ExternalReferenceId = "SUBS-893049102", Status = "Completed", CreatedAt = DateTime.UtcNow.AddDays(-15) },
+            new() { Id = Guid.NewGuid(), DetailName = "Paquete Elite (65 Créditos)", Amount = 50.00m, Currency = "USD", Gateway = "LocalQR", Status = "Rejected", PaymentReceiptUrl = "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&auto=format&fit=crop", AdminNote = "Comprobante no válido. La imagen de la transferencia no coincide con el monto o la fecha indicada.", CreatedAt = DateTime.UtcNow.AddDays(-30) }
+        };
+
+        // 3. Libro contable de Créditos (Auditoría)
+        CreditLogs = new List<CreditLogModel>
+        {
+            new() { Id = Guid.NewGuid(), Description = "Canje de Diseño: Motocross Fox Concept", CreditsChanged = -15, CreatedAt = DateTime.UtcNow.AddDays(-2) },
+            new() { Id = Guid.NewGuid(), Description = "Recarga de Créditos - Paquete VIP (Bono +5)", CreditsChanged = 30, CreatedAt = DateTime.UtcNow.AddDays(-15) },
+            new() { Id = Guid.NewGuid(), Description = "Canje de Diseño: Grunge Deportivo Portugal 2026", CreditsChanged = -15, CreatedAt = DateTime.UtcNow.AddDays(-20) },
+            new() { Id = Guid.NewGuid(), Description = "Recarga Inicial de Bienvenida", CreditsChanged = 15, CreatedAt = DateTime.UtcNow.AddDays(-45) }
+        };
+    }
+
+    // MODELOS LOCALES
+    public class PurchasedDesignModel
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; }
+        public string Slug { get; set; }
+        public string PreviewUrl { get; set; }
+        public bool UnlockedViaSubscription { get; set; }
+    }
+
+    public class TransactionModel
+    {
+        public Guid Id { get; set; }
+        public string DetailName { get; set; }
+        public decimal Amount { get; set; }
+        public string Currency { get; set; }
+        public string Gateway { get; set; }
+        public string ExternalReferenceId { get; set; }
+        public string Status { get; set; }
+        public string PaymentReceiptUrl { get; set; }
+        public string AdminNote { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class CreditLogModel
+    {
+        public Guid Id { get; set; }
+        public string Description { get; set; }
+        public decimal CreditsChanged { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}

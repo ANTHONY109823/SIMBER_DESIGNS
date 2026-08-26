@@ -1,0 +1,45 @@
+namespace SimberDesigns.Server.Options;
+
+public sealed class JwtOptions
+{
+    public const string SectionName = "Jwt";
+    public string Key { get; set; } = "";
+    public string Issuer { get; set; } = "";
+    public string Audience { get; set; } = "";
+    public int ExpiryHours { get; set; } = 12;
+}
+
+public sealed class CloudflareR2Options
+{
+    public const string SectionName = "CloudflareR2";
+    public bool UseFakeClient { get; set; } = true;
+    public string AccountId { get; set; } = "";
+    public string AccessKeyId { get; set; } = "";
+    public string SecretAccessKey { get; set; } = "";
+    public string BucketName { get; set; } = "";
+    public string ServiceUrl { get; set; } = "";
+    public int PresignedUrlExpiryMinutes { get; set; } = 10;
+    public int UploadExpiryMinutes { get; set; } = 20;
+}
+
+public sealed class LemonSqueezyOptions
+{
+    public const string SectionName = "LemonSqueezy";
+    public string WebhookSecret { get; set; } = "";
+    public string ApiKey { get; set; } = "";
+    public string StoreId { get; set; } = "";
+    public string CheckoutBaseUrl { get; set; } = "";
+    public int BasicVariantId { get; set; } = 456781;
+    public int VipVariantId { get; set; } = 456782;
+    public int SemestralVariantId { get; set; } = 456783;
+    public int CreditsBasicVariantId { get; set; } = 567891;
+    public int CreditsVipVariantId { get; set; } = 567892;
+    public int CreditsEliteVariantId { get; set; } = 567893;
+}
+
+public sealed class OnnxOptions
+{
+    public const string SectionName = "Onnx";
+    public string ModelPath { get; set; } = "";
+    public string InputName { get; set; } = "image";
+}
