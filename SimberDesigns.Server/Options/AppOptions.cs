@@ -22,6 +22,18 @@ public sealed class CloudflareR2Options
     public int UploadExpiryMinutes { get; set; } = 20;
 }
 
+public sealed class MercadoPagoOptions
+{
+    public const string SectionName = "MercadoPago";
+    public bool UseFakeCheckout { get; set; } = true;
+    public bool UseSandbox { get; set; } = true;
+    public string AccessToken { get; set; } = "";
+    public string PublicKey { get; set; } = "";
+    public string WebhookSecret { get; set; } = "";
+    public string PublicBaseUrl { get; set; } = "";
+    public decimal PluginMonthPricePen { get; set; } = 149;
+}
+
 public sealed class LemonSqueezyOptions
 {
     public const string SectionName = "LemonSqueezy";

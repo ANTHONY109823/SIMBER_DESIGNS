@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -16,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<CloudflareR2Options>(builder.Configuration.GetSection(CloudflareR2Options.SectionName));
 builder.Services.Configure<LemonSqueezyOptions>(builder.Configuration.GetSection(LemonSqueezyOptions.SectionName));
+builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
 builder.Services.Configure<OnnxOptions>(builder.Configuration.GetSection(OnnxOptions.SectionName));
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -31,9 +33,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(dataSource, npgsql => npgsql.UseVector())
         .UseSnakeCaseNamingConvention());
 
+builder.Services.AddSingleton<LocalCatalogStorage>();
 builder.Services.AddSingleton<ICloudflareR2Service, CloudflareR2Service>();
 builder.Services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
 builder.Services.AddSingleton<ILemonSqueezySignatureVerifier, LemonSqueezySignatureVerifier>();
+builder.Services.AddHttpClient<IMercadoPagoService, MercadoPagoService>();
+builder.Services.AddScoped<IPaymentFulfillmentService, PaymentFulfillmentService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IDownloadLimitService, DownloadLimitService>();
 builder.Services.AddSingleton<PasswordHasher<User>>();
@@ -60,6 +65,14 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 110_000_000;
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 110_000_000;
+});
 builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {

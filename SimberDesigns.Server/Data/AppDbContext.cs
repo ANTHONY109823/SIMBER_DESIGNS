@@ -12,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
     public DbSet<UserDownload> UserDownloads => Set<UserDownload>();
+    public DbSet<PluginLicense> PluginLicenses => Set<PluginLicense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,14 +24,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => x.Email).IsUnique();
             entity.Property(x => x.Email).IsRequired().HasMaxLength(255);
             entity.Property(x => x.FullName).HasMaxLength(150);
-            entity.Property(x => x.Role).HasColumnType("user_role");
+            entity.Property(x => x.Role).HasMaxLength(50);
             entity.Property(x => x.CreditsBalance).HasPrecision(10, 2);
         });
 
         modelBuilder.Entity<Subscription>(entity =>
         {
-            entity.Property(x => x.Tier).HasColumnType("subscription_tier");
-            entity.Property(x => x.Status).HasColumnType("subscription_status");
+            entity.Property(x => x.Tier).HasMaxLength(50);
+            entity.Property(x => x.Status).HasMaxLength(50);
             entity.HasOne(x => x.User).WithMany(x => x.Subscriptions).HasForeignKey(x => x.UserId);
         });
 
@@ -50,7 +51,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.Category).HasMaxLength(100);
             entity.Property(x => x.PriceUsd).HasPrecision(10, 2);
             entity.Property(x => x.CreditsCost).HasPrecision(10, 2);
-            entity.Property(x => x.R2Key).HasMaxLength(512);
+            entity.Property(x => x.R2Key).HasMaxLength(512).HasColumnName("r2_key");
             entity.Property(x => x.PreviewUrl).HasMaxLength(512);
             entity.Property(x => x.Embedding).HasColumnType("vector(512)");
         });
@@ -59,8 +60,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.Property(x => x.Amount).HasPrecision(10, 2);
             entity.Property(x => x.Currency).HasMaxLength(3);
-            entity.Property(x => x.Gateway).HasColumnType("gateway_type");
-            entity.Property(x => x.Status).HasColumnType("transaction_status");
+            entity.Property(x => x.Gateway).HasMaxLength(50);
+            entity.Property(x => x.Status).HasMaxLength(50);
             entity.HasOne(x => x.User).WithMany(x => x.Transactions).HasForeignKey(x => x.UserId);
             entity.HasOne(x => x.CreditPackage).WithMany().HasForeignKey(x => x.CreditPackageId);
             entity.HasOne(x => x.Subscription).WithMany().HasForeignKey(x => x.SubscriptionId);
@@ -70,7 +71,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<CreditTransaction>(entity =>
         {
             entity.Property(x => x.CreditsChanged).HasPrecision(10, 2);
-            entity.Property(x => x.TxType).HasColumnType("credit_tx_type");
+            entity.Property(x => x.TxType).HasMaxLength(50);
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasOne(x => x.Design).WithMany().HasForeignKey(x => x.DesignId);
         });
@@ -79,6 +80,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasOne(x => x.Design).WithMany().HasForeignKey(x => x.DesignId);
+        });
+
+        modelBuilder.Entity<PluginLicense>(entity =>
+        {
+            entity.ToTable("plugin_licenses");
+            entity.Property(x => x.HardwareId).HasMaxLength(200);
+            entity.Property(x => x.Plan).HasMaxLength(50);
+            entity.Property(x => x.Status).HasMaxLength(50);
+            entity.Property(x => x.ActivationCode).HasMaxLength(40);
+            entity.HasIndex(x => x.ActivationCode).IsUnique();
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         });
     }
 }

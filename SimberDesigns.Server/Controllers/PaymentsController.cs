@@ -15,7 +15,9 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class PaymentsController(
     AppDbContext db,
     ICloudflareR2Service r2,
-    IOptions<LemonSqueezyOptions> lemonOptions) : ControllerBase
+    IMercadoPagoService mercadoPago,
+    IPaymentFulfillmentService fulfillment,
+    IOptions<MercadoPagoOptions> mercadoPagoOptions) : ControllerBase
 {
     [HttpGet("packages")]
     [AllowAnonymous]
@@ -30,9 +32,22 @@ public sealed class PaymentsController(
         return Ok(items);
     }
 
+    [HttpGet("storefront")]
+    [AllowAnonymous]
+    public async Task<ActionResult<StorefrontDto>> Storefront(CancellationToken cancellationToken)
+    {
+        var items = await db.CreditPackages
+            .AsNoTracking()
+            .Where(p => p.Active)
+            .OrderBy(p => p.PriceUsd)
+            .Select(p => new CreditPackageDto(p.Id, p.Name, p.CreditsAmount, p.BonusAmount, p.PriceUsd))
+            .ToListAsync(cancellationToken);
+        return Ok(new StorefrontDto(items, mercadoPagoOptions.Value.PluginMonthPricePen, "Plugin Premium · 1 PC · 30 días"));
+    }
+
     [Authorize]
     [HttpPost("checkout")]
-    public ActionResult<CheckoutResponse> Checkout(CheckoutRequest request)
+    public async Task<ActionResult<CheckoutResponse>> Checkout(CheckoutRequest request, CancellationToken cancellationToken)
     {
         var userId = User.GetUserId();
         if (userId is null)
@@ -40,16 +55,136 @@ public sealed class PaymentsController(
             return Unauthorized();
         }
 
-        var lemon = lemonOptions.Value;
-        var variantId = ResolveVariantId(request, lemon);
-        if (variantId is null)
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
         {
-            return BadRequest("Plan o paquete no reconocido.");
+            return Unauthorized();
         }
 
-        var checkoutUrl =
-            $"{lemon.CheckoutBaseUrl.TrimEnd('/')}/{variantId}?checkout[custom][user_id]={userId}";
-        return Ok(new CheckoutResponse(checkoutUrl));
+        var kind = (request.Kind ?? request.PlanKey ?? request.PackKey ?? "").Trim().ToLowerInvariant();
+        CreditPackage? package = null;
+        decimal amount;
+        string title;
+        string notes;
+        string currency = "PEN";
+
+        if (kind is "plugin" or "month-1pc" or PluginPlans.Month1Pc)
+        {
+            amount = mercadoPagoOptions.Value.PluginMonthPricePen;
+            title = "Simber Plugin Premium · 30 días";
+            notes = $"plugin:{PluginPlans.Month1Pc}";
+        }
+        else
+        {
+            if (request.PackageId is Guid packageId)
+            {
+                package = await db.CreditPackages.FirstOrDefaultAsync(p => p.Id == packageId && p.Active, cancellationToken);
+            }
+            else
+            {
+                var packName = ResolvePackageName(request.PackKey ?? request.Kind);
+                if (packName is not null)
+                {
+                    package = await db.CreditPackages.FirstOrDefaultAsync(p => p.Name == packName && p.Active, cancellationToken);
+                }
+            }
+
+            if (package is null)
+            {
+                return BadRequest("Elige un paquete de créditos o el mes del plugin.");
+            }
+
+            amount = package.PriceUsd;
+            title = $"Créditos Simber · {package.CreditsAmount + package.BonusAmount:0}";
+            notes = $"credits:{package.Id}";
+        }
+
+        var tx = new Transaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Amount = amount,
+            Currency = currency,
+            Gateway = Gateways.MercadoPago,
+            Status = TransactionStatuses.Pending,
+            CreditPackageId = package?.Id,
+            Notes = notes,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        db.Transactions.Add(tx);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var origin = PublicOrigin();
+        if (mercadoPago.UseFakeCheckout)
+        {
+            return Ok(new CheckoutResponse($"{origin}/pago/ok?tx={tx.Id}&fake=1", tx.Id, true));
+        }
+
+        var preference = await mercadoPago.CreatePreferenceAsync(
+            title,
+            amount,
+            user.Email,
+            tx.Id.ToString(),
+            $"{origin}/api/webhooks/mercadopago",
+            $"{origin}/pago/ok",
+            $"{origin}/pago/error",
+            $"{origin}/pago/pendiente",
+            cancellationToken);
+        tx.ExternalReferenceId = preference.PreferenceId;
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new CheckoutResponse(preference.CheckoutUrl, tx.Id, false));
+    }
+
+    [Authorize]
+    [HttpPost("confirm")]
+    public async Task<IActionResult> Confirm(ConfirmPaymentRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        Transaction? tx = null;
+        if (request.TransactionId is Guid txId)
+        {
+            tx = await db.Transactions.FirstOrDefaultAsync(t => t.Id == txId && t.UserId == userId, cancellationToken);
+        }
+        else if (Guid.TryParse(request.ExternalReference, out var extId))
+        {
+            tx = await db.Transactions.FirstOrDefaultAsync(t => t.Id == extId && t.UserId == userId, cancellationToken);
+        }
+
+        if (tx is null)
+        {
+            return NotFound("No encontramos esa orden.");
+        }
+
+        if (tx.Status == TransactionStatuses.Completed)
+        {
+            return Ok(new { message = "Pago ya acreditado.", transactionId = tx.Id });
+        }
+
+        if (mercadoPago.UseFakeCheckout)
+        {
+            await fulfillment.FulfillAsync(tx, request.PaymentId ?? "fake-local", cancellationToken);
+            return Ok(new { message = "Pago de prueba acreditado.", transactionId = tx.Id });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PaymentId))
+        {
+            return BadRequest("Falta el identificador de pago de Mercado Pago.");
+        }
+
+        var payment = await mercadoPago.GetPaymentAsync(request.PaymentId, cancellationToken);
+        if (payment is null || !string.Equals(payment.Status, "approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("Mercado Pago aún no confirma este pago.");
+        }
+
+        await fulfillment.FulfillAsync(tx, payment.PaymentId, cancellationToken);
+        return Ok(new { message = "Pago acreditado.", transactionId = tx.Id });
     }
 
     [Authorize]
@@ -324,6 +459,17 @@ public sealed class PaymentsController(
             tx.Status,
             tx.Notes,
             tx.CreatedAt));
+    }
+
+    private string PublicOrigin()
+    {
+        var configured = mercadoPagoOptions.Value.PublicBaseUrl;
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured.TrimEnd('/');
+        }
+
+        return $"{Request.Scheme}://{Request.Host}";
     }
 
     private static int? ResolveVariantId(CheckoutRequest request, LemonSqueezyOptions lemon)

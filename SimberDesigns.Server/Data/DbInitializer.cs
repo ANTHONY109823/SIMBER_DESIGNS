@@ -19,6 +19,8 @@ public static class DbInitializer
         try
         {
             await ApplySchemaAsync(db, app.Environment, logger);
+            var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
+            await dataSource.ReloadTypesAsync();
             await SeedAsync(db, logger);
         }
         catch (Exception ex)
@@ -58,12 +60,53 @@ public static class DbInitializer
         if (hasPackages && !hasLegacyPlan)
         {
             logger.LogInformation("Esquema de créditos/membresías ya aplicado.");
+            await RelaxEnumColumnsAsync(connection, logger);
+            await EnsureCommerceSchemaAsync(connection, logger);
             return;
         }
 
         var sql = await File.ReadAllTextAsync(sqlPath);
         await connection.ExecuteAsync(sql);
+        await connection.ReloadTypesAsync();
+        await RelaxEnumColumnsAsync(connection, logger);
+        await EnsureCommerceSchemaAsync(connection, logger);
         logger.LogInformation("Esquema canónico aplicado desde {Path}.", sqlPath);
+    }
+
+    private static async Task RelaxEnumColumnsAsync(NpgsqlConnection connection, ILogger logger)
+    {
+        await connection.ExecuteAsync(
+            """
+            DROP INDEX IF EXISTS idx_transactions_status_pending;
+            ALTER TABLE users ALTER COLUMN role TYPE varchar(50) USING role::text;
+            ALTER TABLE subscriptions ALTER COLUMN tier TYPE varchar(50) USING tier::text;
+            ALTER TABLE subscriptions ALTER COLUMN status TYPE varchar(50) USING status::text;
+            ALTER TABLE transactions ALTER COLUMN gateway TYPE varchar(50) USING gateway::text;
+            ALTER TABLE transactions ALTER COLUMN status TYPE varchar(50) USING status::text;
+            ALTER TABLE credit_transactions ALTER COLUMN tx_type TYPE varchar(50) USING tx_type::text;
+            CREATE INDEX IF NOT EXISTS idx_transactions_status_pending ON transactions(status) WHERE status = 'Pending';
+            """);
+        logger.LogInformation("Columnas enum relajadas a varchar para desarrollo local.");
+    }
+
+    private static async Task EnsureCommerceSchemaAsync(NpgsqlConnection connection, ILogger logger)
+    {
+        await connection.ExecuteAsync(
+            """
+            CREATE TABLE IF NOT EXISTS plugin_licenses (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+                hardware_id VARCHAR(200),
+                plan VARCHAR(50) NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                activation_code VARCHAR(40) NOT NULL UNIQUE,
+                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_plugin_licenses_user ON plugin_licenses(user_id);
+            """);
+        logger.LogInformation("Tabla plugin_licenses lista.");
     }
 
     private static string? FindSchemaPath(IWebHostEnvironment env)
@@ -134,6 +177,20 @@ public static class DbInitializer
                 CreateDesign("Voleibol Power Strike Neon Orange", "voleibol-power-strike", "Voleibol", "Acentos naranja neón para dorsal y costados."),
                 CreateDesign("Panama Home Kit World Cup 26 Aero", "panama-homekit-2026", "Jersey", "Kit local aero con degradado rojo.")
             );
+        }
+
+        if (!await db.CreditPackages.AnyAsync(p => p.Name == "160"))
+        {
+            foreach (var old in await db.CreditPackages.Where(p => p.Name == "Basic" || p.Name == "VIP" || p.Name == "Elite").ToListAsync())
+            {
+                old.Active = false;
+            }
+
+            db.CreditPackages.AddRange(
+                new CreditPackage { Id = Guid.NewGuid(), Name = "160", CreditsAmount = 160, BonusAmount = 0, PriceUsd = 20, Active = true },
+                new CreditPackage { Id = Guid.NewGuid(), Name = "400", CreditsAmount = 400, BonusAmount = 0, PriceUsd = 30, Active = true },
+                new CreditPackage { Id = Guid.NewGuid(), Name = "800", CreditsAmount = 800, BonusAmount = 50, PriceUsd = 50, Active = true });
+            logger.LogInformation("Paquetes de créditos en soles listos (160 / 400 / 800).");
         }
 
         await db.SaveChangesAsync();

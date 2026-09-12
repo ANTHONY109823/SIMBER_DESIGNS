@@ -1,289 +1,174 @@
 @page "/catalog"
 @inject SimberApi Api
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 
-<div class="min-h-screen bg-slate-900 text-slate-100 font-sans">
-    <!-- HERO & BUSCADOR VISUAL (Inspirado en Foraes) -->
-    <div class="relative bg-gradient-to-b from-slate-950 to-slate-900 py-16 px-4 border-b border-slate-800">
-        <div class="max-w-7xl mx-auto text-center">
-            <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white mb-4">
-                SIMBER <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">DESIGNS</span>
+<PageTitle>Catálogo · Simber Designs</PageTitle>
+
+<div class="relative overflow-hidden">
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(ellipse_at_top,_rgba(255,106,26,0.16),_transparent_58%)]"></div>
+
+    <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+        <div class="mx-auto max-w-2xl text-center">
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">Catálogo CDR</p>
+            <h1 class="mt-3 font-serif text-4xl tracking-tight text-white sm:text-6xl">
+                Fútbol y <span class="text-gold">Vóley</span>
             </h1>
-            <p class="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-8">
-                Vectores deportivos y mockups de calidad premium para sublimación. Descarga instantánea de archivos editables de alta fidelidad.
+            <p class="mx-auto mt-4 max-w-lg text-sm text-cream/65 sm:text-base">
+                Foto, nombre, versión CDR y precio. Pide el archivo por WhatsApp.
             </p>
+        </div>
 
-            <!-- Zona de Búsqueda Inteligente (Estilo Google Lens / Drag & Paste) -->
-            <div @ref="dropZoneElement"
-                 @onpointerenter="OnDragEnter"
-                 @onpointerleave="OnDragLeave"
-                 class="max-w-3xl mx-auto relative group">
-                
-                <div class="@(isDragging ? "border-cyan-400 bg-cyan-950/20 scale-[1.02]" : "border-slate-700 bg-slate-950/40 hover:border-slate-600") 
-                            border-2 border-dashed rounded-2xl p-8 md:p-12 transition-all duration-300 backdrop-blur-sm cursor-pointer relative overflow-hidden">
-                    
-                    <InputFile OnChange="HandleFileSelected" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-
-                    <div class="flex flex-col items-center justify-center space-y-4 pointer-events-none">
-                        <!-- Icono Buscador Visual -->
-                        <div class="w-16 h-16 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        
-                        <div class="text-center">
-                            <p class="text-white font-semibold text-lg">
-                                Arrastra una imagen aquí o <span class="text-cyan-400 font-bold underline decoration-wavy">búscala en tu equipo</span>
-                            </p>
-                            <p class="text-slate-400 text-sm mt-1">
-                                Soporta JPG, PNG, WEBP. También puedes presionar <kbd class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-300 font-mono">Ctrl + V</kbd> para pegar captura.
-                            </p>
-                        </div>
+        <div @ref="dropZoneElement"
+             @onpointerenter="OnDragEnter"
+             @onpointerleave="OnDragLeave"
+             class="relative mx-auto mt-10 max-w-2xl">
+            <div class="@(isDragging ? "border-gold bg-gold/10 scale-[1.01]" : "border-white/15 bg-white/[0.03] hover:border-gold/40")
+                        relative overflow-hidden rounded-3xl border-2 border-dashed p-8 transition-all duration-300 sm:p-10">
+                <InputFile OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png,.webp,image/*" class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
+                <div class="pointer-events-none flex flex-col items-center text-center">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-ink text-gold">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                     </div>
+                    <p class="mt-4 text-lg font-semibold text-white">Busca por foto</p>
+                    <p class="mt-1 text-sm text-cream/55">Arrastra, elige o pega con <kbd class="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-cream/80">Ctrl+V</kbd></p>
+                </div>
 
-                    @if (isAnalyzing)
+                @if (isAnalyzing)
+                {
+                    <div class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-ink/90 backdrop-blur-sm">
+                        <div class="h-12 w-12 animate-spin rounded-full border-2 border-white/10 border-t-gold"></div>
+                        <p class="mt-4 text-sm font-medium text-gold">Buscando diseños parecidos...</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <p class="mt-4 text-center text-sm text-rose-400">@errorMessage</p>
+        }
+
+        @if (activeVisualSearchImage != null)
+        {
+            <div class="mt-6 flex justify-center">
+                <div class="inline-flex items-center gap-3 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm">
+                    <img src="@activeVisualSearchImage" alt="" class="h-8 w-8 rounded-lg object-cover" />
+                    <span class="text-cream/80">Búsqueda por imagen</span>
+                    <button type="button" @onclick="ClearVisualSearch" class="text-cream/50 hover:text-white">×</button>
+                </div>
+            </div>
+        }
+
+        <div class="mt-12 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap gap-2">
+                @foreach (var cat in categories)
+                {
+                    <button type="button" @onclick="() => SelectCategory(cat)"
+                            class="rounded-full px-4 py-2 text-sm transition @(selectedCategory == cat ? "bg-gold font-semibold text-ink" : "border border-white/12 text-cream/70 hover:border-white/30")">
+                        @cat <span class="opacity-60">@GetCountForCategory(cat)</span>
+                    </button>
+                }
+            </div>
+            <p class="text-sm text-cream/40">@filteredDesigns.Count diseños</p>
+        </div>
+
+        <div class="mt-8">
+            @if (isLoading)
+            {
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    @for (int i = 0; i < 6; i++)
                     {
-                        <!-- Capa de Procesamiento Inteligente -->
-                        <div class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center space-y-4 z-20 backdrop-blur-md">
-                            <div class="relative w-20 h-20">
-                                <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
-                                <div class="absolute inset-0 rounded-full border-4 border-t-cyan-400 animate-spin"></div>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-cyan-400 font-bold tracking-wider animate-pulse">EXTRAYENDO EMBEDDINGS VECTORIALES...</p>
-                                <p class="text-slate-400 text-xs mt-1">ONNX Runtime está procesando los tensores de la imagen</p>
+                        <div class="animate-pulse overflow-hidden rounded-3xl border border-white/8 bg-white/[0.03]">
+                            <div class="aspect-[4/5] bg-white/5"></div>
+                            <div class="space-y-3 p-5">
+                                <div class="h-4 w-2/3 rounded bg-white/10"></div>
+                                <div class="h-3 w-1/3 rounded bg-white/5"></div>
+                                <div class="h-8 w-1/2 rounded bg-white/10"></div>
                             </div>
                         </div>
                     }
                 </div>
-            </div>
-
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <p class="mt-4 text-sm text-rose-400">@errorMessage</p>
             }
-
-            <!-- Indicador de Búsqueda por Imagen Activa -->
-            @if (activeVisualSearchImage != null)
+            else if (filteredDesigns.Count == 0)
             {
-                <div class="mt-6 inline-flex items-center space-x-3 bg-cyan-950/40 border border-cyan-800 px-4 py-2 rounded-full text-sm">
-                    <img src="@activeVisualSearchImage" class="w-8 h-8 rounded object-cover border border-cyan-500" />
-                    <span class="text-cyan-300">Búsqueda visual activa (Distancia Coseno pgvector)</span>
-                    <button @onclick="ClearVisualSearch" class="text-slate-400 hover:text-white font-bold ml-2">×</button>
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- CUERPO PRINCIPAL: FILTROS Y CATÁLOGO -->
-    <div class="max-w-7xl mx-auto px-4 py-12">
-        <div class="flex flex-col lg:flex-row gap-8">
-            
-            <!-- PANEL LATERAL DE FILTROS (100% Responsivo colapsable en móvil) -->
-            <div class="w-full lg:w-64 flex-shrink-0 space-y-6">
-                <!-- Tarjeta de Saldo de Usuario (Estilo Foraes) -->
-                <div class="bg-gradient-to-br from-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tu Cuenta</h3>
-                    <div class="flex items-baseline justify-between mb-4">
-                        <span class="text-3xl font-black text-white">$45.00</span>
-                        <span class="text-xs text-cyan-400 font-mono">Créditos Simber</span>
-                    </div>
-                    <p class="text-slate-400 text-xs mb-4">Membresía activa: <span class="text-emerald-400 font-semibold">VIP ($16/mes)</span></p>
-                    <div class="w-full bg-slate-800 rounded-full h-1.5 mb-2">
-                        <div class="bg-cyan-400 h-1.5 rounded-full" style="width: 60%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs text-slate-400 mb-4">
-                        <span>Descargas de hoy</span>
-                        <span class="text-white font-semibold">15 / 25 diarias</span>
-                    </div>
-                    <button class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-cyan-900/30">
-                        Recargar Saldo (QR / PayPal)
+                <div class="rounded-3xl border border-dashed border-white/12 px-6 py-20 text-center">
+                    <h3 class="font-serif text-2xl text-white">Sin diseños en esta vista</h3>
+                    <p class="mx-auto mt-2 max-w-sm text-sm text-cream/50">Cambia de deporte o limpia la búsqueda por foto.</p>
+                    <button type="button" @onclick="ResetFilters" class="mt-5 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-gold/50">
+                        Ver todo
                     </button>
                 </div>
-
-                <!-- Categorías de Diseño (Inspirado en catálogos deportivos) -->
-                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-6">
-                    <h4 class="text-sm font-bold text-white mb-4 flex items-center">
-                        <svg class="w-4 h-4 text-cyan-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
-                        Categorías
-                    </h4>
-                    <div class="space-y-2">
-                        @foreach (var cat in categories)
-                        {
-                            <button @onclick="() => SelectCategory(cat)"
-                                    class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between items-center @(selectedCategory == cat ? "bg-cyan-950 text-cyan-300 font-semibold border-l-4 border-cyan-400" : "text-slate-400 hover:bg-slate-800/50 hover:text-white")">
-                                <span>@cat</span>
-                                <span class="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-500">@(GetCountForCategory(cat))</span>
-                            </button>
-                        }
-                    </div>
-                </div>
-
-                <!-- Filtros por Formato e Impuestos / Moneda -->
-                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-6">
-                    <h4 class="text-sm font-bold text-white mb-4">Formato de Archivo</h4>
-                    <div class="space-y-2 text-sm text-slate-400">
-                        <label class="flex items-center space-x-2 cursor-pointer hover:text-white">
-                            <input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" />
-                            <span>EPS (Vector Editable)</span>
-                        </label>
-                        <label class="flex items-center space-x-2 cursor-pointer hover:text-white">
-                            <input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" />
-                            <span>CDR (CorelDraw)</span>
-                        </label>
-                        <label class="flex items-center space-x-2 cursor-pointer hover:text-white">
-                            <input type="checkbox" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" />
-                            <span>PDF (Listo para Impresión)</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- GRILLA DE DISEÑOS (100% Responsive Grid) -->
-            <div class="flex-1 space-y-6">
-                <!-- Barra de control superior (Orden y conteo) -->
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-950/40 border border-slate-800 p-4 rounded-xl">
-                    <p class="text-slate-400 text-sm">
-                        Mostrando <span class="text-white font-bold">@filteredDesigns.Count</span> diseños de sublimación
-                    </p>
-                    <div class="flex items-center space-x-4">
-                        <select @onchange="SortChanged" class="bg-slate-900 border border-slate-800 rounded-lg text-sm text-slate-300 py-1.5 px-3 focus:outline-none focus:border-cyan-400">
-                            <option value="recent">Más recientes</option>
-                            <option value="popular">Más populares</option>
-                            <option value="price-asc">Precio: menor a mayor</option>
-                            <option value="price-desc">Precio: mayor a menor</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Layout de Grilla Multicolumna Responsiva -->
-                @if (isLoading)
-                {
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        @for (int i = 0; i < 6; i++)
-                        {
-                            <div class="bg-slate-950/30 border border-slate-800/80 rounded-2xl p-4 animate-pulse space-y-4">
-                                <div class="bg-slate-800 aspect-[4/5] rounded-xl"></div>
-                                <div class="h-4 bg-slate-800 rounded w-2/3"></div>
-                                <div class="h-3 bg-slate-800 rounded w-1/2"></div>
-                                <div class="flex justify-between items-center pt-2 border-t border-slate-800">
-                                    <div class="h-5 bg-slate-800 rounded w-1/3"></div>
-                                    <div class="h-8 bg-slate-800 rounded-lg w-1/4"></div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else if (filteredDesigns.Count == 0)
-                {
-                    <div class="text-center py-20 bg-slate-950/20 border border-slate-800 border-dashed rounded-3xl">
-                        <svg class="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <h3 class="text-xl font-bold text-white mb-2">No se encontraron diseños</h3>
-                        <p class="text-slate-400 text-sm max-w-sm mx-auto">Prueba limpiando los filtros o buscando con otra imagen en la zona de búsqueda visual.</p>
-                        <button @onclick="ResetFilters" class="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">Limpiar Filtros</button>
-                    </div>
-                }
-                else
-                {
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        @foreach (var design in filteredDesigns)
-                        {
-                            <div class="group bg-slate-950/40 hover:bg-slate-950 border border-slate-800 hover:border-cyan-500/30 rounded-2xl p-4 transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-900/10 flex flex-col relative overflow-hidden">
-                                
-                                <!-- Similitud de Búsqueda Visual (badge dinámico pgvector) -->
-                                @if (design.Similarity.HasValue)
+            }
+            else
+            {
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    @foreach (var design in filteredDesigns)
+                    {
+                        <article class="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] transition hover:border-gold/35">
+                            <div class="relative aspect-[4/5] overflow-hidden bg-ink">
+                                <img src="@design.PreviewUrl" alt="@design.Title" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                                <span class="absolute left-3 top-3 rounded-full bg-ink/80 px-3 py-1 text-xs text-cream/90">@design.Category</span>
+                                @if (design.Similarity is { } score)
                                 {
-                                    <div class="absolute top-6 left-6 z-10 bg-cyan-500/90 backdrop-blur-md text-slate-950 text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                                        @((design.Similarity.Value * 100).ToString("0.0"))% coincidencia
-                                    </div>
+                                    <span class="absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-xs font-semibold text-ink">@((score * 100).ToString("0"))%</span>
                                 }
-
-                                <!-- Imagen con efecto de hover y escalado -->
-                                <div class="aspect-[4/5] bg-slate-900 rounded-xl overflow-hidden relative border border-slate-800/80 mb-4 flex items-center justify-center">
-                                    <img src="@design.PreviewUrl" alt="@design.Title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
-                                    
-                                    <!-- Capa interactiva rápida al pasar el cursor (Mockup Preview) -->
-                                    <div class="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-3">
-                                        <button class="p-3 bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-white rounded-full transition-all hover:scale-110" title="Previsualizar en Mockup">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        </button>
-                                        <button @onclick="() => TriggerDownload(design)" class="p-3 bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-white rounded-full transition-all hover:scale-110" title="Descargar Directo">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Detalles del Vector -->
-                                <div class="flex-1 flex flex-col justify-between">
-                                    <div>
-                                        <span class="text-[10px] uppercase tracking-wider text-cyan-400 font-bold bg-cyan-950/50 px-2.5 py-0.5 rounded-full">
-                                            @design.Category
-                                        </span>
-                                        <h3 class="text-base font-bold text-white mt-2 line-clamp-1 group-hover:text-cyan-300 transition-colors">
-                                            @design.Title
-                                        </h3>
-                                        <p class="text-xs text-slate-400 mt-1 flex items-center">
-                                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            Vector Editable (.EPS) • 100 MB
-                                        </p>
-                                    </div>
-
-                                    <!-- Compra o Canje (Sistema Dual Wiforth/Foraes) -->
-                                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80">
-                                        <div>
-                                            <div class="text-xs text-slate-500">Precio / Canje</div>
-                                            <div class="flex items-baseline space-x-1.5">
-                                                <span class="text-white font-black text-lg">$@design.PriceUsd.ToString("0.00")</span>
-                                                <span class="text-[10px] text-slate-400">o</span>
-                                                <span class="text-cyan-400 font-bold text-sm">@design.CreditsCost pts</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Botón Comprar / Descargar dependiente de membresía -->
-                                        <button @onclick="() => TriggerDownload(design)" 
-                                                class="px-4 py-2 bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 font-bold text-xs rounded-xl transition-all shadow-lg">
-                                            Descargar
-                                        </button>
-                                    </div>
-                                </div>
-
                             </div>
-                        }
-                    </div>
-                }
-            </div>
-
+                            <div class="flex flex-1 flex-col p-5">
+                                <h3 class="text-lg font-semibold text-white">@design.Title</h3>
+                                <p class="mt-1 text-sm text-cream/45">CDR @design.CdrVersion</p>
+                                <p class="mt-4 font-serif text-3xl text-gold">@design.CreditsCost.ToString("0") créditos</p>
+                                @if (isAdmin || isAuthenticated)
+                                {
+                                    <button type="button" @onclick="() => TriggerDownload(design)"
+                                            class="mt-5 w-full rounded-2xl bg-white/10 py-3 text-sm font-semibold text-white hover:bg-gold hover:text-ink">
+                                        Descargar CDR
+                                    </button>
+                                }
+                                else
+                                {
+                                    <a href="/login" class="mt-5 block w-full rounded-2xl bg-gold py-3 text-center text-sm font-semibold text-ink hover:bg-orange-400">
+                                        Entrar para descargar
+                                    </a>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
         </div>
     </div>
 </div>
 
 @code {
+    private const string WhatsAppNumber = "51987654321";
     private ElementReference dropZoneElement;
-    private bool isDragging = false;
-    private bool isAnalyzing = false;
+    private bool isDragging;
+    private bool isAnalyzing;
     private bool isLoading = true;
+    private bool isAdmin;
+    private bool isAuthenticated;
     private string? activeVisualSearchImage;
     private string selectedCategory = "Todos";
-    private string sortBy = "recent";
-
-    private List<string> categories = new() { "Todos", "Jersey", "Motocross", "Basketball", "Voleibol", "Concept Kits" };
+    private List<string> categories = new() { "Todos", "Fútbol", "Vóley" };
     private List<DesignItem> allDesigns = new();
     private List<DesignItem> filteredDesigns = new();
-
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        isAuthenticated = auth.User.Identity?.IsAuthenticated == true;
+        isAdmin = auth.User.IsInRole("Admin");
+
         try
         {
             var items = await Api.GetDesignsAsync() ?? [];
-            allDesigns = items.Select(ToItem).ToList();
-            var extra = allDesigns.Select(d => d.Category).Distinct().OrderBy(c => c);
-            categories = new List<string> { "Todos" };
-            categories.AddRange(extra);
+            allDesigns = items.Select(ToItem).Where(d => d.Category is "Fútbol" or "Vóley").ToList();
         }
         catch (Exception ex)
         {
@@ -298,9 +183,14 @@
     {
         if (firstRender)
         {
-            // Inicializar escuchas globales de teclado para pegar capturas (Ctrl+V) con JSInterop
             await JS.InvokeVoidAsync("initializeClipboardPaste", DotNetObjectReference.Create(this));
         }
+    }
+
+    private static string WhatsAppUrl(DesignItem design)
+    {
+        var text = Uri.EscapeDataString($"Hola, quiero el diseño {design.Title} (CDR {design.CdrVersion}) a ${design.PriceUsd:0.00}");
+        return $"https://wa.me/{WhatsAppNumber}?text={text}";
     }
 
     private void SelectCategory(string category)
@@ -310,53 +200,41 @@
     }
 
     private int GetCountForCategory(string cat)
-    {
-        if (cat == "Todos") return allDesigns.Count;
-        return allDesigns.Count(d => d.Category == cat);
-    }
-
-    private void SortChanged(ChangeEventArgs e)
-    {
-        sortBy = e.Value?.ToString() ?? "recent";
-        ApplyFilters();
-    }
+        => cat == "Todos" ? allDesigns.Count : allDesigns.Count(d => d.Category == cat);
 
     private void ApplyFilters()
     {
-        var query = allDesigns.AsQueryable();
-
+        var query = allDesigns.AsEnumerable();
         if (selectedCategory != "Todos")
         {
             query = query.Where(d => d.Category == selectedCategory);
         }
 
-        if (sortBy == "recent") query = query.OrderByDescending(d => d.CreatedAt);
-        else if (sortBy == "price-asc") query = query.OrderBy(d => d.PriceUsd);
-        else if (sortBy == "price-desc") query = query.OrderByDescending(d => d.PriceUsd);
-
-        filteredDesigns = query.ToList();
+        filteredDesigns = query.OrderByDescending(d => d.CreatedAt).ToList();
     }
 
     private void ResetFilters()
     {
         selectedCategory = "Todos";
-        sortBy = "recent";
         activeVisualSearchImage = null;
-        foreach (var d in allDesigns) d.Similarity = null;
+        foreach (var d in allDesigns)
+        {
+            d.Similarity = null;
+        }
+
         ApplyFilters();
     }
 
-    // GESTIÓN DE CONTROLADORES DE EVENTOS DRAG & DROP
     private void OnDragEnter() => isDragging = true;
     private void OnDragLeave() => isDragging = false;
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         isDragging = false;
-        var file = e.File;
-        if (file == null) return;
-
-        await ProcessVisualSearch(file);
+        if (e.File is { } file)
+        {
+            await ProcessVisualSearch(file);
+        }
     }
 
     [JSInvokable]
@@ -398,16 +276,20 @@
                 var match = allDesigns.FirstOrDefault(d => d.Id == result.Id);
                 if (match is not null)
                 {
-                    match.Similarity = result.Similarity.HasValue ? result.Similarity.Value : null;
+                    match.Similarity = result.Similarity;
                 }
                 else
                 {
-                    allDesigns.Add(ToItem(result));
+                    var extra = ToItem(result);
+                    if (extra.Category is "Fútbol" or "Vóley")
+                    {
+                        allDesigns.Add(extra);
+                    }
                 }
             }
 
             filteredDesigns = allDesigns
-                .Where(d => d.Similarity.HasValue)
+                .Where(d => d.Similarity.HasValue && d.Category is "Fútbol" or "Vóley")
                 .OrderByDescending(d => d.Similarity)
                 .ToList();
         }
@@ -425,7 +307,11 @@
     private void ClearVisualSearch()
     {
         activeVisualSearchImage = null;
-        foreach (var d in allDesigns) d.Similarity = null;
+        foreach (var d in allDesigns)
+        {
+            d.Similarity = null;
+        }
+
         ApplyFilters();
     }
 
@@ -434,30 +320,27 @@
         errorMessage = null;
         try
         {
+            if (!isAdmin)
+            {
+                try
+                {
+                    await Api.UnlockAsync(design.Id);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("ya está desbloqueado", StringComparison.OrdinalIgnoreCase))
+                {
+                }
+            }
+
             var response = await Api.DownloadAsync(design.Id);
             if (!string.IsNullOrWhiteSpace(response?.DownloadUrl))
             {
                 await JS.InvokeVoidAsync("open", response.DownloadUrl, "_blank");
             }
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("créditos", StringComparison.OrdinalIgnoreCase)
-                                                   || ex.Message.Contains("membresía", StringComparison.OrdinalIgnoreCase)
-                                                   || ex.Message.Contains("acceso", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("créditos", StringComparison.OrdinalIgnoreCase))
         {
-            try
-            {
-                await Api.UnlockAsync(design.Id);
-                var response = await Api.DownloadAsync(design.Id);
-                if (!string.IsNullOrWhiteSpace(response?.DownloadUrl))
-                {
-                    await JS.InvokeVoidAsync("open", response.DownloadUrl, "_blank");
-                }
-            }
-            catch (Exception unlockEx)
-            {
-                errorMessage = unlockEx.Message;
-                Nav.NavigateTo("/pricing");
-            }
+            errorMessage = "No tienes créditos. Recarga con Mercado Pago.";
+            Nav.NavigateTo("/recargar");
         }
         catch (Exception ex)
         {
@@ -470,15 +353,51 @@
         dto.Title,
         dto.Slug,
         dto.PreviewUrl,
-        dto.Category,
+        ToSportCategory(dto.Category),
         (double)dto.PriceUsd,
-        (int)dto.CreditsCost,
-        dto.CreatedAt)
+        (double)dto.CreditsCost,
+        dto.CreatedAt,
+        FormatCdrVersion(dto.Description))
     {
-        Similarity = dto.Similarity.HasValue ? dto.Similarity.Value : null
+        Similarity = dto.Similarity
     };
 
-    public class DesignItem
+    private static string FormatCdrVersion(string? description)
+    {
+        var value = (description ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 16 || value.Contains(' '))
+        {
+            return "—";
+        }
+
+        return value;
+    }
+
+    private static string ToSportCategory(string? category)
+    {
+        var value = (category ?? "").Trim();
+        if (value.Equals("Voleibol", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Voley", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Vóley", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Volleyball", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Vóley";
+        }
+
+        if (value.Equals("Jersey", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Fútbol", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Futbol", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Football", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Soccer", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Concept Kits", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Fútbol";
+        }
+
+        return value;
+    }
+
+    public sealed class DesignItem
     {
         public Guid Id { get; set; }
         public string Title { get; set; } = "";
@@ -486,11 +405,12 @@
         public string PreviewUrl { get; set; } = "";
         public string Category { get; set; } = "";
         public double PriceUsd { get; set; }
-        public int CreditsCost { get; set; }
+        public double CreditsCost { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string CdrVersion { get; set; } = "—";
         public double? Similarity { get; set; }
 
-        public DesignItem(Guid id, string title, string slug, string previewUrl, string category, double priceUsd, int creditsCost, DateTime createdAt)
+        public DesignItem(Guid id, string title, string slug, string previewUrl, string category, double priceUsd, double creditsCost, DateTime createdAt, string cdrVersion)
         {
             Id = id;
             Title = title;
@@ -500,6 +420,7 @@
             PriceUsd = priceUsd;
             CreditsCost = creditsCost;
             CreatedAt = createdAt;
+            CdrVersion = cdrVersion;
         }
     }
 }

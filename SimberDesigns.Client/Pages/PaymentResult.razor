@@ -1,0 +1,102 @@
+@page "/pago/ok"
+@page "/pago/error"
+@page "/pago/pendiente"
+@inject SimberApi Api
+@inject NavigationManager Nav
+
+<PageTitle>Pago · Simber Designs</PageTitle>
+
+<section class="mx-auto max-w-lg px-6 py-20 text-center">
+    @if (Kind == "error")
+    {
+        <h1 class="font-serif text-4xl text-white">Pago no completado</h1>
+        <p class="mt-3 text-sm text-cream/55">Puedes intentar de nuevo cuando quieras.</p>
+        <a href="/recargar" class="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Volver a recargar</a>
+    }
+    else if (Kind == "pendiente")
+    {
+        <h1 class="font-serif text-4xl text-white">Pago en proceso</h1>
+        <p class="mt-3 text-sm text-cream/55">Cuando Mercado Pago lo confirme, se acredita solo.</p>
+        <a href="/cuenta" class="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Ver mi cuenta</a>
+    }
+    else if (Confirming)
+    {
+        <h1 class="font-serif text-4xl text-white">Confirmando…</h1>
+        <p class="mt-3 text-sm text-cream/55">Estamos acreditando tu compra.</p>
+    }
+    else
+    {
+        <h1 class="font-serif text-4xl text-white">Pago listo</h1>
+        <p class="mt-3 text-sm text-cream/55">@Message</p>
+        <a href="/cuenta" class="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Ver créditos y licencia</a>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <p class="mt-6 text-sm text-rose-400">@Error</p>
+    }
+</section>
+
+@code {
+    private string Kind = "ok";
+    private bool Confirming = true;
+    private string Message = "Ya puedes usar créditos o activar el plugin.";
+    private string? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        Kind = uri.AbsolutePath.Contains("/pago/error") ? "error"
+            : uri.AbsolutePath.Contains("/pago/pendiente") ? "pendiente"
+            : "ok";
+
+        if (Kind != "ok")
+        {
+            Confirming = false;
+            return;
+        }
+
+        var query = ParseQuery(uri.Query);
+        Guid.TryParse(GetQuery(query, "tx"), out var txId);
+        var paymentId = GetQuery(query, "payment_id") ?? GetQuery(query, "collection_id");
+        var external = GetQuery(query, "external_reference");
+        var fake = GetQuery(query, "fake") == "1";
+
+        try
+        {
+            await Api.ConfirmPaymentAsync(txId == Guid.Empty ? null : txId, paymentId, external);
+            Message = fake
+                ? "Pago de prueba acreditado. Cuando pongas tu cuenta Mercado Pago, esto será Yape o tarjeta de verdad."
+                : "Mercado Pago confirmó el pago.";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+
+        Confirming = false;
+    }
+
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var text = query.TrimStart('?');
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return map;
+        }
+
+        foreach (var part in text.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = part.Split('=', 2);
+            var key = Uri.UnescapeDataString(pair[0]);
+            var value = pair.Length > 1 ? Uri.UnescapeDataString(pair[1]) : "";
+            map[key] = value;
+        }
+
+        return map;
+    }
+
+    private static string? GetQuery(Dictionary<string, string> query, string key)
+        => query.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+}

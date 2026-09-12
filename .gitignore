@@ -16,7 +16,9 @@
 *.bin
 *.iso
 *.dmg
-models/
+# Pesos ML en una carpeta raíz; no ignorar SimberDesigns.Server/Models (entidades C#)
+/models/
+!SimberDesigns.Server/Models/
 [Uu]ploads/
 [Aa]ssets/raw/
 [Aa]ssets/designs/

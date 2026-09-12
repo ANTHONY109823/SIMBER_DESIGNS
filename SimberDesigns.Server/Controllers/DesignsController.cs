@@ -17,7 +17,8 @@ public sealed class DesignsController(
     AppDbContext db,
     IEmbeddingService embeddings,
     ICloudflareR2Service r2,
-    IDownloadLimitService downloadLimits) : ControllerBase
+    IDownloadLimitService downloadLimits,
+    LocalCatalogStorage localFiles) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -26,7 +27,8 @@ public sealed class DesignsController(
         [FromQuery] string? q,
         CancellationToken cancellationToken)
     {
-        var query = db.Designs.AsNoTracking().AsQueryable();
+        var query = db.Designs.AsNoTracking()
+            .Where(d => d.Category == "Fútbol" || d.Category == "Vóley" || d.Category == "Jersey" || d.Category == "Voleibol");
         if (!string.IsNullOrWhiteSpace(category) && !string.Equals(category, "Todos", StringComparison.OrdinalIgnoreCase))
         {
             query = query.Where(d => d.Category == category);
@@ -64,6 +66,129 @@ public sealed class DesignsController(
         return Ok(new PresignedUrlResponse(uploadUrl, fileKey));
     }
 
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost]
+    [RequestSizeLimit(110_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 110_000_000)]
+    public async Task<ActionResult<DesignDto>> Create(
+        [FromForm] string title,
+        [FromForm] string category,
+        [FromForm] decimal price,
+        [FromForm] string? cdrVersion,
+        IFormFile? preview,
+        IFormFile? photo,
+        IFormFile? file,
+        IFormFile? download,
+        CancellationToken cancellationToken)
+    {
+        var image = preview ?? photo;
+        var pack = file ?? download;
+        if (string.IsNullOrWhiteSpace(title) || image is null || image.Length == 0 || pack is null || pack.Length == 0)
+        {
+            return BadRequest("Nombre, foto del diseño y archivo descargable son obligatorios.");
+        }
+
+        if (price < 0)
+        {
+            return BadRequest("El precio no puede ser negativo.");
+        }
+
+        var sport = NormalizeSport(category);
+        if (sport is null)
+        {
+            return BadRequest("La categoría debe ser Fútbol o Vóley.");
+        }
+
+        var previewExt = Path.GetExtension(image.FileName).ToLowerInvariant();
+        if (previewExt is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+        {
+            return BadRequest("La foto debe ser JPG, PNG o WEBP.");
+        }
+
+        var packExt = Path.GetExtension(pack.FileName).ToLowerInvariant();
+        var allowedPacks = new[] { ".cdr", ".zip", ".rar", ".7z", ".ai", ".eps" };
+        if (packExt == ".pdf" || !allowedPacks.Contains(packExt))
+        {
+            return BadRequest("El descargable debe ser CDR (o ZIP/RAR del CDR). No se acepta PDF.");
+        }
+
+        var id = Guid.NewGuid();
+        var slug = await UniqueSlugAsync(title, cancellationToken);
+        var version = string.IsNullOrWhiteSpace(cdrVersion) ? "CDR" : cdrVersion.Trim();
+        var previewUrl = await localFiles.SavePreviewAsync(id, image, cancellationToken);
+        var localPath = await localFiles.SaveDownloadAsync(id, pack, cancellationToken);
+        var r2Key = $"designs/{id:N}{packExt}";
+
+        await using (var previewStream = image.OpenReadStream())
+        {
+            await r2.UploadAsync($"previews/{id:N}{previewExt}", previewStream, image.ContentType, cancellationToken);
+        }
+
+        await using (var packStream = pack.OpenReadStream())
+        {
+            await r2.UploadAsync(r2Key, packStream, pack.ContentType, cancellationToken);
+        }
+
+        float[] embedding;
+        var previewPath = Path.Combine(localFiles.PreviewRoot, Path.GetFileName(previewUrl));
+        await using (var embedStream = System.IO.File.OpenRead(previewPath))
+        {
+            embedding = await embeddings.EmbedImageAsync(embedStream, cancellationToken);
+        }
+
+        var design = new Design
+        {
+            Id = id,
+            Title = title.Trim(),
+            Slug = slug,
+            Description = version,
+            Category = sport,
+            PriceUsd = price,
+            CreditsCost = price,
+            R2Key = r2Key,
+            PreviewUrl = previewUrl,
+            IsFreeDaily = false,
+            Embedding = new Vector(embedding),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        db.Designs.Add(design);
+        await db.SaveChangesAsync(cancellationToken);
+
+        _ = localPath;
+        return Ok(new DesignDto(design.Id, design.Title, design.Slug, design.Description, design.Category, design.PriceUsd, design.CreditsCost, design.PreviewUrl, design.CreatedAt, null));
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var design = await db.Designs.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (design is null)
+        {
+            return NotFound();
+        }
+
+        localFiles.Delete(id, design.PreviewUrl);
+        db.Designs.Remove(design);
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpGet("{id:guid}/file")]
+    public IActionResult DownloadFile(Guid id)
+    {
+        var path = localFiles.FindDownloadPath(id);
+        if (path is null)
+        {
+            return NotFound("El archivo descargable no está en este servidor.");
+        }
+
+        var name = Path.GetFileName(path);
+        return PhysicalFile(path, "application/octet-stream", name);
+    }
+
     [HttpPost("visual-search")]
     [AllowAnonymous]
     [RequestSizeLimit(10_000_000)]
@@ -95,6 +220,7 @@ public sealed class DesignsController(
                    (1 - (embedding <=> @Embedding))::real AS Similarity
             FROM designs
             WHERE embedding IS NOT NULL
+              AND category IN ('Fútbol', 'Vóley', 'Jersey', 'Voleibol')
             ORDER BY embedding <=> @Embedding
             LIMIT 8
             """;
@@ -168,6 +294,14 @@ public sealed class DesignsController(
             return NotFound("Diseño no encontrado.");
         }
 
+        if (User.IsInRole(Roles.Admin))
+        {
+            var adminUrl = localFiles.FindDownloadPath(id) is not null
+                ? $"{Request.Scheme}://{Request.Host}/api/designs/{id}/file"
+                : await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken);
+            return Ok(new DownloadResponse(adminUrl, DateTime.UtcNow.Add(r2.UrlLifetime), 0));
+        }
+
         var evaluation = await downloadLimits.EvaluateAsync(userId.Value, cancellationToken);
         var purchased = await db.CreditTransactions.AnyAsync(
             c => c.UserId == userId && c.DesignId == id && c.TxType == CreditTxTypes.PurchaseDesign,
@@ -206,7 +340,55 @@ public sealed class DesignsController(
         });
         await db.SaveChangesAsync(cancellationToken);
 
-        var url = await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken);
+        var url = localFiles.FindDownloadPath(id) is not null
+            ? $"{Request.Scheme}://{Request.Host}/api/designs/{id}/file"
+            : await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken);
         return Ok(new DownloadResponse(url, DateTime.UtcNow.Add(r2.UrlLifetime), remaining));
+    }
+
+    private static string? NormalizeSport(string? category)
+    {
+        var value = (category ?? "").Trim();
+        if (value.Equals("Vóley", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Voley", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Voleibol", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Vóley";
+        }
+
+        if (value.Equals("Fútbol", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Futbol", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("Jersey", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Fútbol";
+        }
+
+        return null;
+    }
+
+    private async Task<string> UniqueSlugAsync(string title, CancellationToken cancellationToken)
+    {
+        var normalized = new string(title.Trim().ToLowerInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+            .ToArray());
+        while (normalized.Contains("--", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        var slug = normalized.Trim('-');
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            slug = $"diseno-{Guid.NewGuid():N}"[..20];
+        }
+
+        var candidate = slug;
+        var i = 2;
+        while (await db.Designs.AnyAsync(d => d.Slug == candidate, cancellationToken))
+        {
+            candidate = $"{slug}-{i++}";
+        }
+
+        return candidate;
     }
 }

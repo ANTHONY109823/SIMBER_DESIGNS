@@ -22,22 +22,22 @@ public sealed class AuthController(
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password) || string.IsNullOrWhiteSpace(request.FullName))
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
         {
-            return BadRequest("Email, contraseña y nombre son obligatorios.");
+            return BadRequest("Correo y una contraseña de al menos 6 caracteres son obligatorios.");
         }
 
-        var email = request.Email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(x => x.Email == email, cancellationToken))
         {
-            return Conflict("Ya existe una cuenta con ese email.");
+            return Conflict("Ya existe una cuenta con ese correo.");
         }
 
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = email,
-            FullName = request.FullName.Trim(),
+            FullName = string.IsNullOrWhiteSpace(request.FullName) ? email : request.FullName.Trim(),
             Role = Roles.Customer,
             CreditsBalance = 0,
             CreatedAt = DateTime.UtcNow,

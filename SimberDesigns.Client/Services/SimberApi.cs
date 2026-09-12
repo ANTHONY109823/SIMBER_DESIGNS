@@ -26,7 +26,20 @@ public sealed record DesignDto(
 
 public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, int RemainingToday);
 
-public sealed record CheckoutResponse(string CheckoutUrl);
+public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bool FakeCheckout);
+
+public sealed record StorefrontDto(
+    List<CreditPackageDto> Packages,
+    decimal PluginMonthPricePen,
+    string PluginPlanName);
+
+public sealed record PluginLicenseDto(
+    string Plan,
+    string Status,
+    string ActivationCode,
+    DateTime ExpiresAt,
+    bool IsActive,
+    string? HardwareId);
 
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 
@@ -154,11 +167,41 @@ public sealed class SimberApi(HttpClient http)
     public Task<AccountDashboardDto?> GetDashboardAsync()
         => http.GetFromJsonAsync<AccountDashboardDto>("api/account/dashboard");
 
-    public async Task<CheckoutResponse?> CheckoutAsync(string? planKey, string? packKey)
+    public Task<StorefrontDto?> GetStorefrontAsync()
+        => http.GetFromJsonAsync<StorefrontDto>("api/payments/storefront");
+
+    public async Task<CheckoutResponse?> CheckoutAsync(string kind, Guid? packageId, string? planKey)
     {
-        var response = await http.PostAsJsonAsync("api/payments/checkout", new { planKey, packKey });
-        response.EnsureSuccessStatusCode();
+        var response = await http.PostAsJsonAsync("api/payments/checkout", new { kind, packageId, planKey });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo iniciar el pago." : body);
+        }
+
         return await response.Content.ReadFromJsonAsync<CheckoutResponse>();
+    }
+
+    public async Task ConfirmPaymentAsync(Guid? transactionId, string? paymentId, string? externalReference)
+    {
+        var response = await http.PostAsJsonAsync("api/payments/confirm", new { transactionId, paymentId, externalReference });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo confirmar el pago." : body);
+        }
+    }
+
+    public async Task<PluginLicenseDto?> GetPluginLicenseAsync()
+    {
+        var response = await http.GetAsync("api/plugin/me");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<PluginLicenseDto>();
     }
 
     public async Task SubmitManualPaymentAsync(Stream proof, string fileName, string itemKey)
@@ -186,5 +229,53 @@ public sealed class SimberApi(HttpClient http)
     {
         var response = await http.PostAsJsonAsync($"api/payments/{id}/reject", new { notes });
         response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<DesignDto?> CreateDesignAsync(
+        string title,
+        string category,
+        decimal price,
+        string cdrVersion,
+        Stream preview,
+        string previewName,
+        string previewType,
+        Stream file,
+        string fileName,
+        string fileType)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(title), "title");
+        content.Add(new StringContent(category), "category");
+        content.Add(new StringContent(price.ToString(System.Globalization.CultureInfo.InvariantCulture)), "price");
+        content.Add(new StringContent(cdrVersion), "cdrVersion");
+
+        var previewContent = new StreamContent(preview);
+        previewContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+            string.IsNullOrWhiteSpace(previewType) ? "image/jpeg" : previewType);
+        content.Add(previewContent, "preview", previewName);
+
+        var fileContent = new StreamContent(file);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+            string.IsNullOrWhiteSpace(fileType) ? "application/octet-stream" : fileType);
+        content.Add(fileContent, "file", fileName);
+
+        var response = await http.PostAsync("api/designs", content);
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo publicar el diseño." : body);
+        }
+
+        return await response.Content.ReadFromJsonAsync<DesignDto>();
+    }
+
+    public async Task DeleteDesignAsync(Guid id)
+    {
+        var response = await http.DeleteAsync($"api/designs/{id}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo borrar el diseño." : body);
+        }
     }
 }

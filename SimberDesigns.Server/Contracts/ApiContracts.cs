@@ -29,8 +29,20 @@ public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, in
 
 public sealed record PresignedUrlResponse(string UploadUrl, string FileKey);
 
-public sealed record CheckoutRequest(string? PlanKey, string? PackKey);
-public sealed record CheckoutResponse(string CheckoutUrl);
+public sealed record CheckoutRequest(string? PlanKey, string? PackKey, string? Kind, Guid? PackageId);
+public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bool FakeCheckout);
+public sealed record ConfirmPaymentRequest(Guid? TransactionId, string? PaymentId, string? ExternalReference);
+public sealed record StorefrontDto(
+    IReadOnlyList<CreditPackageDto> Packages,
+    decimal PluginMonthPricePen,
+    string PluginPlanName);
+public sealed record PluginLicenseDto(
+    string Plan,
+    string Status,
+    string ActivationCode,
+    DateTime ExpiresAt,
+    bool IsActive,
+    string? HardwareId);
 
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 

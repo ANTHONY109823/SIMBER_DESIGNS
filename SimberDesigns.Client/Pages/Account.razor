@@ -1,0 +1,53 @@
+@page "/cuenta"
+@attribute [Authorize]
+@inject SimberApi Api
+
+<PageTitle>Mi cuenta · Simber Designs</PageTitle>
+
+<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+    <p class="text-xs uppercase tracking-[0.28em] text-gold">Cuenta</p>
+    <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
+    <p class="mt-1 text-sm text-cream/50">@Email</p>
+
+    <div class="mt-8 grid gap-4 sm:grid-cols-2">
+        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+            <p class="text-xs uppercase tracking-wider text-cream/45">Créditos CDR</p>
+            <p class="mt-2 font-serif text-4xl text-gold">@Credits.ToString("0")</p>
+            <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Recargar</a>
+        </article>
+        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+            <p class="text-xs uppercase tracking-wider text-cream/45">Plugin · 1 PC</p>
+            @if (License is { IsActive: true })
+            {
+                <p class="mt-2 text-lg text-white">Activo hasta @License.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+                <p class="mt-3 font-mono text-sm text-cyan">@License.ActivationCode</p>
+                <p class="mt-2 text-xs text-cream/45">Pega este código una vez en el .exe. No hace falta volver a entrar todos los días.</p>
+            }
+            else
+            {
+                <p class="mt-2 text-sm text-cream/55">Sin mes activo.</p>
+                <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Pagar 30 días</a>
+            }
+        </article>
+    </div>
+</div>
+
+@code {
+    private string Name = "";
+    private string Email = "";
+    private decimal Credits;
+    private PluginLicenseDto? License;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dash = await Api.GetDashboardAsync();
+        if (dash is not null)
+        {
+            Name = dash.FullName;
+            Email = dash.Email;
+            Credits = dash.CreditsBalance;
+        }
+
+        License = await Api.GetPluginLicenseAsync();
+    }
+}

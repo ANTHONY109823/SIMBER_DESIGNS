@@ -1,0 +1,226 @@
+@page "/programas"
+
+<PageTitle>Programas · Simber Designs</PageTitle>
+
+<div class="min-h-screen bg-slate-950 text-slate-100">
+    <section class="relative overflow-hidden border-b border-slate-800">
+        <div class="absolute inset-0 bg-gradient-to-br from-orange-600/15 via-slate-950 to-cyan-500/10"></div>
+        <div class="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-20">
+            <div>
+                <p class="inline-flex rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">
+                    Programas · Plugin Windows
+                </p>
+                <h1 class="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
+                    Simber <span class="text-orange-400">Designs</span>
+                </h1>
+                <p class="mt-4 text-lg text-slate-300">
+                    Plugin descargable en <strong class="text-white">.exe</strong> para armar mockups, nombres, dorsales y colorways de sublimación en tu PC.
+                </p>
+                <ul class="mt-6 space-y-2 text-sm text-slate-300">
+                    <li>Instalador Windows · un solo archivo ejecutable</li>
+                    <li>Pago por WhatsApp · te enviamos el .exe al confirmar</li>
+                    <li>Licencia de por vida, sin suscripción mensual</li>
+                </ul>
+                <div class="mt-8 flex flex-wrap gap-3">
+                    <a href="/recargar"
+                       class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+                        Pagar el mes (Mercado Pago)
+                    </a>
+                    <a href="#funciones" class="rounded-full border border-white/15 px-6 py-3 text-sm text-slate-200 hover:border-white/40">
+                        Ver funciones
+                    </a>
+                </div>
+            </div>
+
+            <div class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl shadow-orange-950/40">
+                <div class="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+                    <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                    <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                    <span class="ml-2 text-xs text-slate-500">SimberDesigns-Setup.exe</span>
+                </div>
+                <img src="@Gallery[0].Src" alt="@Gallery[0].Alt" class="h-72 w-full object-cover sm:h-80" />
+            </div>
+        </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <div class="mb-8">
+            <h2 class="font-serif text-3xl">Fotos y demos</h2>
+            <p class="mt-2 text-sm text-slate-400">Capturas del flujo y videos de funciones. Reemplaza los archivos en <code class="text-orange-300">wwwroot/programas/</code> cuando tengas los tuyos.</p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-5">
+            <div class="lg:col-span-3 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                <video class="aspect-video w-full bg-black object-cover"
+                       controls
+                       poster="@Gallery[1].Src">
+                    <source src="@DemoVideoSrc" type="video/mp4" />
+                </video>
+            </div>
+            <div class="lg:col-span-2 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                @if (!string.IsNullOrWhiteSpace(YoutubeDemoId))
+                {
+                    <div class="aspect-video">
+                        <iframe class="h-full w-full"
+                                src="https://www.youtube.com/embed/@YoutubeDemoId"
+                                title="Video de funciones Simber Designs"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                }
+                else
+                {
+                    <div class="relative aspect-video">
+                        <img src="@Gallery[2].Src" alt="Recorrido de funciones" class="h-full w-full object-cover" />
+                        <div class="absolute inset-0 flex items-end bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent p-4">
+                            <p class="text-sm text-slate-200">Segundo video: pega un ID de YouTube en la página o deja otro .mp4.</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach (var shot in Gallery)
+            {
+                <figure class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                    <img src="@shot.Src" alt="@shot.Alt" class="h-44 w-full object-cover" />
+                    <figcaption class="px-4 py-3 text-xs text-slate-400">@shot.Caption</figcaption>
+                </figure>
+            }
+        </div>
+    </section>
+
+    <section id="funciones" class="border-y border-slate-800 bg-slate-900/40">
+        <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+            <h2 class="font-serif text-3xl">Funciones</h2>
+            <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var feature in Features)
+                {
+                    <article class="rounded-2xl border border-slate-800 bg-slate-950/70 p-6">
+                        <h3 class="text-lg font-semibold text-white">@feature.Title</h3>
+                        <p class="mt-2 text-sm text-slate-400">@feature.Detail</p>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section id="licencia" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <h2 class="font-serif text-3xl">Licencia del plugin</h2>
+        <p class="mt-2 max-w-2xl text-sm text-slate-400">
+            El pago es directo por WhatsApp. Confirmas la licencia, envías el comprobante y te entregamos el instalador <strong class="text-white">SimberDesigns-Setup.exe</strong>.
+        </p>
+
+        <div class="mt-8 grid gap-6 md:grid-cols-2">
+            @foreach (var license in Licenses)
+            {
+                var selected = SelectedLicense == license.Key;
+                <article class="relative flex flex-col rounded-2xl border p-8 @(selected ? "border-orange-500 bg-orange-950/20" : "border-slate-800 bg-slate-900/60")">
+                    @if (license.Popular)
+                    {
+                        <span class="absolute right-0 top-0 rounded-bl-xl bg-orange-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">Recomendado</span>
+                    }
+                    <h3 class="text-xl font-bold">@license.Name</h3>
+                    <p class="mt-2 text-sm text-slate-400">@license.Summary</p>
+                    <p class="mt-6 flex items-end gap-2">
+                        <span class="text-4xl font-extrabold">@license.PriceLabel</span>
+                        <span class="pb-1 text-sm text-slate-500">pago único</span>
+                    </p>
+                    <ul class="mt-6 flex-1 space-y-3 text-sm text-slate-300">
+                        @foreach (var item in license.Includes)
+                        {
+                            <li>@item</li>
+                        }
+                    </ul>
+                    <a href="@WhatsAppUrl(license.Key)"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+                        Comprar por WhatsApp
+                    </a>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section class="border-t border-slate-800 bg-slate-900/50">
+        <div class="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6">
+            <h2 class="font-serif text-3xl">Listo para instalarlo</h2>
+            <p class="mt-3 text-slate-400">
+                Escríbenos con la licencia elegida. Te pasamos Yape o transferencia y, al confirmar, el ejecutable .exe por el mismo chat.
+            </p>
+            <a href="@WhatsAppUrl(SelectedLicense)"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+                Abrir WhatsApp · @SelectedLicenseName
+            </a>
+        </div>
+    </section>
+</div>
+
+@code {
+    // Cambia este número (código de país + celular, sin + ni espacios).
+    private const string WhatsAppNumber = "51987654321";
+    private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
+    private const string YoutubeDemoId = "";
+
+    private string SelectedLicense { get; set; } = "taller";
+
+    private string SelectedLicenseName =>
+        Licenses.FirstOrDefault(l => l.Key == SelectedLicense)?.Name ?? "Simber Designs";
+
+    private static string WhatsAppUrl(string licenseKey)
+    {
+        var license = Licenses.FirstOrDefault(l => l.Key == licenseKey) ?? Licenses[1];
+        var text = Uri.EscapeDataString(
+            $"Hola, quiero comprar el plugin Simber Designs ({license.Name}, {license.PriceLabel}). ¿Me pasan los datos de pago y el instalador .exe?");
+        return $"https://wa.me/{WhatsAppNumber}?text={text}";
+    }
+
+    private static readonly LicenseOption[] Licenses =
+    [
+        new("individual", "Licencia Individual", "S/ 149", "1 computadora, para diseñador freelance.", false,
+        [
+            "Instalador SimberDesigns-Setup.exe",
+            "1 activación de PC",
+            "Actualizaciones menores del año",
+            "Soporte por WhatsApp en horario de taller"
+        ]),
+        new("taller", "Licencia Taller", "S/ 299", "Hasta 3 PCs del mismo taller de sublimación.", true,
+        [
+            "Instalador .exe + guía rápida",
+            "Hasta 3 computadoras",
+            "Plantillas extra de jersey y motocross",
+            "Soporte prioritario por WhatsApp"
+        ])
+    ];
+
+    private static readonly FeatureItem[] Features =
+    [
+        new("Mockups en un clic", "Arma vistas de jersey, short y manga desde plantillas listas para sublimar."),
+        new("Nombres y dorsales", "Aplica tipografías, curvas y alineación automática en pecho y espalda."),
+        new("Colorways", "Genera variantes de color sin rehacer el arte base."),
+        new("Exportación de corte", "Sale listo para plotter o prensa, sin perder capas."),
+        new("Biblioteca Simber", "Atajos a patrones de catálogo: grunge, snake, aero y más."),
+        new("Instalador .exe", "Setup de Windows. Sin ZIP en la web: te lo enviamos al pagar.")
+    ];
+
+    private static readonly GalleryShot[] Gallery =
+    [
+        new("https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=70",
+            "Equipo revisando el plugin en laptop", "Instalación en Windows"),
+        new("https://images.unsplash.com/photo-1556906781-9a412961c28c?w=1200&auto=format&fit=crop&q=70",
+            "Jersey deportivo en prensa de sublimación", "Salida a sublimación"),
+        new("https://images.unsplash.com/photo-1517649763962-0c623066027b?w=1200&auto=format&fit=crop&q=70",
+            "Textil deportivo en cancha", "Resultado en prenda"),
+        new("https://images.unsplash.com/photo-1517649281203-dad836b4abe5?w=1200&auto=format&fit=crop&q=70",
+            "Detalle de moldería y color", "Colorways y paneles")
+    ];
+
+    private sealed record LicenseOption(string Key, string Name, string PriceLabel, string Summary, bool Popular, string[] Includes);
+    private sealed record FeatureItem(string Title, string Detail);
+    private sealed record GalleryShot(string Src, string Alt, string Caption);
+}
