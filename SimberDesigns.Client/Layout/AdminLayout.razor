@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject JwtAuthStateProvider Auth
 @inject NavigationManager Nav
 
 <div class="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
@@ -67,8 +68,9 @@
 </style>
 
 @code {
-    private void Logout()
+    private async Task Logout()
     {
+        await Auth.SignOutAsync();            // borra el token de localStorage
         Nav.NavigateTo("/admin/login", forceLoad: true);
     }
 }

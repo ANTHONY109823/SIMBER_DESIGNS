@@ -1,23 +1,25 @@
 @page "/admin/login"
+@layout BlankLayout
 @inject SimberApi Api
 @inject JwtAuthStateProvider Auth
 @inject NavigationManager Nav
 
 <PageTitle>Admin · Simber Designs</PageTitle>
 
-<section class="mx-auto max-w-md px-6 py-16">
-    <p class="text-xs uppercase tracking-[0.2em] text-orange-400">Acceso interno</p>
-    <h1 class="mt-3 font-serif text-4xl text-white">Login administrador</h1>
-    <p class="mt-2 text-sm text-slate-400">Solo personal Simber. No hay registro público.</p>
+<section class="w-full max-w-sm">
+    <h1 class="text-center font-serif text-3xl text-white">Simber <span class="text-orange-400">Admin</span></h1>
     <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
-        <InputText class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Email" @bind-Value="Email" />
-        <InputText type="password" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Contraseña" @bind-Value="Password" />
-        <button class="w-full rounded-full bg-orange-600 py-3 text-sm font-semibold text-white" type="submit">Entrar</button>
+        <InputText autocomplete="off" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Usuario" @bind-Value="Email" />
+        <InputText type="password" autocomplete="new-password" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Contraseña" @bind-Value="Password" />
+        <button class="w-full rounded-full bg-orange-600 py-3 text-sm font-semibold text-white hover:bg-orange-500" type="submit">Ingresar</button>
     </EditForm>
     @if (!string.IsNullOrWhiteSpace(Error))
     {
-        <p class="mt-4 text-sm text-rose-400">@Error</p>
+        <p class="mt-4 text-center text-sm text-rose-400">@Error</p>
     }
+    <p class="mt-8 text-center text-sm">
+        <a href="/" class="text-slate-400 hover:text-white">Ir a la web</a>
+    </p>
 </section>
 
 @code {
