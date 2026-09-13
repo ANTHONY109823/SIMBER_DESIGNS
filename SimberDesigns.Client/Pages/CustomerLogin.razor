@@ -39,6 +39,6 @@
         }
 
         await Auth.SignInAsync(result.Token);
-        Nav.NavigateTo(string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "/admin/catalog" : "/recargar");
+        Nav.NavigateTo(string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "/admin" : "/cuenta");
     }
 }

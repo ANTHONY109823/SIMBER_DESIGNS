@@ -8,16 +8,16 @@
         <div class="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-20">
             <div>
                 <p class="inline-flex rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">
-                    Programas · Plugin Windows
+                    Herramienta · CorelDRAW e Illustrator
                 </p>
                 <h1 class="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
                     Simber <span class="text-orange-400">Designs</span>
                 </h1>
                 <p class="mt-4 text-lg text-slate-300">
-                    Plugin descargable en <strong class="text-white">.exe</strong> para armar mockups, nombres, dorsales y colorways de sublimación en tu PC.
+                    Herramienta de apoyo para <strong class="text-white">CorelDRAW e Illustrator</strong>: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.
                 </p>
                 <ul class="mt-6 space-y-2 text-sm text-slate-300">
-                    <li>Windows · un solo archivo ejecutable, sin instalar nada</li>
+                    <li>Windows · sin instalar nada; trabaja dentro de tu programa de diseño</li>
                     <li>Funciona en <strong class="text-white">CorelDRAW</strong> y <strong class="text-white">Adobe Illustrator</strong></li>
                     <li>Pago mensual con Mercado Pago · <strong class="text-white">se activa solo</strong> en tu PC</li>
                     <li>Armado automático, nombres y dorsales de la lista, y lectura con IA</li>
@@ -43,7 +43,7 @@
                     <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
                     <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
                     <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-                    <span class="ml-2 text-xs text-slate-500">SimberDesigns-Setup.exe</span>
+                    <span class="ml-2 text-xs text-slate-500">SIMBER DESIGNS · CorelDRAW / Illustrator</span>
                 </div>
                 <img src="@Gallery[0].Src" alt="@Gallery[0].Alt" class="h-72 w-full object-cover sm:h-80" />
             </div>
@@ -147,65 +147,35 @@
 
     <section class="border-t border-slate-800 bg-slate-900/50">
         <div class="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6">
-            <h2 class="font-serif text-3xl">Listo para instalarlo</h2>
+            <h2 class="font-serif text-3xl">Empieza hoy</h2>
             <p class="mt-3 text-slate-400">
-                Escríbenos con la licencia elegida. Te pasamos Yape o transferencia y, al confirmar, el ejecutable .exe por el mismo chat.
+                Descarga la herramienta gratis, crea tu cuenta y paga el mes. Se activa sola para tu PC.
             </p>
-            <a href="@WhatsAppUrl(SelectedLicense)"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
-                Abrir WhatsApp · @SelectedLicenseName
-            </a>
+            <div class="mt-6 flex flex-wrap justify-center gap-3">
+                <a href="/api/plugin/download"
+                   class="rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400">
+                    ⬇ Descargar
+                </a>
+                <a href="/recargar"
+                   class="rounded-full border border-white/15 px-8 py-3.5 text-sm text-slate-200 hover:border-white/40">
+                    Pagar el mes
+                </a>
+            </div>
         </div>
     </section>
 </div>
 
 @code {
-    // Cambia este número (código de país + celular, sin + ni espacios).
-    private const string WhatsAppNumber = "51987654321";
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
-    private const string YoutubeDemoId = "";
-
-    private string SelectedLicense { get; set; } = "taller";
-
-    private string SelectedLicenseName =>
-        Licenses.FirstOrDefault(l => l.Key == SelectedLicense)?.Name ?? "Simber Designs";
-
-    private static string WhatsAppUrl(string licenseKey)
-    {
-        var license = Licenses.FirstOrDefault(l => l.Key == licenseKey) ?? Licenses[1];
-        var text = Uri.EscapeDataString(
-            $"Hola, quiero comprar el plugin Simber Designs ({license.Name}, {license.PriceLabel}). ¿Me pasan los datos de pago y el instalador .exe?");
-        return $"https://wa.me/{WhatsAppNumber}?text={text}";
-    }
-
-    private static readonly LicenseOption[] Licenses =
-    [
-        new("individual", "Licencia Individual", "S/ 149", "1 computadora, para diseñador freelance.", false,
-        [
-            "Instalador SimberDesigns-Setup.exe",
-            "1 activación de PC",
-            "Actualizaciones menores del año",
-            "Soporte por WhatsApp en horario de taller"
-        ]),
-        new("taller", "Licencia Taller", "S/ 299", "Hasta 3 PCs del mismo taller de sublimación.", true,
-        [
-            "Instalador .exe + guía rápida",
-            "Hasta 3 computadoras",
-            "Plantillas extra de jersey y motocross",
-            "Soporte prioritario por WhatsApp"
-        ])
-    ];
 
     private static readonly FeatureItem[] Features =
     [
-        new("Mockups en un clic", "Arma vistas de jersey, short y manga desde plantillas listas para sublimar."),
-        new("Nombres y dorsales", "Aplica tipografías, curvas y alineación automática en pecho y espalda."),
-        new("Colorways", "Genera variantes de color sin rehacer el arte base."),
-        new("Exportación de corte", "Sale listo para plotter o prensa, sin perder capas."),
-        new("Biblioteca Simber", "Atajos a patrones de catálogo: grunge, snake, aero y más."),
-        new("Instalador .exe", "Setup de Windows. Sin ZIP en la web: te lo enviamos al pagar.")
+        new("Armado automático", "Duplica el molde por jugador y acomoda las piezas en bloques, listo para producir."),
+        new("Nombres y dorsales", "Toma la lista y rellena nombre y número conservando la tipografía del molde."),
+        new("Corel e Illustrator", "Trabaja dentro de tu programa; tú solo exportas e imprimes como siempre."),
+        new("Lectura con IA", "Lee la lista de jugadores desde una foto o un archivo, sin teclear."),
+        new("Aprovecha la tela", "Acomoda las piezas al ancho de tu rollo y en bloques para desperdiciar menos."),
+        new("Se activa solo", "Pagas el mes en la web y la herramienta se activa sola para tu PC.")
     ];
 
     // Las imágenes viven en wwwroot/programas/ (súbelas con estos nombres). Si falta alguna,
