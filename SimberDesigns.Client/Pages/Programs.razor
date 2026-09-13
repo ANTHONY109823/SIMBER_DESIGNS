@@ -52,47 +52,37 @@
 
     <section class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div class="mb-8">
-            <h2 class="font-serif text-3xl">Fotos y demos</h2>
-            <p class="mt-2 text-sm text-slate-400">Capturas del flujo y videos de funciones. Reemplaza los archivos en <code class="text-orange-300">wwwroot/programas/</code> cuando tengas los tuyos.</p>
+            <h2 class="font-serif text-3xl">Cómo se ve trabajando</h2>
+            <p class="mt-2 text-sm text-slate-400">El flujo real: lees la lista, tomas los moldes y el programa arma y acomoda solo en CorelDRAW o Illustrator, con nombres y dorsales.</p>
         </div>
 
         <div class="grid gap-6 lg:grid-cols-5">
-            <div class="lg:col-span-3 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-                <video class="aspect-video w-full bg-black object-cover"
-                       controls
-                       poster="@Gallery[1].Src">
+            <!-- Imagen/anim principal del armado -->
+            <figure class="relative lg:col-span-3 aspect-video overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-orange-600/25 via-slate-900 to-slate-950">
+                <img src="programas/armado-corel.jpg" alt="Armado automático" onerror="this.style.display='none'"
+                     class="absolute inset-0 h-full w-full object-cover" />
+                <figcaption class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-5 py-4">
+                    <p class="text-base font-bold text-white">Armado automático en CorelDRAW / Illustrator</p>
+                    <p class="text-xs text-slate-300">Duplica el molde por jugador, pone nombre y dorsal y acomoda en bloques.</p>
+                </figcaption>
+            </figure>
+
+            <!-- Video demo (opcional) -->
+            <div class="lg:col-span-2 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                <video class="aspect-video w-full bg-black object-cover" controls poster="programas/demo-poster.jpg">
                     <source src="@DemoVideoSrc" type="video/mp4" />
                 </video>
-            </div>
-            <div class="lg:col-span-2 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-                @if (!string.IsNullOrWhiteSpace(YoutubeDemoId))
-                {
-                    <div class="aspect-video">
-                        <iframe class="h-full w-full"
-                                src="https://www.youtube.com/embed/@YoutubeDemoId"
-                                title="Video de funciones Simber Designs"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowfullscreen></iframe>
-                    </div>
-                }
-                else
-                {
-                    <div class="relative aspect-video">
-                        <img src="@Gallery[2].Src" alt="Recorrido de funciones" class="h-full w-full object-cover" />
-                        <div class="absolute inset-0 flex items-end bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent p-4">
-                            <p class="text-sm text-slate-200">Segundo video: pega un ID de YouTube en la página o deja otro .mp4.</p>
-                        </div>
-                    </div>
-                }
+                <p class="px-4 py-3 text-xs text-slate-400">Video del flujo (sube tu <code class="text-orange-300">.mp4</code> a <code class="text-orange-300">wwwroot/programas/</code>).</p>
             </div>
         </div>
 
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             @foreach (var shot in Gallery)
             {
-                <figure class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-                    <img src="@shot.Src" alt="@shot.Alt" class="h-44 w-full object-cover" />
-                    <figcaption class="px-4 py-3 text-xs text-slate-400">@shot.Caption</figcaption>
+                <figure class="relative h-44 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-800 to-slate-950">
+                    <img src="@shot.Src" alt="@shot.Alt" onerror="this.style.display='none'"
+                         class="absolute inset-0 h-full w-full object-cover" />
+                    <figcaption class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-4 py-3 text-xs font-semibold text-slate-100">@shot.Caption</figcaption>
                 </figure>
             }
         </div>
@@ -218,16 +208,14 @@
         new("Instalador .exe", "Setup de Windows. Sin ZIP en la web: te lo enviamos al pagar.")
     ];
 
+    // Las imágenes viven en wwwroot/programas/ (súbelas con estos nombres). Si falta alguna,
+    // se ve una tarjeta con degradado y su título — nunca una imagen rota.
     private static readonly GalleryShot[] Gallery =
     [
-        new("https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&auto=format&fit=crop&q=70",
-            "Equipo revisando el plugin en laptop", "Instalación en Windows"),
-        new("https://images.unsplash.com/photo-1556906781-9a412961c28c?w=1200&auto=format&fit=crop&q=70",
-            "Jersey deportivo en prensa de sublimación", "Salida a sublimación"),
-        new("https://images.unsplash.com/photo-1517649763962-0c623066027b?w=1200&auto=format&fit=crop&q=70",
-            "Textil deportivo en cancha", "Resultado en prenda"),
-        new("https://images.unsplash.com/photo-1517649281203-dad836b4abe5?w=1200&auto=format&fit=crop&q=70",
-            "Detalle de moldería y color", "Colorways y paneles")
+        new("programas/1-lista.jpg", "Lectura de la lista", "1 · Pegas o subes la lista (o foto con IA)"),
+        new("programas/2-molde.jpg", "Tomar molde", "2 · Tomas el molde por género y talla"),
+        new("programas/3-armado.jpg", "Armado automático", "3 · Arma con nombres y dorsales, en bloques"),
+        new("programas/4-resultado.jpg", "Resultado", "4 · Listo para exportar e imprimir")
     ];
 
     private sealed record LicenseOption(string Key, string Name, string PriceLabel, string Summary, bool Popular, string[] Includes);

@@ -1,0 +1,21 @@
+========================================================
+  FOTOS DE LA PÁGINA /programas  —  cómo poner las tuyas
+========================================================
+
+Guarda tus capturas EN ESTA CARPETA con EXACTAMENTE estos nombres
+(luego haz commit + push y Railway las publica solas):
+
+  armado-corel.jpg     → imagen grande principal (una captura del armado en Corel/Illustrator)
+  demo-poster.jpg      → miniatura del video (opcional)
+  simber-designs-demo.mp4  → video del flujo (opcional)
+
+  1-lista.jpg      → captura: la lista de jugadores cargada en la app
+  2-molde.jpg      → captura: tomando el molde por género y talla
+  3-armado.jpg     → captura: el pedido armado con nombres y dorsales
+  4-resultado.jpg  → captura: el resultado listo para exportar/imprimir
+
+NOTAS:
+- Formato JPG o PNG (si usas PNG, cambia la extensión en la página o renombra a .jpg).
+- Tamaño recomendado: ancho 1000–1400 px.
+- Si falta alguna, NO se rompe la página: se ve una tarjeta con degradado y el título.
+- Puedes usar las mismas capturas del armado que ya tienes de tus pruebas.
