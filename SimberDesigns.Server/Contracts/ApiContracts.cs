@@ -49,6 +49,27 @@ public sealed record PluginLicenseDto(
 public sealed record PluginActivateRequest(string HardwareId);
 public sealed record PluginTokenDto(string Token, DateTime ExpiresAt, string Plan);
 
+// ---- Panel de administración ----
+public sealed record AdminMetricsDto(
+    int TotalUsers,
+    int ActiveLicenses,
+    int ExpiredLicenses,
+    int SalesThisMonth,
+    decimal RevenueThisMonth,
+    decimal TotalRevenue,
+    int PendingPayments);
+
+public sealed record AdminLicenseDto(
+    string CustomerEmail,
+    string CustomerName,
+    string Plan,
+    string Status,
+    bool IsActive,
+    DateTime ExpiresAt,
+    string? HardwareId,
+    string ActivationCode,
+    DateTime CreatedAt);
+
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 
 public sealed record AccountDashboardDto(

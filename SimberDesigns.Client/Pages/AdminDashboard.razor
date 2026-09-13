@@ -1,0 +1,75 @@
+@page "/admin"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<PageTitle>Dashboard · Simber Admin</PageTitle>
+
+<div class="p-6 md:p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white">Dashboard</h1>
+            <p class="text-slate-400 text-sm mt-1">Resumen del negocio y de las ventas del plugin.</p>
+        </div>
+        <button @onclick="Load" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm px-4 py-2 rounded-lg">↻ Actualizar</button>
+    </div>
+
+    @if (_m is null)
+    {
+        <p class="text-slate-500">Cargando métricas…</p>
+    }
+    else
+    {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            @Card("Clientes registrados", _m.TotalUsers.ToString(), "👤", "text-sky-400")
+            @Card("Licencias ACTIVAS", _m.ActiveLicenses.ToString(), "🟢", "text-emerald-400")
+            @Card("Licencias vencidas", _m.ExpiredLicenses.ToString(), "🔴", "text-rose-400")
+            @Card("Pagos pendientes", _m.PendingPayments.ToString(), "⏳", "text-amber-400")
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+            @Card("Ventas este mes", _m.SalesThisMonth.ToString(), "🧾", "text-indigo-400")
+            @Card("Ingresos este mes", _m.RevenueThisMonth.ToString("0.00"), "💵", "text-emerald-400", "USD")
+            @Card("Ingresos totales", _m.TotalRevenue.ToString("0.00"), "🏦", "text-emerald-300", "USD")
+        </div>
+
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <a href="/admin/licenses" class="block bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-emerald-500/40">
+                <p class="text-lg font-bold text-white">🪪 Licencias y ventas</p>
+                <p class="text-slate-400 text-sm mt-1">A quién se vendió, licencias vigentes, PC, vencimiento e historial completo para reclamos.</p>
+            </a>
+            <a href="/admin/catalog" class="block bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-emerald-500/40">
+                <p class="text-lg font-bold text-white">🎨 Catálogo de diseños</p>
+                <p class="text-slate-400 text-sm mt-1">Publicar / ocultar, subir imagen y CDR, y previsualizar cómo se ve en la web.</p>
+            </a>
+        </div>
+
+        <div class="mt-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
+            <p class="text-emerald-300 font-bold">Plan del plugin V2 (con IA)</p>
+            <p class="text-slate-300 text-sm mt-1"><span class="text-2xl font-black text-white">$15</span> USD / mes por PC · pago automático por la pasarela · se activa solo.</p>
+        </div>
+    }
+</div>
+
+@code {
+    private AdminMetricsDto? _m;
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        try { _m = await Api.GetAdminMetricsAsync(); }
+        catch { _m = new AdminMetricsDto(0, 0, 0, 0, 0, 0, 0); }
+    }
+
+    private RenderFragment Card(string label, string value, string icon, string color, string? unit = null) => __builder =>
+    {
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div class="flex items-center justify-between">
+                <p class="text-xs uppercase tracking-wider text-slate-500">@label</p>
+                <span class="text-lg">@icon</span>
+            </div>
+            <p class="mt-2 text-3xl font-black @color">@value <span class="text-sm text-slate-500 font-medium">@unit</span></p>
+        </div>
+    };
+}

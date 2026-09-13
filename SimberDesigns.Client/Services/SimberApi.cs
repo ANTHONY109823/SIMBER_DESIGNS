@@ -86,8 +86,35 @@ public sealed record AdminTransactionDto(
     string? Notes,
     DateTime CreatedAt);
 
+public sealed record AdminMetricsDto(
+    int TotalUsers,
+    int ActiveLicenses,
+    int ExpiredLicenses,
+    int SalesThisMonth,
+    decimal RevenueThisMonth,
+    decimal TotalRevenue,
+    int PendingPayments);
+
+public sealed record AdminLicenseDto(
+    string CustomerEmail,
+    string CustomerName,
+    string Plan,
+    string Status,
+    bool IsActive,
+    DateTime ExpiresAt,
+    string? HardwareId,
+    string ActivationCode,
+    DateTime CreatedAt);
+
 public sealed class SimberApi(HttpClient http)
 {
+    public Task<AdminMetricsDto?> GetAdminMetricsAsync()
+        => http.GetFromJsonAsync<AdminMetricsDto>("api/admin/metrics");
+
+    public Task<List<AdminLicenseDto>?> GetAdminLicensesAsync(string? q = null)
+        => http.GetFromJsonAsync<List<AdminLicenseDto>>(
+            string.IsNullOrWhiteSpace(q) ? "api/admin/licenses" : $"api/admin/licenses?q={Uri.EscapeDataString(q)}");
+
     public Task<List<DesignDto>?> GetDesignsAsync(string? category = null, string? q = null)
     {
         var query = new List<string>();

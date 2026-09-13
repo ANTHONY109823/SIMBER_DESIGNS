@@ -1,0 +1,72 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<div class="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+
+    <!-- ===== SIDEBAR IZQUIERDO ===== -->
+    <aside class="hidden md:flex w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900">
+        <div class="flex items-center gap-2 px-5 py-5 border-b border-slate-800">
+            <span class="p-2 bg-emerald-500 rounded-lg text-slate-950 text-lg font-black">SD</span>
+            <div>
+                <p class="font-extrabold leading-tight text-white">SIMBER <span class="text-emerald-400">ADMIN</span></p>
+                <p class="text-[11px] text-slate-500 -mt-0.5">Panel de administración</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+            <p class="px-3 pb-1 text-[11px] uppercase tracking-wider text-slate-600">General</p>
+            <NavLink href="/admin" Match="NavLinkMatch.All" class="admin-link" ActiveClass="admin-link-active">
+                <span>📊</span> Dashboard
+            </NavLink>
+            <NavLink href="/admin/licenses" class="admin-link" ActiveClass="admin-link-active">
+                <span>🪪</span> Licencias y ventas
+            </NavLink>
+
+            <p class="px-3 pt-4 pb-1 text-[11px] uppercase tracking-wider text-slate-600">Catálogo</p>
+            <NavLink href="/admin/catalog" class="admin-link" ActiveClass="admin-link-active">
+                <span>🎨</span> Diseños (CDR)
+            </NavLink>
+            <NavLink href="/admin/payments" class="admin-link" ActiveClass="admin-link-active">
+                <span>💳</span> Pagos manuales
+            </NavLink>
+        </nav>
+
+        <div class="px-3 py-4 border-t border-slate-800 space-y-1">
+            <a href="/" class="admin-link"><span>🌐</span> Ver la web</a>
+            <button @onclick="Logout" class="admin-link w-full text-left text-rose-300 hover:text-rose-200"><span>⎋</span> Cerrar sesión</button>
+        </div>
+    </aside>
+
+    <!-- ===== CONTENIDO ===== -->
+    <div class="flex-1 min-w-0 flex flex-col">
+        <!-- Top bar (visible también en móvil) -->
+        <header class="md:hidden flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900">
+            <span class="p-1.5 bg-emerald-500 rounded text-slate-950 text-sm font-black">SD</span>
+            <span class="font-bold">SIMBER ADMIN</span>
+            <a href="/admin" class="ml-auto text-xs text-slate-400 underline">Dashboard</a>
+            <a href="/admin/licenses" class="text-xs text-slate-400 underline">Licencias</a>
+            <a href="/admin/catalog" class="text-xs text-slate-400 underline">Catálogo</a>
+        </header>
+
+        <main class="flex-1 min-w-0 overflow-x-hidden">
+            @Body
+        </main>
+    </div>
+</div>
+
+<style>
+    .admin-link {
+        display: flex; align-items: center; gap: .6rem;
+        padding: .55rem .75rem; border-radius: .6rem;
+        color: #cbd5e1; transition: all .15s;
+    }
+    .admin-link:hover { background: #1e293b; color: #fff; }
+    .admin-link-active { background: rgba(16,185,129,.15); color: #6ee7b7; font-weight: 600; }
+</style>
+
+@code {
+    private void Logout()
+    {
+        Nav.NavigateTo("/admin/login", forceLoad: true);
+    }
+}
