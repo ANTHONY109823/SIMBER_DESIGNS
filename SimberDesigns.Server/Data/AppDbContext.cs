@@ -13,6 +13,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
     public DbSet<UserDownload> UserDownloads => Set<UserDownload>();
     public DbSet<PluginLicense> PluginLicenses => Set<PluginLicense>();
+    public DbSet<SiteContent> SiteContents => Set<SiteContent>();
+    public DbSet<SiteAsset> SiteAssets => Set<SiteAsset>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -91,6 +93,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.ActivationCode).HasMaxLength(40);
             entity.HasIndex(x => x.ActivationCode).IsUnique();
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<SiteContent>(entity =>
+        {
+            entity.ToTable("site_content");
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(120);
+        });
+
+        modelBuilder.Entity<SiteAsset>(entity =>
+        {
+            entity.ToTable("site_assets");
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(120);
+            entity.Property(x => x.ContentType).HasMaxLength(100);
         });
     }
 }

@@ -1,4 +1,5 @@
 @page "/programas"
+@inject SimberApi Api
 
 <PageTitle>Programas · Simber Designs</PageTitle>
 
@@ -8,13 +9,13 @@
         <div class="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-20">
             <div>
                 <p class="inline-flex rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">
-                    Herramienta · CorelDRAW e Illustrator
+                    @T("programas.badge", "Herramienta · CorelDRAW e Illustrator")
                 </p>
                 <h1 class="mt-4 font-serif text-4xl leading-tight sm:text-5xl">
                     Simber <span class="text-orange-400">Designs</span>
                 </h1>
                 <p class="mt-4 text-lg text-slate-300">
-                    Herramienta de apoyo para <strong class="text-white">CorelDRAW e Illustrator</strong>: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.
+                    @T("programas.desc", "Herramienta de apoyo para CorelDRAW e Illustrator: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.")
                 </p>
                 <ul class="mt-6 space-y-2 text-sm text-slate-300">
                     <li>Windows · sin instalar nada; trabaja dentro de tu programa de diseño</li>
@@ -32,7 +33,7 @@
                     </a>
                 </div>
                 <div class="mt-5 flex items-baseline gap-2">
-                    <span class="text-4xl font-black text-white">$15</span>
+                    <span class="text-4xl font-black text-white">$@T("programas.price", "15")</span>
                     <span class="text-slate-400 text-sm">USD / mes · por PC</span>
                 </div>
                 <p class="mt-2 text-xs text-slate-500">Descarga gratis. Pagas el mes y se activa sola para tu PC (pago automático por la pasarela). Sin WhatsApp.</p>
@@ -59,7 +60,7 @@
         <div class="grid gap-6 lg:grid-cols-5">
             <!-- Imagen/anim principal del armado -->
             <figure class="relative lg:col-span-3 aspect-video overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-orange-600/25 via-slate-900 to-slate-950">
-                <img src="programas/armado-corel.jpg" alt="Armado automático" onerror="this.style.display='none'"
+                <img src="/api/content/asset/prog-armado" alt="Armado automático" onerror="this.style.display='none'"
                      class="absolute inset-0 h-full w-full object-cover" />
                 <figcaption class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent px-5 py-4">
                     <p class="text-base font-bold text-white">Armado automático en CorelDRAW / Illustrator</p>
@@ -104,16 +105,16 @@
     </section>
 
     <section id="licencia" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <h2 class="font-serif text-3xl">Precio y activación</h2>
+        <h2 class="font-serif text-3xl">@T("programas.precio.titulo", "Precio y activación")</h2>
         <p class="mt-2 max-w-2xl text-sm text-slate-400">
-            Descargas el programa gratis, pagas el mes con la pasarela y se activa solo para tu PC. Sin WhatsApp.
+            @T("programas.precio.subtitulo", "Descargas el programa gratis, pagas el mes con la pasarela y se activa solo para tu PC. Sin WhatsApp.")
         </p>
 
         <div class="mt-8 grid gap-6 md:grid-cols-2">
             <article class="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-8">
                 <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-950">Plan mensual</span>
                 <p class="mt-6 flex items-end gap-2">
-                    <span class="text-5xl font-extrabold text-white">$15</span>
+                    <span class="text-5xl font-extrabold text-white">$@T("programas.price", "15")</span>
                     <span class="pb-1 text-sm text-slate-400">USD / mes · por PC</span>
                 </p>
                 <ul class="mt-6 space-y-3 text-sm text-slate-300">
@@ -168,6 +169,16 @@
 @code {
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
 
+    // Contenido editable desde el panel admin (/admin/content). Con valores por defecto si no hay nada.
+    private Dictionary<string, string> _c = new();
+    private string T(string key, string fallback)
+        => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+    }
+
     private static readonly FeatureItem[] Features =
     [
         new("Armado automático", "Duplica el molde por jugador y acomoda las piezas en bloques, listo para producir."),
@@ -182,10 +193,10 @@
     // se ve una tarjeta con degradado y su título — nunca una imagen rota.
     private static readonly GalleryShot[] Gallery =
     [
-        new("programas/1-lista.jpg", "Lectura de la lista", "1 · Pegas o subes la lista (o foto con IA)"),
-        new("programas/2-molde.jpg", "Tomar molde", "2 · Tomas el molde por género y talla"),
-        new("programas/3-armado.jpg", "Armado automático", "3 · Arma con nombres y dorsales, en bloques"),
-        new("programas/4-resultado.jpg", "Resultado", "4 · Listo para exportar e imprimir")
+        new("/api/content/asset/prog-1", "Lectura de la lista", "1 · Pegas o subes la lista (o foto con IA)"),
+        new("/api/content/asset/prog-2", "Tomar molde", "2 · Tomas el molde por género y talla"),
+        new("/api/content/asset/prog-3", "Armado automático", "3 · Arma con nombres y dorsales, en bloques"),
+        new("/api/content/asset/prog-4", "Resultado", "4 · Listo para exportar e imprimir")
     ];
 
     private sealed record LicenseOption(string Key, string Name, string PriceLabel, string Summary, bool Popular, string[] Includes);

@@ -1,0 +1,128 @@
+@page "/admin/content"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<PageTitle>Contenido de la web · Simber Admin</PageTitle>
+
+<div class="p-6 md:p-8 max-w-4xl">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white">Contenido de la web</h1>
+            <p class="text-slate-400 text-sm mt-1">Edita los textos y sube las fotos de la página <a href="/programas" target="_blank" class="text-emerald-400 underline">/programas</a>. Se guarda en la base de datos.</p>
+        </div>
+        <button @onclick="GuardarTextos" disabled="@_saving"
+                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded-lg disabled:opacity-50">
+            @(_saving ? "Guardando…" : "💾 Grabar textos")
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_msg))
+    {
+        <div class="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">@_msg</div>
+    }
+
+    <!-- TEXTOS -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+        <h2 class="font-bold text-white">Textos</h2>
+        @foreach (var f in TextFields)
+        {
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">@f.Label</label>
+                @if (f.Multiline)
+                {
+                    <textarea @bind="_texts[f.Key]" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"></textarea>
+                }
+                else
+                {
+                    <input @bind="_texts[f.Key]" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" />
+                }
+            </div>
+        }
+    </section>
+
+    <!-- IMÁGENES -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl p-6 mt-6">
+        <h2 class="font-bold text-white mb-4">Fotos <span class="text-slate-500 text-sm font-normal">(JPG/PNG, se guardan al elegir el archivo)</span></h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach (var img in ImageFields)
+            {
+                <div class="rounded-lg border border-slate-800 overflow-hidden bg-slate-950">
+                    <div class="relative h-32 bg-gradient-to-br from-slate-800 to-slate-950">
+                        <img src="@($"/api/content/asset/{img.Key}?v={_bust}")" onerror="this.style.display='none'"
+                             class="absolute inset-0 h-full w-full object-cover" />
+                        <span class="absolute bottom-1 left-2 text-[11px] text-slate-300 bg-slate-950/70 px-1.5 rounded">@img.Label</span>
+                    </div>
+                    <div class="p-3 flex items-center justify-between gap-2">
+                        <InputFile OnChange="@(e => Subir(img.Key, e))" accept="image/*" class="text-xs text-slate-400 w-40" />
+                        @if (_uploading == img.Key) { <span class="text-xs text-emerald-400">subiendo…</span> }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    private readonly Dictionary<string, string> _texts = new();
+    private bool _saving;
+    private string? _uploading;
+    private string _msg = "";
+    private long _bust = DateTime.UtcNow.Ticks;
+
+    private sealed record TextField(string Key, string Label, bool Multiline);
+    private sealed record ImageField(string Key, string Label);
+
+    private static readonly TextField[] TextFields =
+    [
+        new("programas.badge", "Etiqueta superior", false),
+        new("programas.desc", "Descripción principal", true),
+        new("programas.price", "Precio (solo número, ej. 15)", false),
+        new("programas.precio.titulo", "Título de la sección de precio", false),
+        new("programas.precio.subtitulo", "Subtítulo de la sección de precio", true),
+    ];
+
+    private static readonly ImageField[] ImageFields =
+    [
+        new("prog-armado", "Imagen principal (armado)"),
+        new("prog-1", "Paso 1 · lista"),
+        new("prog-2", "Paso 2 · molde"),
+        new("prog-3", "Paso 3 · armado"),
+        new("prog-4", "Paso 4 · resultado"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        foreach (var f in TextFields) _texts[f.Key] = "";
+        try
+        {
+            var c = await Api.GetContentAsync();
+            foreach (var f in TextFields) if (c.TryGetValue(f.Key, out var v)) _texts[f.Key] = v;
+        }
+        catch { }
+    }
+
+    private async Task GuardarTextos()
+    {
+        _saving = true; _msg = "";
+        try { await Api.SaveContentAsync(_texts); _msg = "Textos guardados. Recarga /programas para verlos."; }
+        catch { _msg = "No se pudieron guardar los textos."; }
+        finally { _saving = false; }
+    }
+
+    private async Task Subir(string key, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _uploading = key; _msg = "";
+        try
+        {
+            await using var stream = file.OpenReadStream(15_000_000);
+            var url = await Api.UploadAssetAsync(key, stream, file.Name, file.ContentType);
+            _bust = DateTime.UtcNow.Ticks;   // refresca la vista previa
+            _msg = url is null ? "No se pudo subir la imagen." : "Imagen subida.";
+        }
+        catch { _msg = "Error al subir la imagen (¿muy pesada?)."; }
+        finally { _uploading = null; }
+    }
+}

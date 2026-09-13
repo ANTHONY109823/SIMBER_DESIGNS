@@ -115,6 +115,26 @@ public sealed class SimberApi(HttpClient http)
         => http.GetFromJsonAsync<List<AdminLicenseDto>>(
             string.IsNullOrWhiteSpace(q) ? "api/admin/licenses" : $"api/admin/licenses?q={Uri.EscapeDataString(q)}");
 
+    // ---- CMS: contenido de la web ----
+    public async Task<Dictionary<string, string>> GetContentAsync()
+        => await http.GetFromJsonAsync<Dictionary<string, string>>("api/content") ?? new();
+
+    public Task SaveContentAsync(Dictionary<string, string> items)
+        => http.PutAsJsonAsync("api/content", items);
+
+    public Task DeleteContentAsync(string key)
+        => http.DeleteAsync($"api/content/{Uri.EscapeDataString(key)}");
+
+    public async Task<string?> UploadAssetAsync(string key, Stream data, string fileName, string contentType)
+    {
+        using var content = new MultipartFormDataContent();
+        var sc = new StreamContent(data);
+        sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        content.Add(sc, "file", fileName);
+        var resp = await http.PostAsync($"api/content/asset/{Uri.EscapeDataString(key)}", content);
+        return resp.IsSuccessStatusCode ? $"/api/content/asset/{key}" : null;
+    }
+
     public Task<List<DesignDto>?> GetDesignsAsync(string? category = null, string? q = null)
     {
         var query = new List<string>();

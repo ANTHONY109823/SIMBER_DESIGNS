@@ -105,8 +105,20 @@ public static class DbInitializer
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_plugin_licenses_user ON plugin_licenses(user_id);
+
+            CREATE TABLE IF NOT EXISTS site_content (
+                key VARCHAR(120) PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS site_assets (
+                key VARCHAR(120) PRIMARY KEY,
+                content_type VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+                data BYTEA NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """);
-        logger.LogInformation("Tabla plugin_licenses lista.");
+        logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) listas.");
     }
 
     private static string? FindSchemaPath(IWebHostEnvironment env)

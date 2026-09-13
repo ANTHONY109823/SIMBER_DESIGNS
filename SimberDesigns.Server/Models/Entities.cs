@@ -121,3 +121,19 @@ public sealed class PluginLicense
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
+
+// ---- CMS: contenido editable de la web (textos e imágenes guardados en la BD) ----
+public sealed class SiteContent
+{
+    public string Key { get; set; } = string.Empty;   // ej. "programas.hero.title"
+    public string Value { get; set; } = string.Empty;
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class SiteAsset
+{
+    public string Key { get; set; } = string.Empty;   // ej. "programas.armado" (imagen)
+    public string ContentType { get; set; } = "image/jpeg";
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public DateTime UpdatedAt { get; set; }
+}
