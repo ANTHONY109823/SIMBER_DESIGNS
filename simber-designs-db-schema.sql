@@ -121,6 +121,20 @@ CREATE TABLE user_downloads (
     user_agent TEXT NOT NULL
 );
 
+-- Licencias del plugin de escritorio (V2 web). El keygen web ata el HWID y firma el token.
+CREATE TABLE plugin_licenses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    hardware_id VARCHAR(200),
+    plan VARCHAR(50) NOT NULL DEFAULT 'month-1pc',
+    status VARCHAR(50) NOT NULL DEFAULT 'Active',
+    activation_code VARCHAR(40) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX idx_plugin_licenses_user ON plugin_licenses(user_id);
+
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_user_downloads_limit ON user_downloads(user_id, downloaded_at);
 CREATE INDEX idx_transactions_status_pending ON transactions(status) WHERE status = 'Pending';
@@ -143,6 +157,8 @@ CREATE TRIGGER tr_designs_updated_at BEFORE UPDATE ON designs
 CREATE TRIGGER tr_transactions_updated_at BEFORE UPDATE ON transactions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER tr_subscriptions_updated_at BEFORE UPDATE ON subscriptions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER tr_plugin_licenses_updated_at BEFORE UPDATE ON plugin_licenses
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Acredita créditos en INSERT Completed (Lemon Squeezy) y en UPDATE Pending→Completed (Yape).

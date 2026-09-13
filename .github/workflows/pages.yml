@@ -1,0 +1,54 @@
+name: Deploy Blazor frontend to GitHub Pages
+
+# Publica SOLO el frontend (Blazor WebAssembly) como PREVIEW visual.
+# OJO: el backend (login, pagos, licencias, descarga) NO corre en GitHub Pages;
+# eso necesita Railway. Aquí se ve el look, pero los datos dinámicos no cargan.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publicar Blazor Client
+        run: dotnet publish SimberDesigns.Client/SimberDesigns.Client.csproj -c Release -o build
+
+      - name: Ajustar base href para la ruta del repo (/SIMBER_DESIGNS/)
+        run: sed -i 's|<base href="/" />|<base href="/SIMBER_DESIGNS/" />|g' build/wwwroot/index.html
+
+      - name: Evitar Jekyll (para que se sirva _framework) + ruteo SPA
+        run: |
+          touch build/wwwroot/.nojekyll
+          cp build/wwwroot/index.html build/wwwroot/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

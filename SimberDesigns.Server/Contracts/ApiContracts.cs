@@ -44,6 +44,11 @@ public sealed record PluginLicenseDto(
     bool IsActive,
     string? HardwareId);
 
+// El .exe manda su HWID; el servidor devuelve el token FIRMADO (SIMBER.payload.firma) que el
+// plugin valida offline con la llave pública embebida.
+public sealed record PluginActivateRequest(string HardwareId);
+public sealed record PluginTokenDto(string Token, DateTime ExpiresAt, string Plan);
+
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 
 public sealed record AccountDashboardDto(
