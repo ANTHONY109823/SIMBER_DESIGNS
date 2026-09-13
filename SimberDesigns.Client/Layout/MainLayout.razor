@@ -17,11 +17,12 @@
                     <Authorized>
                         <AuthorizeView Roles="Admin">
                             <Authorized Context="admin">
-                                <NavLink href="/admin/catalog">Cargar</NavLink>
-                                <NavLink href="/admin/payments">Pagos</NavLink>
+                                <a href="/admin" class="rounded-full border border-white/20 px-4 py-2">Panel admin</a>
                             </Authorized>
+                            <NotAuthorized Context="cliente">
+                                <NavLink href="/cuenta">Mi cuenta</NavLink>
+                            </NotAuthorized>
                         </AuthorizeView>
-                        <NavLink href="/cuenta">Cuenta</NavLink>
                         <button class="rounded-full border border-white/20 px-4 py-2" @onclick="Logout">Salir</button>
                     </Authorized>
                     <NotAuthorized>
@@ -36,7 +37,14 @@
             <NavLink href="/recargar">Recargar</NavLink>
             <AuthorizeView>
                 <Authorized>
-                    <NavLink href="/cuenta">Cuenta</NavLink>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized Context="admin">
+                            <a href="/admin">Panel admin</a>
+                        </Authorized>
+                        <NotAuthorized Context="cliente">
+                            <NavLink href="/cuenta">Mi cuenta</NavLink>
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </Authorized>
                 <NotAuthorized>
                     <NavLink href="/login">Entrar</NavLink>
