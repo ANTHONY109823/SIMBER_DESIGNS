@@ -81,6 +81,30 @@ de clases** aparte que las pruebas referencien sin cargar todo el web app. No bl
   `.exe` a GitHub Releases (`Plugin__DownloadUrl`). El `.bas`/`.jsx` NO se envían.
 - Posible ajuste futuro: `GraciaDias` (0 = internet obligatorio siempre, sin gracia).
 
+## 🔒 Seguridad (análisis anti-manipulación / Burp Suite) — 2026-09-14
+
+**Modelo:** el `.exe` y el navegador son SIEMPRE inspeccionables por su dueño (con Burp + su propia CA
+puede ver/editar SU tráfico). Por eso la seguridad real vive en el **servidor** (fuente de verdad) y en
+la **firma de licencias** (ECDSA): un atacante NO puede forjar una licencia/suscripción sin la llave
+privada (solo en el servidor). Interceptar y devolver un token falso no sirve: el cliente verifica la
+firma con la pública embebida y lo rechaza.
+
+**Arreglado (commit de esta fecha):** `POST /api/payments/confirm` ahora exige que el pago de MercadoPago
+(a) tenga `external_reference == tx.Id` y (b) `transaction_amount >= monto de la orden`. Antes solo miraba
+`status=approved`, así que con Burp se podía confirmar una orden cara reusando un `payment_id` ajeno o de
+menor monto. Los montos/creditos NUNCA se toman del cliente: checkout, unlock, download y recarga usan el
+precio/costo de la BD o del config del servidor.
+
+**Config CRÍTICA (si no, hay hueco):** en producción `MercadoPago__AccessToken` DEBE ser real (no vacío,
+no "dev-"); si queda vacío, `UseFakeCheckout=true` y `confirm` acredita SIN cobrar. Igual, `MercadoPago__
+WebhookSecret` real para validar el webhook (hoy sin secret acepta todo).
+
+**Refuerzos futuros (no hechos; requieren cuidado para no romper prod):**
+- Rate limiting en login/activate/revalidate/ia — necesita `UseForwardedHeaders` primero, porque tras el
+  proxy de Railway todos los clientes comparten IP y un límite por IP mal hecho bloquearía a todos.
+- (Opcional) certificate pinning en el `.exe` — sube la barrera para inspeccionar la API, pero no cambia
+  la seguridad de fondo (la firma ya protege). El HWID fuerte y el anti-rollback de reloj ya están.
+
 ## ⛔ No tocar
 Firma/verificación de licencias (`Licensing/`), HWID, `AdminKeys`/`SimberKeys`, el `.exe` de V1,
 los motores de armado (`mSimberArmado.bas` / `simberArmado.jsx`). La clave de Anthropic **jamás**

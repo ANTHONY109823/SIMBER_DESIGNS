@@ -183,6 +183,18 @@ public sealed class PaymentsController(
             return BadRequest("Mercado Pago aún no confirma este pago.");
         }
 
+        // SEGURIDAD: el pago DEBE corresponder a ESTA orden y cubrir su monto. Sin esto, interceptando
+        // con Burp u otro proxy se podría confirmar una orden reutilizando un payment_id ajeno o de menor
+        // monto. El external_reference lo fijó el servidor al crear la preferencia (= tx.Id).
+        if (!string.Equals(payment.ExternalReference, tx.Id.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("El pago no corresponde a esta orden.");
+        }
+        if (payment.TransactionAmount + 0.5m < tx.Amount)
+        {
+            return BadRequest("El monto pagado no cubre esta orden.");
+        }
+
         await fulfillment.FulfillAsync(tx, payment.PaymentId, cancellationToken);
         return Ok(new { message = "Pago acreditado.", transactionId = tx.Id });
     }
