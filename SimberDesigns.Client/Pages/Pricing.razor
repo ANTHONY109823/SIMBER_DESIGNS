@@ -7,14 +7,38 @@
 <PageTitle>Recargar · Simber Designs</PageTitle>
 
 <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6">
-    <p class="text-xs uppercase tracking-[0.28em] text-gold">Mercado Pago</p>
-    <h1 class="mt-3 font-serif text-4xl text-white sm:text-5xl">Pagar y activar</h1>
+    <p class="text-xs uppercase tracking-[0.28em] text-gold">Suscripción · Mercado Pago</p>
+    <h1 class="mt-3 font-serif text-4xl text-white sm:text-5xl">Activa SIMBER DESIGNS</h1>
     <p class="mt-3 max-w-xl text-sm text-cream/60">
-        Una sola caja: Yape o tarjeta. En segundos se acreditan créditos o el mes del plugin.
+        Paga el mes con Yape o tarjeta y actívalo en tu PC en segundos. Incluye lectura de listas con IA ilimitada.
     </p>
 
-    <div class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Créditos para CDR</h2>
+    <!-- HERO: suscripción mensual del programa (producto principal, estilo Adobe) -->
+    <div class="mt-10 rounded-3xl border border-emerald-500/30 bg-emerald-500/[0.06] p-6 sm:p-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-emerald-300">Programa · CorelDRAW e Illustrator · 1 PC</p>
+                <h2 class="mt-2 font-serif text-3xl text-white">@PluginName</h2>
+            </div>
+            <p class="font-serif text-4xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/50">/ mes</span></p>
+        </div>
+        <ul class="mt-5 grid gap-2 text-sm text-cream/70 sm:grid-cols-2">
+            <li>✓ Armado y acomodo ilimitado en CorelDRAW e Illustrator</li>
+            <li>✓ <strong class="text-white">Lectura de listas con IA ilimitada</strong> (incluida)</li>
+            <li>✓ Nombres y dorsales automáticos desde tu lista</li>
+            <li>✓ Se activa en tu PC (1 licencia por PC)</li>
+        </ul>
+        <button type="button" disabled="@Busy" @onclick="PayPlugin"
+                class="mt-6 rounded-full bg-emerald-500 px-7 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+            Pagar el mes
+        </button>
+        <p class="mt-3 text-xs text-cream/45">En tu cuenta aparece el código de activación para pegarlo una vez en el programa.</p>
+    </div>
+
+    <!-- Créditos: SOLO para descargar diseños del catálogo -->
+    <div class="mt-12">
+        <h2 class="font-serif text-2xl text-white">Créditos para descargar diseños (CDR)</h2>
+        <p class="mt-1 text-sm text-cream/55">Solo para descargar los diseños del catálogo. La IA del programa NO gasta créditos.</p>
         <div class="mt-6 grid gap-5 sm:grid-cols-3">
             @foreach (var pack in Packages)
             {
@@ -29,17 +53,6 @@
                 </article>
             }
         </div>
-    </div>
-
-    <div class="mt-14 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-        <p class="text-xs uppercase tracking-[0.2em] text-cyan">Plugin Corel / Illustrator</p>
-        <h2 class="mt-2 font-serif text-3xl text-white">@PluginName</h2>
-        <p class="mt-2 text-sm text-cream/55">Pagas el mes. En tu cuenta aparece el código de activación para el programa (una vez por PC).</p>
-        <p class="mt-4 font-serif text-4xl text-gold">S/ @PluginPrice.ToString("0")</p>
-        <button type="button" disabled="@Busy" @onclick="PayPlugin"
-                class="mt-6 rounded-full bg-emerald-500 px-7 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-            Pagar mes del plugin
-        </button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Error))

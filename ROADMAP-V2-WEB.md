@@ -40,21 +40,33 @@ Ya existentes (no borrar): `Licensing__PrivateKey` (firma licencias), conexión 
 
 ---
 
-## 🚧 Pendiente para Cursor (la parte WEB / UI)
+## ✅ Web / UI — HECHO
 
-1. **Pantalla de Recarga** (`/recargar`): mostrar la **suscripción $15/mes** (botón "Pagar el mes"
-   → `POST /api/payments/checkout` con `kind:"plugin"`; incluye IA libre) y los **paquetes de créditos
-   para DESCARGAR diseños** (`GET /api/payments/storefront`). Al volver de MercadoPago, `/pago/ok`
-   debe llamar `POST /api/payments/confirm` con el `paymentId`.
-2. **Panel del usuario** (`/cuenta`): mostrar **saldo de créditos** (`GET /api/account/...`),
-   estado de la **licencia del plugin** (`GET /api/plugin/me`: activa/vence) e historial
-   (`GET /api/payments/mine`). Botón para recargar créditos y renovar el mes.
-3. **Definir precios finales**: el mes ($15, IA libre) y cuántos créditos trae cada paquete de
-   DESCARGAS y su precio (hoy 160/400/800), más el costo en créditos por diseño (`Design.CreditsCost`).
-4. **Probar el flujo real de MercadoPago** con una compra chica (tras poner credenciales):
-   checkout → pago → webhook (`/api/webhooks/mercadopago`) → créditos acreditados → saldo sube.
-5. **Admin** (`/admin`): revisar que las métricas y el historial de ventas/licencias muestren
-   las nuevas transacciones de créditos e IA.
+1. **`/recargar`** (`Pricing.razor`): hero de **suscripción $15/mes con IA ilimitada incluida**
+   ("Pagar el mes" → checkout `kind:"plugin"`) + **paquetes de créditos para DESCARGAR diseños**.
+2. **`/pago/ok|error|pendiente`** (`PaymentResult.razor`): confirma el pago (`ConfirmPaymentAsync`).
+3. **`/cuenta`** (`Account.razor`): saldo de créditos (descargas), estado de la suscripción
+   (activa/vence + "IA ilimitada incluida" + código de activación) e **historial** de movimientos
+   de créditos y de pagos.
+
+## 🚧 Pendiente real (necesita credenciales o decisión)
+
+1. **Config Railway** (arriba): `Anthropic__ApiKey` + credenciales MercadoPago. Sin esto, IA=503 y
+   el pago queda en modo prueba.
+2. **Probar el flujo real de MercadoPago** con una compra chica: checkout → pago →
+   webhook (`/api/webhooks/mercadopago`) → créditos de descarga acreditados → saldo sube.
+3. **Precios finales**: confirmar el mes ($15 ≈ S/56), cuántos créditos trae cada paquete
+   (hoy 160/400/800) y el costo por diseño (`Design.CreditsCost`).
+4. **Publicar el `.exe` V2**: `build-v2-seguro.ps1` → GitHub Releases → `Plugin__DownloadUrl`.
+
+## 🐞 Infra de tests (menor, ajeno al producto)
+
+`SimberDesigns.Tests` referencia un proyecto Web SDK (`SimberDesigns.Server`) y el runner no logra
+CARGARLO en runtime (los 5 tests rojos son de HMAC/límites/embeddings, no de lógica nueva). Ya se
+fuerza la copia del `.dll` + `FrameworkReference Microsoft.AspNetCore.App`, pero falta el cierre de
+dependencias del web app en el runner. Fix limpio: usar `Microsoft.AspNetCore.Mvc.Testing`, o mover
+los helpers probados (`HmacSignature`, `MembershipLimits`, `OnnxEmbeddingService`) a una **librería
+de clases** aparte que las pruebas referencien sin cargar todo el web app. No bloquea el producto.
 
 ## 🖥️ Desktop V2 — validación online en cada apertura ✅ HECHO (falta publicar el `.exe`)
 

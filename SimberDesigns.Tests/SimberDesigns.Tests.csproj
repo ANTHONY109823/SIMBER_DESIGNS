@@ -20,8 +20,19 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- El servidor es una app ASP.NET Core: sin esta referencia al framework compartido, el proyecto de
+       pruebas no puede CARGAR SimberDesigns.Server en runtime (FileNotFoundException). -->
   <ItemGroup>
-    <ProjectReference Include="..\SimberDesigns.Server\SimberDesigns.Server.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Private/ReferenceOutputAssembly explícitos: un proyecto Web SDK no copia su .dll al referenciarlo
+         por defecto, y sin él las pruebas no cargan SimberDesigns.Server en runtime. -->
+    <ProjectReference Include="..\SimberDesigns.Server\SimberDesigns.Server.csproj">
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
 
 </Project>

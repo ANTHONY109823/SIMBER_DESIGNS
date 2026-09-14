@@ -16,20 +16,57 @@
             <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Recargar</a>
         </article>
         <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <p class="text-xs uppercase tracking-wider text-cream/45">Plugin · 1 PC</p>
+            <p class="text-xs uppercase tracking-wider text-cream/45">Suscripción del programa · 1 PC</p>
             @if (License is { IsActive: true })
             {
-                <p class="mt-2 text-lg text-white">Activo hasta @License.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+                <p class="mt-2 text-lg text-white">Activa hasta @License.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+                <p class="mt-1 text-xs text-emerald-300">✓ Incluye lectura de listas con IA ilimitada</p>
                 <p class="mt-3 font-mono text-sm text-cyan">@License.ActivationCode</p>
-                <p class="mt-2 text-xs text-cream/45">Pégalo una vez en el programa. No hace falta volver a entrar todos los días.</p>
+                <p class="mt-2 text-xs text-cream/45">Pégalo una vez en el programa. El programa valida tu mes por internet al abrir.</p>
             }
             else
             {
                 <p class="mt-2 text-sm text-cream/55">Sin mes activo.</p>
-                <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Pagar 30 días</a>
+                <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Pagar el mes ($15)</a>
             }
         </article>
     </div>
+
+    @if (CreditLogs.Count > 0 || Transactions.Count > 0)
+    {
+        <div class="mt-10 grid gap-6 lg:grid-cols-2">
+            @if (CreditLogs.Count > 0)
+            {
+                <section>
+                    <h2 class="font-serif text-xl text-white">Movimientos de créditos</h2>
+                    <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                        @foreach (var log in CreditLogs)
+                        {
+                            <li class="flex items-center justify-between px-4 py-3 text-sm">
+                                <span class="text-cream/70">@log.Description<span class="ml-2 text-xs text-cream/35">@log.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
+                                <span class="@(log.CreditsChanged >= 0 ? "text-emerald-300" : "text-rose-300")">@(log.CreditsChanged >= 0 ? "+" : "")@log.CreditsChanged.ToString("0")</span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+            @if (Transactions.Count > 0)
+            {
+                <section>
+                    <h2 class="font-serif text-xl text-white">Pagos</h2>
+                    <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                        @foreach (var tx in Transactions)
+                        {
+                            <li class="flex items-center justify-between px-4 py-3 text-sm">
+                                <span class="text-cream/70">@tx.DetailName<span class="ml-2 text-xs text-cream/35">@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
+                                <span class="text-cream/60">@tx.Currency @tx.Amount.ToString("0.##") · <span class="@StatusColor(tx.Status)">@StatusText(tx.Status)</span></span>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -37,6 +74,8 @@
     private string Email = "";
     private decimal Credits;
     private PluginLicenseDto? License;
+    private List<CreditLogDto> CreditLogs = [];
+    private List<TransactionDto> Transactions = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -46,8 +85,25 @@
             Name = dash.FullName;
             Email = dash.Email;
             Credits = dash.CreditsBalance;
+            CreditLogs = dash.CreditLogs ?? [];
+            Transactions = dash.Transactions ?? [];
         }
 
         License = await Api.GetPluginLicenseAsync();
     }
+
+    private static string StatusText(string s) => s switch
+    {
+        "Completed" => "acreditado",
+        "Pending" => "en proceso",
+        "Rejected" => "rechazado",
+        _ => s.ToLowerInvariant()
+    };
+
+    private static string StatusColor(string s) => s switch
+    {
+        "Completed" => "text-emerald-300",
+        "Rejected" => "text-rose-300",
+        _ => "text-cream/50"
+    };
 }
