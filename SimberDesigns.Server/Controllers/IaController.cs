@@ -2,21 +2,18 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SimberDesigns.Licensing;                 // verificador compartido con el .exe (copia exacta)
-using SimberDesigns.Server.Data;
-using SimberDesigns.Server.Models;
 using SimberDesigns.Server.Options;
 
 namespace SimberDesigns.Server.Controllers;
 
 /// <summary>
-/// Lectura de listas con IA (Claude visión) para la V2 (web, con créditos). El plugin NO tiene la clave
-/// de Anthropic: manda la FOTO + su LICENCIA FIRMADA (V2/PREMIUM) + su HWID. El servidor verifica la firma
-/// con la llave pública (derivada de la privada), ubica al usuario por el HWID de su licencia, DESCUENTA
-/// créditos de su saldo y recién entonces llama a Claude con la clave del servidor. Así la clave nunca sale
-/// de Railway y cada lectura se cobra del mismo pool de créditos que el resto de la web.
+/// Lectura de listas con IA (Claude visión) para la V2 (web). La IA es LIBRE mientras la suscripción
+/// de $15/mes esté activa: no consume créditos (los créditos son solo para descargar diseños). El plugin
+/// manda la FOTO + su LICENCIA FIRMADA PREMIUM + su HWID; el servidor verifica la firma con la llave
+/// pública (derivada de la privada) y, si la licencia es válida y vigente (la suscripción se renueva
+/// contra Postgres cada mes), llama a Claude con la clave del servidor. La clave NUNCA sale de Railway.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
@@ -24,7 +21,6 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class IaController(
     IHttpClientFactory httpFactory,
     IConfiguration configuration,
-    AppDbContext db,
     IOptions<AnthropicOptions> anthropicOptions) : ControllerBase
 {
     private const string AnthropicUrl = "https://api.anthropic.com/v1/messages";
@@ -75,38 +71,23 @@ public sealed class IaController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "Configuración de licencias inválida.");
         }
 
+        // La licencia debe ser válida y vigente. Como el token se renueva contra Postgres solo mientras
+        // la suscripción de $15/mes está pagada, una licencia vigente ES una suscripción activa.
         var check = new LicenseVerifier(publicKey).Verify(licencia, hwid);
         if (check.Status != LicenseStatus.Valid)
-            return StatusCode(StatusCodes.Status403Forbidden, "Licencia no válida para esta PC o vencida.");
+            return StatusCode(StatusCodes.Status403Forbidden, "Tu suscripción no está activa para esta PC. Renueva el mes en la web.");
 
         // La IA es de la versión web (V2, PREMIUM). Las licencias V1 no la usan.
         if (check.Info?.IncluyeIa != true)
             return StatusCode(StatusCodes.Status403Forbidden, "La lectura con IA es de la versión web (V2).");
 
-        // 2) Ubicar al usuario por el HWID de su licencia del plugin y comprobar su saldo.
-        var lic = await db.PluginLicenses
-            .Where(l => l.HardwareId == hwid)
-            .OrderByDescending(l => l.ExpiresAt)
-            .FirstOrDefaultAsync(ct);
-        if (lic is null)
-            return StatusCode(StatusCodes.Status403Forbidden, "No encontramos tu cuenta para esta PC.");
-
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == lic.UserId, ct);
-        if (user is null)
-            return StatusCode(StatusCodes.Status403Forbidden, "No encontramos tu cuenta.");
-
-        decimal costo = anthropicOptions.Value.CreditsPerRead <= 0 ? 1m : anthropicOptions.Value.CreditsPerRead;
-        if (user.CreditsBalance < costo)
-            return StatusCode(StatusCodes.Status402PaymentRequired,
-                "No tienes créditos suficientes para leer con IA. Recarga en la web para continuar.");
-
-        // 3) Validar la imagen.
+        // 2) Validar la imagen.
         string b64 = (request?.image_base64 ?? "").Trim();
         string mediaType = string.IsNullOrWhiteSpace(request?.media_type) ? "image/jpeg" : request!.media_type!.Trim();
         if (b64.Length == 0)
             return BadRequest("Falta la imagen.");
 
-        // 4) Clave de Anthropic: SOLO del servidor (env de Railway). Nunca sale de aquí.
+        // 3) Clave de Anthropic: SOLO del servidor (env de Railway). Nunca sale de aquí.
         var opt = anthropicOptions.Value;
         string apiKey = !string.IsNullOrWhiteSpace(opt.ApiKey)
             ? opt.ApiKey
@@ -114,7 +95,7 @@ public sealed class IaController(
         if (string.IsNullOrWhiteSpace(apiKey))
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "La IA no está configurada en el servidor.");
 
-        // 5) Llamar a Claude (Messages API) con la foto + el prompt.
+        // 4) Llamar a Claude (Messages API) con la foto + el prompt. IA libre: sin cobro por consulta.
         var payload = new
         {
             model = string.IsNullOrWhiteSpace(opt.Model) ? "claude-sonnet-5" : opt.Model,
@@ -150,21 +131,7 @@ public sealed class IaController(
         if (!resp.IsSuccessStatusCode)
             return StatusCode(StatusCodes.Status502BadGateway, $"La IA respondió {(int)resp.StatusCode}.");
 
-        // 6) Cobro: descontar créditos del mismo pool y registrar la transacción. Solo tras éxito.
-        user.CreditsBalance -= costo;
-        user.UpdatedAt = DateTime.UtcNow;
-        db.CreditTransactions.Add(new CreditTransaction
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            CreditsChanged = -costo,
-            TxType = CreditTxTypes.AiRead,
-            CreatedAt = DateTime.UtcNow
-        });
-        await db.SaveChangesAsync(ct);
-        Response.Headers["X-Simber-Credits"] = user.CreditsBalance.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-        // 7) Devolver el texto (el arreglo JSON) tal cual lo dio Claude.
+        // 5) Devolver el texto (el arreglo JSON) tal cual lo dio Claude.
         string texto = ExtraerTexto(body);
         return Content(texto, "text/plain; charset=utf-8");
     }

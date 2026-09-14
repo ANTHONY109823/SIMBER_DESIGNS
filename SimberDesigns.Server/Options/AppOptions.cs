@@ -67,8 +67,6 @@ public sealed class AnthropicOptions
     public string ApiKey { get; set; } = "";
     public string Model { get; set; } = "claude-sonnet-5";
     public int MaxTokens { get; set; } = 4096;
-
-    /// <summary>Créditos que descuenta cada lectura con IA (del mismo saldo del usuario V2). El límite real
-    /// de uso es el saldo de créditos del cliente. Configurable con Anthropic__CreditsPerRead.</summary>
-    public decimal CreditsPerRead { get; set; } = 1m;
+    // La IA es LIBRE con la suscripción activa (no consume créditos). Los créditos son solo para
+    // descargar diseños del catálogo.
 }
