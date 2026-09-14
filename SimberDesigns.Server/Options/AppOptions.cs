@@ -55,3 +55,13 @@ public sealed class OnnxOptions
     public string ModelPath { get; set; } = "";
     public string InputName { get; set; } = "image";
 }
+
+/// <summary>Lectura de listas con IA (Claude). La ApiKey vive SOLO en el servidor (env de Railway),
+/// nunca en el .exe. El plugin manda la foto + su licencia firmada y el servidor llama a Claude.</summary>
+public sealed class AnthropicOptions
+{
+    public const string SectionName = "Anthropic";
+    public string ApiKey { get; set; } = "";
+    public string Model { get; set; } = "claude-sonnet-5";
+    public int MaxTokens { get; set; } = 4096;
+}

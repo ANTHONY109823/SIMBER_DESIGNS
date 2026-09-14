@@ -19,6 +19,8 @@ builder.Services.Configure<CloudflareR2Options>(builder.Configuration.GetSection
 builder.Services.Configure<LemonSqueezyOptions>(builder.Configuration.GetSection(LemonSqueezyOptions.SectionName));
 builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(MercadoPagoOptions.SectionName));
 builder.Services.Configure<OnnxOptions>(builder.Configuration.GetSection(OnnxOptions.SectionName));
+builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
+builder.Services.AddHttpClient("anthropic");
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Falta ConnectionStrings:DefaultConnection.");
