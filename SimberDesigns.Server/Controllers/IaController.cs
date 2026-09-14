@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
+using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using SimberDesigns.Licensing;                 // verificador compartido con el .exe (copia exacta)
 using SimberDesigns.Server.Options;
 
@@ -21,6 +23,7 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class IaController(
     IHttpClientFactory httpFactory,
     IConfiguration configuration,
+    NpgsqlDataSource dataSource,
     IOptions<AnthropicOptions> anthropicOptions) : ControllerBase
 {
     private const string AnthropicUrl = "https://api.anthropic.com/v1/messages";
@@ -75,6 +78,20 @@ public sealed class IaController(
         if (check.Status != LicenseStatus.Valid)
             return StatusCode(StatusCodes.Status403Forbidden, "Licencia no válida para esta PC o vencida.");
 
+        // 1b) TOPE por PC (ventana móvil de 7 días). Aunque una licencia se filtre, no puede quemar
+        //     crédito ilimitado. 0 = sin tope.
+        int weeklyLimit = anthropicOptions.Value.WeeklyLimitPerClient;
+        if (weeklyLimit > 0)
+        {
+            await using var conn = await dataSource.OpenConnectionAsync(ct);
+            int usados = await conn.ExecuteScalarAsync<int>(
+                "SELECT count(*)::int FROM ia_usage WHERE hwid = @h AND created_at > now() - interval '7 days'",
+                new { h = hwid });
+            if (usados >= weeklyLimit)
+                return StatusCode(StatusCodes.Status429TooManyRequests,
+                    $"Alcanzaste el límite de {weeklyLimit} lecturas con IA por semana. Usa la lectura normal o inténtalo en unos días.");
+        }
+
         // 2) Validar la imagen.
         string b64 = (request?.image_base64 ?? "").Trim();
         string mediaType = string.IsNullOrWhiteSpace(request?.media_type) ? "image/jpeg" : request!.media_type!.Trim();
@@ -125,7 +142,16 @@ public sealed class IaController(
         if (!resp.IsSuccessStatusCode)
             return StatusCode(StatusCodes.Status502BadGateway, $"La IA respondió {(int)resp.StatusCode}.");
 
-        // 5) Extraer el texto (el arreglo JSON) de la respuesta de Claude y devolverlo tal cual.
+        // 5) Registrar el uso (para el tope) y podar registros viejos. No debe romper la respuesta.
+        try
+        {
+            await using var rec = await dataSource.OpenConnectionAsync(ct);
+            await rec.ExecuteAsync("INSERT INTO ia_usage(hwid) VALUES (@h)", new { h = hwid });
+            await rec.ExecuteAsync("DELETE FROM ia_usage WHERE created_at < now() - interval '30 days'");
+        }
+        catch { /* el conteo de uso es secundario */ }
+
+        // 6) Extraer el texto (el arreglo JSON) de la respuesta de Claude y devolverlo tal cual.
         string texto = ExtraerTexto(body);
         return Content(texto, "text/plain; charset=utf-8");
     }
