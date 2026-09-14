@@ -56,19 +56,18 @@ Ya existentes (no borrar): `Licensing__PrivateKey` (firma licencias), conexión 
 5. **Admin** (`/admin`): revisar que las métricas y el historial de ventas/licencias muestren
    las nuevas transacciones de créditos e IA.
 
-## 🖥️ Desktop V2 (PENDIENTE PRINCIPAL — próxima sesión)
+## 🖥️ Desktop V2 — validación online en cada apertura ✅ HECHO (falta publicar el `.exe`)
 
-- **REQUISITO (decisión 2026-09-14):** el `.exe`, aunque se envíe por WhatsApp, **debe conectarse a
-  internet para ABRIR y validarse en esa PC en CADA apertura** (estilo Adobe). Hoy NO lo hace: valida
-  online solo al activar y luego usa el token firmado (gracia offline de 30 días → `App.xaml.cs`).
-- **Qué implementar:** en cada arranque (V2), llamar al servidor (`GET /api/plugin/token` con la sesión
-  JWT, o revalidar la licencia) para confirmar contra Postgres que la suscripción sigue activa; si no hay
-  internet o la suscripción está vencida/cancelada → **bloquear** con mensaje ("Necesitas internet y tu
-  mes al día"). Recomendado: dejar una gracia MUY corta (p.ej. 1–2 días) para un corte breve de internet,
-  no 30 días. Tocar `App.xaml.cs` con cuidado de no romper la activación que ya funciona.
-- El lector de IA del `.exe` (`ClaudeVisionReader`) ya manda la licencia al endpoint. **Al publicar la V2,
-  recompilar** con `SimberDesigns/build-v2-seguro.ps1` y subir el `.exe` a GitHub Releases
-  (`Plugin__DownloadUrl`). El `.bas`/`.jsx` NO se envían.
+- **Implementado (2026-09-14):** al abrir la V2, `App.xaml.cs` valida ONLINE contra Postgres en CADA
+  apertura vía `WebLicenseClient.RevalidateAsync` → `POST /api/plugin/revalidate` (manda el token firmado
+  ligado al HWID; NO usa JWT, así no pide email/clave cada vez). Resultados:
+  - **Ok** → re-emite token fresco y abre. **402 (mes vencido)** → mensaje "renueva el mes" + activación.
+  - **Sin internet** → gracia MUY corta (`GraciaDias=2`, marca `.sdonline` en `%LOCALAPPDATA%\SimberDesigns`):
+    si validó hace ≤2 días y el token sigue vigente, abre; si no, mensaje "necesitas internet" y cierra.
+  - Primera vez (sin licencia) → ventana de activación con login. La V1 NO cambia (activación offline).
+- **PENDIENTE:** al publicar la V2, **recompilar** con `SimberDesigns/build-v2-seguro.ps1` y subir el
+  `.exe` a GitHub Releases (`Plugin__DownloadUrl`). El `.bas`/`.jsx` NO se envían.
+- Posible ajuste futuro: `GraciaDias` (0 = internet obligatorio siempre, sin gracia).
 
 ## ⛔ No tocar
 Firma/verificación de licencias (`Licensing/`), HWID, `AdminKeys`/`SimberKeys`, el `.exe` de V1,
