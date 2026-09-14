@@ -31,7 +31,10 @@ public sealed class MercadoPagoOptions
     public string PublicKey { get; set; } = "";
     public string WebhookSecret { get; set; } = "";
     public string PublicBaseUrl { get; set; } = "";
-    public decimal PluginMonthPricePen { get; set; } = 149;
+    // Suscripción mensual del plugin (1 PC, 30 días), estilo Adobe. ≈ US$15/mes.
+    // MercadoPago Perú cobra en PEN; ~56 PEN ≈ $15 USD. Ajústalo en Railway con
+    // MercadoPago__PluginMonthPricePen si cambia el tipo de cambio o el precio.
+    public decimal PluginMonthPricePen { get; set; } = 56;
 }
 
 public sealed class LemonSqueezyOptions
