@@ -119,6 +119,53 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
     }
 
     /// <summary>
+    /// REVALIDACIÓN en cada apertura (estilo Adobe), SIN login: el plugin manda su token firmado
+    /// (ligado al HWID) y el servidor, si la suscripción sigue activa en Postgres, re-emite un token
+    /// fresco. Así el .exe valida contra la BD cada vez que abre sin pedir email/clave. 402 = mes vencido.
+    /// </summary>
+    [HttpPost("revalidate")]
+    [AllowAnonymous]
+    public async Task<ActionResult<PluginTokenDto>> Revalidate(CancellationToken cancellationToken)
+    {
+        string licenseText = (Request.Headers["X-Simber-License"].ToString() ?? "").Trim();
+        string hwid = (Request.Headers["X-Simber-Hwid"].ToString() ?? "").Trim();
+        if (licenseText.Length == 0 || hwid.Length == 0)
+        {
+            return Unauthorized("Falta la licencia o el identificador de la PC.");
+        }
+
+        // Verificar firma + HWID. Se acepta incluso un token VENCIDO: la vigencia real la manda la BD.
+        string publicKey;
+        try
+        {
+            using var ecdsa = LicenseKeyPair.LoadPrivate(PrivateKeyBase64());
+            publicKey = Convert.ToBase64String(ecdsa.ExportSubjectPublicKeyInfo());
+        }
+        catch
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, "Configuración de licencias inválida.");
+        }
+
+        var check = new LicenseVerifier(publicKey).Verify(licenseText, hwid);
+        if (check.Status is not (LicenseStatus.Valid or LicenseStatus.Expired))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Licencia inválida para esta PC.");
+        }
+
+        var license = await db.PluginLicenses
+            .Where(l => l.HardwareId == hwid && l.Plan == PluginPlans.Month1Pc)
+            .OrderByDescending(l => l.ExpiresAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (license is null || license.ExpiresAt <= DateTime.UtcNow)
+        {
+            return StatusCode(StatusCodes.Status402PaymentRequired, "Tu suscripción no está activa. Renueva el mes en la web.");
+        }
+
+        return Ok(EmitirToken(license, hwid));
+    }
+
+    /// <summary>
     /// Descarga del instalador. Es GRATIS/anónima (el cobro se exige al ACTIVAR, no al descargar):
     /// "descarga, paga el mes y se activa sola". Redirige a la URL configurada del .exe (R2 / GitHub
     /// Releases). Mientras no esté configurada, avisa que estará disponible pronto.
