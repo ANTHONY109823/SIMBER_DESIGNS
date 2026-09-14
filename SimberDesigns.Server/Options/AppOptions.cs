@@ -65,7 +65,7 @@ public sealed class AnthropicOptions
     public string Model { get; set; } = "claude-sonnet-5";
     public int MaxTokens { get; set; } = 4096;
 
-    /// <summary>Tope de lecturas con IA por PC (HWID) en una ventana móvil de 7 días. Controla el costo:
-    /// aunque una licencia se filtre, no puede quemar crédito ilimitado. 0 = sin tope.</summary>
-    public int WeeklyLimitPerClient { get; set; } = 100;
+    /// <summary>Créditos que descuenta cada lectura con IA (del mismo saldo del usuario V2). El límite real
+    /// de uso es el saldo de créditos del cliente. Configurable con Anthropic__CreditsPerRead.</summary>
+    public decimal CreditsPerRead { get; set; } = 1m;
 }

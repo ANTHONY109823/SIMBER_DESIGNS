@@ -394,6 +394,7 @@ public sealed class PaymentsController(
             return NotFound();
         }
 
+        bool yaCompletada = tx.Status == TransactionStatuses.Completed;
         tx.Status = status;
         tx.VerifiedBy = adminId;
         tx.VerifiedAt = DateTime.UtcNow;
@@ -441,6 +442,23 @@ public sealed class PaymentsController(
                 }
 
                 tx.SubscriptionId = existing.Id;
+            }
+
+            // Acreditar créditos del paquete (antes esto NO se hacía al aprobar manualmente).
+            if (!yaCompletada && tx.CreditPackageId is not null && tx.CreditPackage is not null)
+            {
+                decimal total = tx.CreditPackage.CreditsAmount + tx.CreditPackage.BonusAmount;
+                tx.User.CreditsBalance += total;
+                tx.User.UpdatedAt = DateTime.UtcNow;
+                db.CreditTransactions.Add(new CreditTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = tx.UserId,
+                    TransactionId = tx.Id,
+                    CreditsChanged = total,
+                    TxType = CreditTxTypes.Recharge,
+                    CreatedAt = DateTime.UtcNow
+                });
             }
         }
 

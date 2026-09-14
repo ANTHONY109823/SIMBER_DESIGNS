@@ -1,21 +1,22 @@
 using System.Text;
 using System.Text.Json;
-using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using SimberDesigns.Licensing;                 // verificador compartido con el .exe (copia exacta)
+using SimberDesigns.Server.Data;
+using SimberDesigns.Server.Models;
 using SimberDesigns.Server.Options;
 
 namespace SimberDesigns.Server.Controllers;
 
 /// <summary>
-/// Lectura de listas con IA (Claude visión) para el plugin V1 (offline, sin login web).
-/// El .exe NO tiene la clave de Anthropic: manda la FOTO + su LICENCIA FIRMADA y su HWID; aquí se
-/// verifica la firma con la llave pública (derivada de la privada del servidor) y, solo si la licencia
-/// es válida para esa PC, se llama a Claude con la clave del servidor. Así la clave nunca sale de Railway
-/// y solo los clientes con licencia vigente gastan crédito.
+/// Lectura de listas con IA (Claude visión) para la V2 (web, con créditos). El plugin NO tiene la clave
+/// de Anthropic: manda la FOTO + su LICENCIA FIRMADA (V2/PREMIUM) + su HWID. El servidor verifica la firma
+/// con la llave pública (derivada de la privada), ubica al usuario por el HWID de su licencia, DESCUENTA
+/// créditos de su saldo y recién entonces llama a Claude con la clave del servidor. Así la clave nunca sale
+/// de Railway y cada lectura se cobra del mismo pool de créditos que el resto de la web.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
@@ -23,7 +24,7 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class IaController(
     IHttpClientFactory httpFactory,
     IConfiguration configuration,
-    NpgsqlDataSource dataSource,
+    AppDbContext db,
     IOptions<AnthropicOptions> anthropicOptions) : ControllerBase
 {
     private const string AnthropicUrl = "https://api.anthropic.com/v1/messages";
@@ -52,7 +53,7 @@ public sealed class IaController(
     [HttpPost("leer-lista")]
     public async Task<IActionResult> LeerLista([FromBody] LeerListaRequest request, CancellationToken ct)
     {
-        // 1) Autenticación POR LICENCIA (no hay login web en V1).
+        // 1) Autenticación POR LICENCIA (el plugin manda su token firmado + HWID).
         string licencia = (Request.Headers["X-Simber-License"].ToString() ?? "").Trim();
         string hwid = (Request.Headers["X-Simber-Hwid"].ToString() ?? "").Trim();
         if (licencia.Length == 0 || hwid.Length == 0)
@@ -78,27 +79,34 @@ public sealed class IaController(
         if (check.Status != LicenseStatus.Valid)
             return StatusCode(StatusCodes.Status403Forbidden, "Licencia no válida para esta PC o vencida.");
 
-        // 1b) TOPE por PC (ventana móvil de 7 días). Aunque una licencia se filtre, no puede quemar
-        //     crédito ilimitado. 0 = sin tope.
-        int weeklyLimit = anthropicOptions.Value.WeeklyLimitPerClient;
-        if (weeklyLimit > 0)
-        {
-            await using var conn = await dataSource.OpenConnectionAsync(ct);
-            int usados = await conn.ExecuteScalarAsync<int>(
-                "SELECT count(*)::int FROM ia_usage WHERE hwid = @h AND created_at > now() - interval '7 days'",
-                new { h = hwid });
-            if (usados >= weeklyLimit)
-                return StatusCode(StatusCodes.Status429TooManyRequests,
-                    $"Alcanzaste el límite de {weeklyLimit} lecturas con IA por semana. Usa la lectura normal o inténtalo en unos días.");
-        }
+        // La IA es de la versión web (V2, PREMIUM). Las licencias V1 no la usan.
+        if (check.Info?.IncluyeIa != true)
+            return StatusCode(StatusCodes.Status403Forbidden, "La lectura con IA es de la versión web (V2).");
 
-        // 2) Validar la imagen.
+        // 2) Ubicar al usuario por el HWID de su licencia del plugin y comprobar su saldo.
+        var lic = await db.PluginLicenses
+            .Where(l => l.HardwareId == hwid)
+            .OrderByDescending(l => l.ExpiresAt)
+            .FirstOrDefaultAsync(ct);
+        if (lic is null)
+            return StatusCode(StatusCodes.Status403Forbidden, "No encontramos tu cuenta para esta PC.");
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == lic.UserId, ct);
+        if (user is null)
+            return StatusCode(StatusCodes.Status403Forbidden, "No encontramos tu cuenta.");
+
+        decimal costo = anthropicOptions.Value.CreditsPerRead <= 0 ? 1m : anthropicOptions.Value.CreditsPerRead;
+        if (user.CreditsBalance < costo)
+            return StatusCode(StatusCodes.Status402PaymentRequired,
+                "No tienes créditos suficientes para leer con IA. Recarga en la web para continuar.");
+
+        // 3) Validar la imagen.
         string b64 = (request?.image_base64 ?? "").Trim();
         string mediaType = string.IsNullOrWhiteSpace(request?.media_type) ? "image/jpeg" : request!.media_type!.Trim();
         if (b64.Length == 0)
             return BadRequest("Falta la imagen.");
 
-        // 3) Clave de Anthropic: SOLO del servidor (env de Railway). Nunca sale de aquí.
+        // 4) Clave de Anthropic: SOLO del servidor (env de Railway). Nunca sale de aquí.
         var opt = anthropicOptions.Value;
         string apiKey = !string.IsNullOrWhiteSpace(opt.ApiKey)
             ? opt.ApiKey
@@ -106,7 +114,7 @@ public sealed class IaController(
         if (string.IsNullOrWhiteSpace(apiKey))
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "La IA no está configurada en el servidor.");
 
-        // 4) Llamar a Claude (Messages API) con la foto + el prompt.
+        // 5) Llamar a Claude (Messages API) con la foto + el prompt.
         var payload = new
         {
             model = string.IsNullOrWhiteSpace(opt.Model) ? "claude-sonnet-5" : opt.Model,
@@ -142,16 +150,21 @@ public sealed class IaController(
         if (!resp.IsSuccessStatusCode)
             return StatusCode(StatusCodes.Status502BadGateway, $"La IA respondió {(int)resp.StatusCode}.");
 
-        // 5) Registrar el uso (para el tope) y podar registros viejos. No debe romper la respuesta.
-        try
+        // 6) Cobro: descontar créditos del mismo pool y registrar la transacción. Solo tras éxito.
+        user.CreditsBalance -= costo;
+        user.UpdatedAt = DateTime.UtcNow;
+        db.CreditTransactions.Add(new CreditTransaction
         {
-            await using var rec = await dataSource.OpenConnectionAsync(ct);
-            await rec.ExecuteAsync("INSERT INTO ia_usage(hwid) VALUES (@h)", new { h = hwid });
-            await rec.ExecuteAsync("DELETE FROM ia_usage WHERE created_at < now() - interval '30 days'");
-        }
-        catch { /* el conteo de uso es secundario */ }
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CreditsChanged = -costo,
+            TxType = CreditTxTypes.AiRead,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+        Response.Headers["X-Simber-Credits"] = user.CreditsBalance.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-        // 6) Extraer el texto (el arreglo JSON) de la respuesta de Claude y devolverlo tal cual.
+        // 7) Devolver el texto (el arreglo JSON) tal cual lo dio Claude.
         string texto = ExtraerTexto(body);
         return Content(texto, "text/plain; charset=utf-8");
     }

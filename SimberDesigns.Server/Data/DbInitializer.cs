@@ -117,15 +117,8 @@ public static class DbInitializer
                 data BYTEA NOT NULL,
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
-
-            CREATE TABLE IF NOT EXISTS ia_usage (
-                id BIGSERIAL PRIMARY KEY,
-                hwid VARCHAR(200) NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE INDEX IF NOT EXISTS idx_ia_usage_hwid_created ON ia_usage(hwid, created_at);
             """);
-        logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) + ia_usage listas.");
+        logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) listas.");
     }
 
     private static string? FindSchemaPath(IWebHostEnvironment env)

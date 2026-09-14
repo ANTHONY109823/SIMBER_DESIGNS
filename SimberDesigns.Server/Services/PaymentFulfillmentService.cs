@@ -30,12 +30,41 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
         {
             await ExtendPluginLicenseAsync(transaction.UserId, cancellationToken);
         }
+        else if (transaction.CreditPackageId is Guid packageId)
+        {
+            await AcreditarCreditosAsync(transaction, packageId, cancellationToken);
+        }
 
         await db.SaveChangesAsync(cancellationToken);
     }
 
     private static bool IsPluginPurchase(string? notes)
         => notes is not null && notes.StartsWith("plugin:", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Suma los créditos del paquete al saldo del usuario y deja el registro. Antes esto NO se
+    /// hacía: al pagar un paquete no se acreditaba nada.</summary>
+    private async Task AcreditarCreditosAsync(Transaction transaction, Guid packageId, CancellationToken cancellationToken)
+    {
+        var package = await db.CreditPackages.FirstOrDefaultAsync(p => p.Id == packageId, cancellationToken);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == transaction.UserId, cancellationToken);
+        if (package is null || user is null)
+        {
+            return;
+        }
+
+        decimal total = package.CreditsAmount + package.BonusAmount;
+        user.CreditsBalance += total;
+        user.UpdatedAt = DateTime.UtcNow;
+        db.CreditTransactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            TransactionId = transaction.Id,
+            CreditsChanged = total,
+            TxType = CreditTxTypes.Recharge,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
 
     private async Task ExtendPluginLicenseAsync(Guid userId, CancellationToken cancellationToken)
     {

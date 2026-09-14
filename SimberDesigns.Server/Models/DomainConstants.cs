@@ -54,6 +54,7 @@ public static class CreditTxTypes
 {
     public const string Recharge = "Recharge";
     public const string PurchaseDesign = "Purchase_Design";
+    public const string AiRead = "IA_Read";
     public const string Refund = "Refund";
 }
 
