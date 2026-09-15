@@ -7,11 +7,11 @@
 <section class="border-y border-white/10 bg-white/[0.03]">
     <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">
         <div>
-            <p class="text-xs uppercase tracking-[0.28em] text-gold">Activación mensual</p>
-            <h2 class="mt-2 font-serif text-3xl text-white">S/@(PricePen.ToString("0")) / 30 días · ≈ US$15</h2>
-            <p class="mt-2 max-w-xl text-sm text-cream/80">El programa se descarga gratis. US$15 / S/56 activa 30 días en 1 PC, Corel o Illustrator por separado. Al abrir, valida el mes por internet.</p>
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">Programas</p>
+            <h2 class="mt-2 font-serif text-3xl text-white">CorelDRAW e Illustrator</h2>
+            <p class="mt-2 max-w-xl text-sm text-cream/80">Dos ejecutables distintos. Los bajas gratis y los activas desde tu cuenta, en esa PC.</p>
         </div>
-        <a href="/recargar" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Activar el mes</a>
+        <a href="/programas" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar</a>
     </div>
 </section>
 
@@ -64,7 +64,7 @@
         <a href="/programas" class="rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-gold/40">
             <p class="text-xs uppercase tracking-[0.2em] text-gold">02 · El programa</p>
             <h2 class="mt-3 font-serif text-2xl">Arma en Corel e Illustrator</h2>
-            <p class="mt-3 text-sm text-cream/80">Descárgalo gratis, paga el mes y se activa solo en tu PC. IA incluida.</p>
+            <p class="mt-3 text-sm text-cream/80">Descárgalo gratis y actívalo desde tu cuenta, en tu PC.</p>
         </a>
     </div>
 
@@ -85,24 +85,19 @@
 </section>
 
 @code {
-    private decimal PricePen = 56;
     private List<DesignDto> Preview = [];
     private int CatalogCount;
 
     private static readonly (string Num, string Title, string Text)[] Steps =
     [
         ("01", "Descarga tu .exe", "Hay uno para CorelDRAW y otro para Illustrator. Es gratis: no estás comprando el programa."),
-        ("02", "Activa el mes", "US$15 ≈ S/56 por 30 días en 1 PC. Al pagar, en Mi cuenta aparece la clave de ese mes."),
-        ("03", "Entra en esa PC", "Usuario y contraseña (los puedes crear en la web). El programa se ata a esa máquina."),
-        ("04", "Sigue en línea", "Cada vez que abres, comprueba por internet si el mes sigue vigente. Si no renovas, se bloquea.")
+        ("02", "Crea tu cuenta", "En Mi cuenta activas el mes cuando quieras. Ahí aparece la clave."),
+        ("03", "Entra en esa PC", "Usuario y contraseña. El programa se ata a esa máquina."),
+        ("04", "Sigue en línea", "Cada vez que abres, comprueba por internet si el mes sigue vigente.")
     ];
 
     protected override async Task OnInitializedAsync()
     {
-        var store = await Api.GetStorefrontAsync();
-        if (store is not null && store.PluginMonthPricePen > 0)
-            PricePen = store.PluginMonthPricePen;
-
         var designs = await Api.GetDesignsAsync() ?? [];
         CatalogCount = designs.Count;
         Preview = designs.Take(6).ToList();

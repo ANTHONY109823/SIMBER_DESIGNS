@@ -13,7 +13,6 @@
             <nav class="hidden items-center gap-6 text-sm md:flex">
                 <NavLink href="/catalog" class="hover:text-gold" ActiveClass="text-gold">Catálogo</NavLink>
                 <NavLink href="/programas" class="hover:text-gold" ActiveClass="text-gold">Programas</NavLink>
-                <NavLink href="/recargar" class="hover:text-gold" ActiveClass="text-gold">Precios</NavLink>
             </nav>
             <div class="hidden items-center gap-3 text-sm md:flex">
                 <AuthorizeView>
@@ -30,7 +29,7 @@
                     </Authorized>
                     <NotAuthorized>
                         <a href="/login" class="px-3 py-2 text-cream/80 hover:text-white">Entrar</a>
-                        <a href="/recargar" class="rounded-full bg-gold px-5 py-2 font-semibold text-ink hover:bg-orange-400">Activar mes</a>
+                        <a href="/programas" class="rounded-full bg-gold px-5 py-2 font-semibold text-ink hover:bg-orange-400">Descargar</a>
                     </NotAuthorized>
                 </AuthorizeView>
             </div>
@@ -38,7 +37,6 @@
         <nav class="flex gap-4 overflow-x-auto border-t border-white/10 px-4 py-3 text-sm md:hidden">
             <NavLink href="/catalog">Catálogo</NavLink>
             <NavLink href="/programas">Programas</NavLink>
-            <NavLink href="/recargar">Precios</NavLink>
             <AuthorizeView>
                 <Authorized>
                     <AuthorizeView Roles="Admin">
@@ -52,7 +50,7 @@
                 </Authorized>
                 <NotAuthorized>
                     <NavLink href="/login">Entrar</NavLink>
-                    <a href="/recargar" class="font-semibold text-gold">Activar mes</a>
+                    <a href="/programas" class="font-semibold text-gold">Descargar</a>
                 </NotAuthorized>
             </AuthorizeView>
         </nav>

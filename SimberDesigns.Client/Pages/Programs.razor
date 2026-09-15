@@ -17,34 +17,20 @@
                 @T("programas.desc", "Herramienta de apoyo para CorelDRAW e Illustrator: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.")
             </p>
             <ul class="mt-6 space-y-2 text-sm text-cream/80">
-                <li>Windows · dos ejecutables distintos, como la V1: uno para CorelDRAW y otro para Illustrator</li>
-                <li>La descarga es gratis. El mes (US$15) <strong class="text-white">solo activa 30 días en 1 PC</strong></li>
-                <li>Entras con usuario y contraseña; al pagar o renovar aparece la clave del mes en tu cuenta</li>
+                <li>Windows · dos ejecutables distintos: uno para CorelDRAW y otro para Illustrator</li>
+                <li>La descarga es gratis. El mes se activa desde tu cuenta, en 1 PC</li>
+                <li>Entras con usuario y contraseña; al pagar aparece la clave del mes en Mi cuenta</li>
                 <li>Al abrir, el programa se conecta a internet y comprueba si el mes sigue vigente</li>
             </ul>
             <div class="mt-8 flex flex-wrap gap-3">
-                @if (HasCorel)
-                {
-                    <a href="/api/plugin/download/corel"
-                       class="inline-flex min-h-11 items-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
-                        Descargar CorelDRAW
-                    </a>
-                }
-                else
-                {
-                    <span class="inline-flex min-h-11 items-center rounded-full border border-white/15 px-6 py-3 text-sm text-cream/60">CorelDRAW · en breve</span>
-                }
-                @if (HasIllustrator)
-                {
-                    <a href="/api/plugin/download/illustrator"
-                       class="inline-flex min-h-11 items-center rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
-                        Descargar Illustrator
-                    </a>
-                }
-                else
-                {
-                    <span class="inline-flex min-h-11 items-center rounded-full border border-white/15 px-6 py-3 text-sm text-cream/60">Illustrator · en breve</span>
-                }
+                <a href="/api/plugin/download/corel" data-enhance-nav="false"
+                   class="inline-flex min-h-11 items-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
+                    Descargar CorelDRAW
+                </a>
+                <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
+                   class="inline-flex min-h-11 items-center rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
+                    Descargar Illustrator
+                </a>
             </div>
         </div>
 
@@ -111,34 +97,28 @@
     </div>
 </section>
 
-<section id="licencia" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-    <h2 class="font-serif text-3xl text-white">@T("programas.precio.titulo", "Precio y activación")</h2>
+<section id="descargas" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <h2 class="font-serif text-3xl text-white">Descargas</h2>
     <p class="mt-2 max-w-2xl text-sm text-cream/80">
-        @T("programas.precio.subtitulo", "Descargas el programa gratis, pagas el mes con Mercado Pago y se activa solo para tu PC.")
+        Baja el ejecutable de tu programa. El mes se paga después, en Mi cuenta, cuando ya quieras activarlo en tu PC.
     </p>
 
     <div class="mt-8 grid gap-6 md:grid-cols-2">
         <article class="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-8">
             <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">CorelDRAW</span>
-            <p class="mt-6 flex items-end gap-2">
-                <span class="text-5xl font-extrabold text-white">$15</span>
-                <span class="pb-1 text-sm text-cream/75">USD / 30 días · 1 PC · ≈ S/56</span>
-            </p>
-            <p class="mt-4 text-sm text-cream/80">No estás comprando el programa. Estás activando ese mes en una PC. Incluye IA mientras el mes esté vigente.</p>
+            <h3 class="mt-6 font-serif text-3xl text-white">SIMBER DESIGNS Corel</h3>
+            <p class="mt-4 text-sm text-cream/80">Ejecutable para CorelDRAW. Gratis para bajar. Se activa en 1 PC desde tu cuenta.</p>
             <a href="/api/plugin/download/corel" data-enhance-nav="false"
                class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">Descargar CorelDRAW</a>
-            <a href="/recargar" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-gold hover:underline">Activar 30 días · S/56</a>
+            <a href="/cuenta" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-cream/80 hover:text-gold">Activar desde Mi cuenta</a>
         </article>
         <article class="rounded-2xl border border-cyan/30 bg-cyan/5 p-8">
             <span class="rounded-full bg-cyan px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">Illustrator</span>
-            <p class="mt-6 flex items-end gap-2">
-                <span class="text-5xl font-extrabold text-white">$15</span>
-                <span class="pb-1 text-sm text-cream/75">USD / 30 días · 1 PC · ≈ S/56</span>
-            </p>
-            <p class="mt-4 text-sm text-cream/80">Mismo precio, otro ejecutable. Entras con tu cuenta; al pagar recibes la clave del mes. Al abrir, valida por internet.</p>
+            <h3 class="mt-6 font-serif text-3xl text-white">SIMBER DESIGNS Illustrator</h3>
+            <p class="mt-4 text-sm text-cream/80">Ejecutable para Illustrator. Gratis para bajar. Se activa en 1 PC desde tu cuenta.</p>
             <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
                class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar Illustrator</a>
-            <a href="/recargar" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-gold hover:underline">Activar 30 días · S/56</a>
+            <a href="/cuenta" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-cream/80 hover:text-gold">Activar desde Mi cuenta</a>
         </article>
     </div>
 </section>
@@ -146,21 +126,12 @@
 @code {
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
     private Dictionary<string, string> _c = new();
-    private bool HasCorel;
-    private bool HasIllustrator;
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
 
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
-        try
-        {
-            var store = await Api.GetStorefrontAsync();
-            HasCorel = store?.HasCorelDownload == true;
-            HasIllustrator = store?.HasIllustratorDownload == true;
-        }
-        catch { }
     }
 
     private static readonly FeatureItem[] Features =

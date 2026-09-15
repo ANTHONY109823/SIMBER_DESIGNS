@@ -16,9 +16,32 @@
                 Fútbol y <span class="text-gold">Vóley</span>
             </h1>
             <p class="mx-auto mt-4 max-w-lg text-sm text-cream/80 sm:text-base">
-                Foto, nombre, versión CorelDRAW y precio. Paga y descarga.
+                Foto, nombre, versión CorelDRAW y precio. Paga créditos y descarga.
             </p>
         </div>
+
+        <section id="creditos" class="mt-12">
+            <h2 class="font-serif text-2xl text-white">Créditos para descargar</h2>
+            <p class="mt-1 text-sm text-cream/70">Solo sirven para bajar diseños del catálogo. La IA del programa no gasta créditos.</p>
+            <div class="mt-6 grid gap-5 sm:grid-cols-3">
+                @foreach (var pack in Packages)
+                {
+                    <article class="flex flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+                        <p class="text-sm text-cream/50">@pack.Name créditos</p>
+                        <p class="mt-2 font-serif text-4xl text-gold">S/ @pack.PriceUsd.ToString("0")</p>
+                        <p class="mt-2 text-sm text-cream/55">@(pack.CreditsAmount + pack.BonusAmount) créditos@(pack.BonusAmount > 0 ? $" · +{pack.BonusAmount} de regalo" : "")</p>
+                        <button type="button" disabled="@Busy" @onclick="() => PayCredits(pack)"
+                                class="mt-6 rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                            Comprar
+                        </button>
+                    </article>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(packError))
+            {
+                <p class="mt-4 text-sm text-rose-400" role="alert">@packError</p>
+            }
+        </section>
 
         @if (FreeDaily.Count > 0)
         {
@@ -218,6 +241,9 @@
     private List<DesignItem> allDesigns = new();
     private List<DesignItem> filteredDesigns = new();
     private string? errorMessage;
+    private string? packError;
+    private bool Busy;
+    private List<CreditPackageDto> Packages = [];
     private bool HasVisualSearch => activeVisualSearchImage != null;
     private List<DesignItem> FreeDaily => allDesigns.Where(d => d.IsFreeDaily).ToList();
     private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns.Take(visibleCount);
@@ -238,6 +264,13 @@
             errorMessage = ex.Message;
         }
 
+        try
+        {
+            var store = await Api.GetStorefrontAsync();
+            Packages = store?.Packages ?? [];
+        }
+        catch { }
+
         ApplyFilters();
         isLoading = false;
     }
@@ -247,6 +280,37 @@
         if (firstRender)
         {
             await JS.InvokeVoidAsync("initializeClipboardPaste", DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async Task PayCredits(CreditPackageDto pack)
+    {
+        packError = null;
+        if (!isAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        Busy = true;
+        try
+        {
+            var checkout = await Api.CheckoutAsync("credits", pack.Id, null);
+            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
+            {
+                packError = "No se pudo abrir Mercado Pago.";
+                return;
+            }
+
+            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            packError = ex.Message;
+        }
+        finally
+        {
+            Busy = false;
         }
     }
 
@@ -421,8 +485,8 @@
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("créditos", StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = "No tienes créditos. Recarga con Mercado Pago.";
-            Nav.NavigateTo("/recargar");
+            errorMessage = "No tienes créditos. Elige un paquete aquí abajo.";
+            Nav.NavigateTo("/catalog#creditos");
         }
         catch (Exception ex)
         {
