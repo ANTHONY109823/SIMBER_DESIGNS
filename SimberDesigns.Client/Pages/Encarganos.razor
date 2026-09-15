@@ -5,128 +5,271 @@
 
 <PageTitle>Encárganos a nosotros · Simber Designs</PageTitle>
 
-<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-    <p class="text-xs uppercase tracking-[0.28em] text-gold">Cotización</p>
-    <h1 class="mt-2 font-serif text-4xl text-white">Encárganos a nosotros</h1>
+<div class="relative overflow-hidden">
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-[22rem] bg-[radial-gradient(ellipse_at_top,_rgba(255,106,26,0.14),_transparent_55%)]"></div>
 
-    <EditForm Model="this" OnValidSubmit="EnviarWhatsApp" class="mt-10 space-y-6">
-        <div>
-            <p class="text-sm text-cream/80">Modelo</p>
-            @if (Designs.Count == 0)
-            {
-                <p class="mt-3 text-sm text-cream/55">No hay modelos en el catálogo todavía.</p>
-            }
-            else
-            {
-                <div class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-                    @foreach (var d in Designs)
-                    {
-                        <button type="button" @onclick="() => Selected = d"
-                                class="overflow-hidden rounded-2xl border text-left @(Selected?.Id == d.Id ? "border-gold" : "border-white/10 hover:border-white/30")">
-                            <img src="@d.PreviewUrl" alt="@d.Title" class="aspect-[4/5] w-full object-cover" />
-                            <span class="block truncate px-2 py-1.5 text-[11px] text-cream/80">@d.Title</span>
-                        </button>
-                    }
+    <div class="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
+        <div class="grid items-start gap-8 lg:grid-cols-12">
+            <aside class="order-2 lg:order-1 lg:col-span-5">
+                <p class="text-xs uppercase tracking-[0.28em] text-gold">Trabajos realizados</p>
+                <h2 class="mt-2 font-serif text-3xl text-white">Así queda en cancha</h2>
+                <div class="mt-6 space-y-3">
+                    <figure class="overflow-hidden rounded-3xl border border-white/10">
+                        <img src="@TrabajoPrincipal" alt="Trabajo Simber" class="h-72 w-full object-cover sm:h-80" />
+                    </figure>
+                    <div class="grid grid-cols-2 gap-3">
+                        @foreach (var shot in Trabajos)
+                        {
+                            <figure class="overflow-hidden rounded-2xl border border-white/10">
+                                <img src="@shot" alt="" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                            </figure>
+                        }
+                    </div>
                 </div>
-            }
+            </aside>
+
+            <section class="order-1 lg:order-2 lg:col-span-7">
+                <article class="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-orange-950/30 sm:p-8">
+                    <p class="text-xs uppercase tracking-[0.28em] text-gold">Cotización</p>
+                    <h1 class="mt-2 font-serif text-4xl text-white">Encárganos a nosotros</h1>
+
+                    <EditForm Model="this" OnValidSubmit="EnviarWhatsApp" class="mt-8 space-y-6">
+                        <div>
+                            <div class="flex flex-wrap items-end justify-between gap-3">
+                                <p class="text-sm text-cream/85">Modelo</p>
+                                <button type="button" @onclick="AbrirModeloDiferente"
+                                        class="min-h-11 rounded-full border border-white/20 px-4 text-sm text-cream hover:border-gold/50">
+                                    Modelo diferente
+                                </button>
+                            </div>
+
+                            @if (ModeloDiferente)
+                            {
+                                <div class="mt-4 rounded-2xl border border-dashed border-gold/40 bg-gold/5 p-5">
+                                    <p class="text-sm text-white">Sube tu diseño</p>
+                                    <InputFile OnChange="OnCustomFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                                               class="mt-3 w-full text-sm text-cream/80" />
+                                    @if (!string.IsNullOrWhiteSpace(CustomPreview))
+                                    {
+                                        <img src="@CustomPreview" alt="Modelo propio" class="mt-4 max-h-48 rounded-xl object-contain" />
+                                    }
+                                    <button type="button" @onclick="CerrarModeloDiferente" class="mt-3 text-sm text-cream/70 hover:text-gold">Usar catálogo</button>
+                                </div>
+                            }
+                            else if (Designs.Count > 0)
+                            {
+                                <div class="relative mt-4">
+                                    <div class="overflow-hidden rounded-3xl border border-white/10 bg-ink">
+                                        <img src="@Designs[CarouselIndex].PreviewUrl" alt="@Designs[CarouselIndex].Title"
+                                             class="h-64 w-full object-cover sm:h-72" />
+                                    </div>
+                                    <button type="button" @onclick="Prev" class="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink/70 text-white hover:bg-gold hover:text-ink" aria-label="Anterior">‹</button>
+                                    <button type="button" @onclick="Next" class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink/70 text-white hover:bg-gold hover:text-ink" aria-label="Siguiente">›</button>
+                                    <p class="mt-2 truncate text-sm text-cream/80">@Designs[CarouselIndex].Title</p>
+                                    <p class="text-xs text-cream/50">@(CarouselIndex + 1) / @Designs.Count</p>
+                                </div>
+                                <div class="mt-3 flex gap-2 overflow-x-auto pb-2">
+                                    @for (var i = 0; i < Designs.Count; i++)
+                                    {
+                                        var idx = i;
+                                        var d = Designs[idx];
+                                        <button type="button" @onclick="() => CarouselIndex = idx"
+                                                class="h-20 w-16 shrink-0 overflow-hidden rounded-xl border @(CarouselIndex == idx ? "border-gold" : "border-white/10")">
+                                            <img src="@d.PreviewUrl" alt="@d.Title" class="h-full w-full object-cover" loading="lazy" />
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <label class="block text-sm">
+                            <span class="text-cream/85">Nombre del cliente</span>
+                            <InputText class="mt-2 min-h-11 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" autocomplete="name" @bind-Value="Nombre" />
+                        </label>
+
+                        <div class="text-sm">
+                            <span class="text-cream/85">Teléfono</span>
+                            <div class="mt-2 flex gap-2">
+                                <select @bind="CountryDial" class="min-h-11 w-32 shrink-0 rounded-2xl border border-white/10 bg-ink px-3 text-white outline-none focus:border-gold/60" aria-label="Código de país">
+                                    @foreach (var p in Paises)
+                                    {
+                                        <option value="@p.Dial">@p.Label</option>
+                                    }
+                                </select>
+                                <input class="min-h-11 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60"
+                                       inputmode="tel" maxlength="12" placeholder="Número" @bind="Telefono" />
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="block rounded-2xl border border-white/10 bg-ink/40 p-4 text-sm">
+                                <span class="text-cream/85">Conjuntos</span>
+                                <InputNumber class="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" min="0" @bind-Value="Conjuntos" />
+                            </label>
+                            <label class="block rounded-2xl border border-white/10 bg-ink/40 p-4 text-sm">
+                                <span class="text-cream/85">Polos solos</span>
+                                <InputNumber class="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" min="0" @bind-Value="Polos" />
+                            </label>
+                        </div>
+
+                        <label class="block text-sm">
+                            <span class="text-cream/85">Fecha estimada de entrega</span>
+                            <input type="date" min="@MinDate" class="mt-2 min-h-11 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60 [color-scheme:dark]" @bind="Fecha" @bind:format="yyyy-MM-dd" />
+                        </label>
+
+                        <label class="block text-sm">
+                            <span class="text-cream/85">Descripción breve</span>
+                            <InputTextArea class="mt-2 min-h-24 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" @bind-Value="Descripcion" />
+                        </label>
+
+                        @if (!string.IsNullOrWhiteSpace(Error))
+                        {
+                            <p class="text-sm text-rose-400" role="alert">@Error</p>
+                        }
+
+                        <button class="min-h-11 w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400" type="submit">
+                            Enviar por WhatsApp
+                        </button>
+                    </EditForm>
+                </article>
+            </section>
         </div>
-
-        <label class="block text-sm">
-            <span class="text-cream/85">Nombre</span>
-            <InputText class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" @bind-Value="Nombre" />
-        </label>
-
-        <label class="block text-sm">
-            <span class="text-cream/85">Teléfono</span>
-            <InputText class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" inputmode="tel" maxlength="9" placeholder="9 dígitos" @bind-Value="Telefono" />
-        </label>
-
-        <div class="text-sm">
-            <span class="text-cream/85">Pedido</span>
-            <div class="mt-2 flex flex-wrap gap-2">
-                <button type="button" @onclick='() => Tipo = "conjuntos"'
-                        class="rounded-full px-4 py-2 @(Tipo == "conjuntos" ? "bg-gold font-semibold text-ink" : "border border-white/15 text-cream/80")">
-                    Conjuntos
-                </button>
-                <button type="button" @onclick='() => Tipo = "polos"'
-                        class="rounded-full px-4 py-2 @(Tipo == "polos" ? "bg-gold font-semibold text-ink" : "border border-white/15 text-cream/80")">
-                    Polos
-                </button>
-            </div>
-            <InputNumber class="mt-3 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" min="1" @bind-Value="Cantidad" />
-        </div>
-
-        <label class="block text-sm">
-            <span class="text-cream/85">Fecha estimada de entrega</span>
-            <InputDate class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" @bind-Value="Fecha" />
-        </label>
-
-        <label class="block text-sm">
-            <span class="text-cream/85">Descripción breve</span>
-            <InputTextArea class="mt-2 min-h-24 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" @bind-Value="Descripcion" />
-        </label>
-
-        @if (!string.IsNullOrWhiteSpace(Error))
-        {
-            <p class="text-sm text-rose-400" role="alert">@Error</p>
-        }
-
-        <button class="min-h-11 w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400" type="submit">
-            Enviar por WhatsApp
-        </button>
-    </EditForm>
+    </div>
 </div>
 
 @code {
     private const string WhatsAppDestino = "51927577686";
+    private static readonly (string Dial, string Label)[] Paises =
+    [
+        ("51", "PE +51"),
+        ("57", "CO +57"),
+        ("593", "EC +593"),
+        ("56", "CL +56"),
+        ("54", "AR +54"),
+        ("591", "BO +591"),
+        ("52", "MX +52"),
+        ("1", "US +1"),
+        ("34", "ES +34")
+    ];
 
     private List<DesignDto> Designs = [];
-    private DesignDto? Selected;
+    private int CarouselIndex;
+    private bool ModeloDiferente;
+    private string? CustomPreview;
+    private string? CustomFileName;
     private string Nombre = "";
+    private string CountryDial = "51";
     private string Telefono = "";
-    private string Tipo = "conjuntos";
-    private int Cantidad = 1;
+    private int Conjuntos;
+    private int Polos;
     private DateTime Fecha = DateTime.Today.AddDays(10);
     private string Descripcion = "";
     private string? Error;
+    private string MinDate => DateTime.Today.ToString("yyyy-MM-dd");
+    private string TrabajoPrincipal => Designs.Count > 0 ? Designs[0].PreviewUrl : "/api/content/asset/prog-armado";
+    private IEnumerable<string> Trabajos =>
+        Designs.Skip(1).Take(4).Select(d => d.PreviewUrl)
+            .Concat(["/api/content/asset/prog-1", "/api/content/asset/prog-3", "/api/content/asset/prog-4"])
+            .Take(4);
 
     protected override async Task OnInitializedAsync()
     {
         Designs = (await Api.GetDesignsAsync() ?? [])
             .OrderByDescending(d => d.CreatedAt)
-            .Take(24)
             .ToList();
+    }
+
+    private void Prev()
+    {
+        if (Designs.Count == 0) return;
+        CarouselIndex = (CarouselIndex - 1 + Designs.Count) % Designs.Count;
+    }
+
+    private void Next()
+    {
+        if (Designs.Count == 0) return;
+        CarouselIndex = (CarouselIndex + 1) % Designs.Count;
+    }
+
+    private void AbrirModeloDiferente()
+    {
+        ModeloDiferente = true;
+        Error = null;
+    }
+
+    private void CerrarModeloDiferente()
+    {
+        ModeloDiferente = false;
+        CustomPreview = null;
+        CustomFileName = null;
+    }
+
+    private async Task OnCustomFile(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        if (file.Size > 4 * 1024 * 1024)
+        {
+            Error = "La imagen debe pesar menos de 4 MB.";
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(4 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        var b64 = Convert.ToBase64String(ms.ToArray());
+        var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
+        CustomPreview = $"data:{mime};base64,{b64}";
+        CustomFileName = file.Name;
+        Error = null;
     }
 
     private void EnviarWhatsApp()
     {
         Error = null;
         var tel = new string(Telefono.Where(char.IsDigit).ToArray());
-        if (string.IsNullOrWhiteSpace(Nombre) || tel.Length != 9)
+        var minDigits = CountryDial == "51" ? 9 : 6;
+        if (string.IsNullOrWhiteSpace(Nombre) || tel.Length < minDigits)
         {
-            Error = "Nombre y un teléfono de 9 dígitos.";
+            Error = "Nombre y un teléfono válido.";
             return;
         }
 
-        if (Selected is null)
+        if (Conjuntos < 1 && Polos < 1)
         {
-            Error = "Elige un modelo del catálogo.";
+            Error = "Indica conjuntos o polos.";
             return;
         }
 
-        if (Cantidad < 1)
+        string modelo;
+        if (ModeloDiferente)
         {
-            Error = "Indica la cantidad.";
-            return;
+            if (string.IsNullOrWhiteSpace(CustomFileName))
+            {
+                Error = "Sube tu modelo o vuelve al catálogo.";
+                return;
+            }
+
+            modelo = $"propio ({CustomFileName}). Adjuntaré la foto en el chat.";
+        }
+        else
+        {
+            if (Designs.Count == 0)
+            {
+                Error = "No hay modelos en el catálogo.";
+                return;
+            }
+
+            modelo = Designs[CarouselIndex].Title;
         }
 
-        var tipoLabel = Tipo == "polos" ? "polos" : "conjuntos";
         var texto =
             "Hola, quiero una cotización de Simber Designs.\n\n" +
             $"Nombre: {Nombre.Trim()}\n" +
-            $"Teléfono: {tel}\n" +
-            $"Modelo: {Selected.Title}\n" +
-            $"Pedido: {Cantidad} {tipoLabel}\n" +
+            $"Teléfono: +{CountryDial} {tel}\n" +
+            $"Modelo: {modelo}\n" +
+            $"Conjuntos: {Conjuntos}\n" +
+            $"Polos solos: {Polos}\n" +
             $"Fecha estimada: {Fecha:dd/MM/yyyy}\n" +
             $"Descripción: {(string.IsNullOrWhiteSpace(Descripcion) ? "-" : Descripcion.Trim())}";
 
