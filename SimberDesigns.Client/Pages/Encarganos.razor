@@ -37,9 +37,9 @@
                         <div>
                             <div class="flex flex-wrap items-end justify-between gap-3">
                                 <p class="text-sm text-cream/85">Modelo</p>
-                                <button type="button" @onclick="AbrirModeloDiferente"
+                                <button type="button" @onclick="ToggleModeloDiferente"
                                         class="min-h-11 rounded-full border border-white/20 px-4 text-sm text-cream hover:border-gold/50">
-                                    Modelo diferente
+                                    @(ModeloDiferente ? "Mostrar modelos" : "Modelo diferente")
                                 </button>
                             </div>
 
@@ -53,7 +53,6 @@
                                     {
                                         <img src="@CustomPreview" alt="Modelo propio" class="mt-4 max-h-48 rounded-xl object-contain" />
                                     }
-                                    <button type="button" @onclick="CerrarModeloDiferente" class="mt-3 text-sm text-cream/70 hover:text-gold">Usar catálogo</button>
                                 </div>
                             }
                             else if (Designs.Count > 0)
@@ -196,17 +195,19 @@
         CarouselIndex = (CarouselIndex + 1) % Designs.Count;
     }
 
-    private void AbrirModeloDiferente()
+    private void ToggleModeloDiferente()
     {
-        ModeloDiferente = true;
+        if (ModeloDiferente)
+        {
+            ModeloDiferente = false;
+            CustomPreview = null;
+            CustomFileName = null;
+        }
+        else
+        {
+            ModeloDiferente = true;
+        }
         Error = null;
-    }
-
-    private void CerrarModeloDiferente()
-    {
-        ModeloDiferente = false;
-        CustomPreview = null;
-        CustomFileName = null;
     }
 
     private async Task OnCustomFile(InputFileChangeEventArgs e)
