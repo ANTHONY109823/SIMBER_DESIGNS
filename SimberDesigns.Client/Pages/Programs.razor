@@ -17,19 +17,34 @@
                 @T("programas.desc", "Herramienta de apoyo para CorelDRAW e Illustrator: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.")
             </p>
             <ul class="mt-6 space-y-2 text-sm text-cream/80">
-                <li>Windows · sin instalar nada; trabaja dentro de tu programa de diseño</li>
-                <li>Funciona en <strong class="text-white">CorelDRAW</strong> y <strong class="text-white">Adobe Illustrator</strong></li>
-                <li>Pago mensual con Mercado Pago · <strong class="text-white">se activa solo</strong> en tu PC</li>
-                <li>Armado automático, nombres y dorsales de la lista, y lectura con IA</li>
+                <li>Windows · dos ejecutables distintos, como la V1: uno para CorelDRAW y otro para Illustrator</li>
+                <li>La descarga es gratis. El mes (US$15) <strong class="text-white">solo activa 30 días en 1 PC</strong></li>
+                <li>Entras con usuario y contraseña; al pagar o renovar aparece la clave del mes en tu cuenta</li>
+                <li>Al abrir, el programa se conecta a internet y comprueba si el mes sigue vigente</li>
             </ul>
             <div class="mt-8 flex flex-wrap gap-3">
-                <a href="/api/plugin/download"
-                   class="inline-flex min-h-11 items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
-                    Descargar SIMBER DESIGNS
-                </a>
-                <a href="/recargar" class="inline-flex min-h-11 items-center rounded-full border border-white/15 px-6 py-3 text-sm text-cream hover:border-gold/50">
-                    Pagar el mes (Mercado Pago)
-                </a>
+                @if (HasCorel)
+                {
+                    <a href="/api/plugin/download/corel"
+                       class="inline-flex min-h-11 items-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
+                        Descargar CorelDRAW
+                    </a>
+                }
+                else
+                {
+                    <span class="inline-flex min-h-11 items-center rounded-full border border-white/15 px-6 py-3 text-sm text-cream/60">CorelDRAW · en breve</span>
+                }
+                @if (HasIllustrator)
+                {
+                    <a href="/api/plugin/download/illustrator"
+                       class="inline-flex min-h-11 items-center rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
+                        Descargar Illustrator
+                    </a>
+                }
+                else
+                {
+                    <span class="inline-flex min-h-11 items-center rounded-full border border-white/15 px-6 py-3 text-sm text-cream/60">Illustrator · en breve</span>
+                }
             </div>
         </div>
 
@@ -104,36 +119,38 @@
 
     <div class="mt-8 grid gap-6 md:grid-cols-2">
         <article class="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-8">
-            <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">Plan mensual</span>
+            <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">CorelDRAW</span>
             <p class="mt-6 flex items-end gap-2">
-                <span class="text-5xl font-extrabold text-white">$@T("programas.price", "15")</span>
-                <span class="pb-1 text-sm text-cream/75">USD / mes · por PC · ≈ S/56</span>
+                <span class="text-5xl font-extrabold text-white">$15</span>
+                <span class="pb-1 text-sm text-cream/75">USD / 30 días · 1 PC · ≈ S/56</span>
             </p>
-            <ul class="mt-6 space-y-3 text-sm text-cream/85">
-                <li>Funciona en CorelDRAW y Adobe Illustrator</li>
-                <li>Armado automático con nombres y dorsales de tu lista</li>
-                <li>Lectura de listas con IA desde una foto</li>
-                <li>Se activa solo para tu PC (1 licencia por PC)</li>
-                <li>Pago por Mercado Pago; renovas cuando quieras</li>
-            </ul>
-            <a href="/recargar"
-               class="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
-                Pagar el mes
-            </a>
+            <p class="mt-4 text-sm text-cream/80">No estás comprando el programa. Estás activando ese mes en una PC. Incluye IA mientras el mes esté vigente.</p>
+            @if (HasCorel)
+            {
+                <a href="/api/plugin/download/corel" class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/15 px-4 py-3 text-sm text-cream hover:border-gold/50">Descargar .exe Corel</a>
+            }
+            else
+            {
+                <p class="mt-6 text-center text-sm text-cream/60">El .exe se publicará aquí cuando el admin lo suba.</p>
+            }
+            <a href="/recargar" class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Activar el mes</a>
         </article>
-
-        <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-            <h3 class="text-xl font-bold text-white">Cómo funciona</h3>
-            <ol class="mt-6 list-decimal list-inside space-y-3 text-sm text-cream/85">
-                <li>Descargas el programa gratis (botón de arriba).</li>
-                <li>Creas tu cuenta y pagas el mes con Mercado Pago.</li>
-                <li>Abres el programa, entras con tu email y se activa solo para esa PC.</li>
-                <li>Al mes: si pagas, se renueva; si no, se bloquea al vencer.</li>
-            </ol>
-            <a href="/api/plugin/download"
-               class="mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/15 px-4 py-3 text-sm text-cream hover:border-gold/50">
-                Descargar ahora
-            </a>
+        <article class="rounded-2xl border border-cyan/30 bg-cyan/5 p-8">
+            <span class="rounded-full bg-cyan px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">Illustrator</span>
+            <p class="mt-6 flex items-end gap-2">
+                <span class="text-5xl font-extrabold text-white">$15</span>
+                <span class="pb-1 text-sm text-cream/75">USD / 30 días · 1 PC · ≈ S/56</span>
+            </p>
+            <p class="mt-4 text-sm text-cream/80">Mismo precio, otro ejecutable. Entras con tu cuenta; al pagar recibes la clave del mes. Al abrir, valida por internet.</p>
+            @if (HasIllustrator)
+            {
+                <a href="/api/plugin/download/illustrator" class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/15 px-4 py-3 text-sm text-cream hover:border-gold/50">Descargar .exe Illustrator</a>
+            }
+            else
+            {
+                <p class="mt-6 text-center text-sm text-cream/60">El .exe se publicará aquí cuando el admin lo suba.</p>
+            }
+            <a href="/recargar" class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Activar el mes</a>
         </article>
     </div>
 </section>
@@ -141,12 +158,21 @@
 @code {
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
     private Dictionary<string, string> _c = new();
+    private bool HasCorel;
+    private bool HasIllustrator;
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
 
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+        try
+        {
+            var store = await Api.GetStorefrontAsync();
+            HasCorel = store?.HasCorelDownload == true;
+            HasIllustrator = store?.HasIllustratorDownload == true;
+        }
+        catch { }
     }
 
     private static readonly FeatureItem[] Features =

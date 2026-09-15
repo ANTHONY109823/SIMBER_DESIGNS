@@ -7,11 +7,11 @@
 <section class="border-y border-white/10 bg-white/[0.03]">
     <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">
         <div>
-            <p class="text-xs uppercase tracking-[0.28em] text-gold">Suscripción</p>
-            <h2 class="mt-2 font-serif text-3xl text-white">S/@(PricePen.ToString("0"))/mes · ≈ US$15</h2>
-            <p class="mt-2 max-w-xl text-sm text-cream/80">Lectura de listas con IA ilimitada. CorelDRAW e Illustrator. 1 PC. Cancela cuando quieras.</p>
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">Activación mensual</p>
+            <h2 class="mt-2 font-serif text-3xl text-white">S/@(PricePen.ToString("0")) / 30 días · ≈ US$15</h2>
+            <p class="mt-2 max-w-xl text-sm text-cream/80">El programa se descarga gratis. US$15 / S/56 activa 30 días en 1 PC, Corel o Illustrator por separado. Al abrir, valida el mes por internet.</p>
         </div>
-        <a href="/recargar" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Pagar el mes</a>
+        <a href="/recargar" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Activar el mes</a>
     </div>
 </section>
 
@@ -91,10 +91,10 @@
 
     private static readonly (string Num, string Title, string Text)[] Steps =
     [
-        ("01", "Descarga el programa", "Un .exe para Windows. Trabaja dentro de CorelDRAW o Illustrator, sin instalar extra."),
-        ("02", "Paga el mes", "S/56 ≈ US$15 por 1 PC. Incluye lectura de listas con IA ilimitada."),
-        ("03", "Actívalo en tu PC", "El código aparece en Mi cuenta. Lo pegas una vez; el programa valida el mes por internet."),
-        ("04", "Arma con IA", "Lees la lista (foto o Excel), tomas los moldes y el programa acomoda nombres y dorsales.")
+        ("01", "Descarga tu .exe", "Hay uno para CorelDRAW y otro para Illustrator. Es gratis: no estás comprando el programa."),
+        ("02", "Activa el mes", "US$15 ≈ S/56 por 30 días en 1 PC. Al pagar, en Mi cuenta aparece la clave de ese mes."),
+        ("03", "Entra en esa PC", "Usuario y contraseña (los puedes crear en la web). El programa se ata a esa máquina."),
+        ("04", "Sigue en línea", "Cada vez que abres, comprueba por internet si el mes sigue vigente. Si no renovas, se bloquea.")
     ];
 
     protected override async Task OnInitializedAsync()

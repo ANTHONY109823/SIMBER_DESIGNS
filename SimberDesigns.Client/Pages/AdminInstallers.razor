@@ -1,0 +1,98 @@
+@page "/admin/installers"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<PageTitle>Ejecutables · Admin</PageTitle>
+
+<div class="p-6 md:p-8 max-w-4xl">
+    <h1 class="text-2xl md:text-3xl font-extrabold text-white">Ejecutables para descargar</h1>
+    <p class="mt-2 max-w-2xl text-sm text-slate-400">
+        Sube el .exe de Corel y el de Illustrator. El cliente los baja gratis; el cobro es al activar el mes (US$15 / S/56, 30 días, 1 PC). Tras el deploy de Railway hay que volver a subirlos si el disco se vacía.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p class="mt-4 text-sm @(Message.StartsWith("Listo") ? "text-emerald-400" : "text-rose-400")">@Message</p>
+    }
+
+    <div class="mt-8 grid gap-5 md:grid-cols-2">
+        @foreach (var slot in Slots)
+        {
+            var status = StatusFor(slot.Edition);
+            <article class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+                <p class="text-xs uppercase tracking-wider text-emerald-400">@slot.Label</p>
+                <h2 class="mt-2 text-xl font-bold text-white">@slot.Title</h2>
+                @if (status?.Ready == true)
+                {
+                    <p class="mt-3 text-sm text-emerald-300">Listo · @FormatSize(status.SizeBytes)</p>
+                    <p class="mt-1 text-xs text-slate-500">@(status.UpdatedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "")</p>
+                    <a href="@($"/api/plugin/download/{slot.Slug}")" class="mt-3 inline-block text-sm text-emerald-400 underline">Probar descarga</a>
+                }
+                else
+                {
+                    <p class="mt-3 text-sm text-amber-300">Aún no hay archivo. Los visitantes verán que falta la descarga.</p>
+                }
+                <label class="mt-5 block text-sm text-slate-300">
+                    <span>Subir .exe</span>
+                    <InputFile OnChange="e => OnFile(slot.Edition, e)" accept=".exe,.zip" class="mt-2 w-full text-xs text-slate-400" />
+                </label>
+                @if (Uploading == slot.Edition)
+                {
+                    <p class="mt-2 text-xs text-emerald-400">Subiendo… puede tardar.</p>
+                }
+            </article>
+        }
+    </div>
+</div>
+
+@code {
+    private List<PluginInstallerStatusDto> Status = [];
+    private string? Uploading;
+    private string? Message;
+
+    private static readonly Slot[] Slots =
+    [
+        new("Corel", "corel", "CorelDRAW", "SIMBER DESIGNS para CorelDRAW"),
+        new("Illustrator", "illustrator", "Illustrator", "SIMBER DESIGNS para Illustrator")
+    ];
+
+    protected override Task OnInitializedAsync() => Reload();
+
+    private PluginInstallerStatusDto? StatusFor(string edition)
+        => Status.FirstOrDefault(s => string.Equals(s.Edition, edition, StringComparison.OrdinalIgnoreCase));
+
+    private async Task Reload()
+    {
+        try { Status = await Api.GetInstallersAsync() ?? []; }
+        catch { Status = []; }
+    }
+
+    private async Task OnFile(string edition, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        Message = null;
+        Uploading = edition;
+        try
+        {
+            await using var stream = file.OpenReadStream(110 * 1024 * 1024);
+            await Api.UploadInstallerAsync(edition, stream, file.Name);
+            Message = "Listo. El archivo ya está disponible para descargar.";
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+        finally
+        {
+            Uploading = null;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+        => bytes < 1024 * 1024 ? $"{bytes / 1024.0:0} KB" : $"{bytes / (1024.0 * 1024.0):0.0} MB";
+
+    private sealed record Slot(string Edition, string Slug, string Label, string Title);
+}

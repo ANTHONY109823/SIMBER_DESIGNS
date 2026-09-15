@@ -7,32 +7,58 @@
 <PageTitle>Precios · Simber Designs</PageTitle>
 
 <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6">
-    <p class="text-xs uppercase tracking-[0.28em] text-gold">Suscripción · Mercado Pago</p>
-    <h1 class="mt-3 font-serif text-4xl text-white sm:text-5xl">Activa SIMBER DESIGNS</h1>
-    <p class="mt-3 max-w-xl text-sm text-cream/80">
-        Paga el mes con Yape o tarjeta y actívalo en tu PC en segundos. Incluye lectura de listas con IA ilimitada.
+    <p class="text-xs uppercase tracking-[0.28em] text-gold">Activación mensual · Mercado Pago</p>
+    <h1 class="mt-3 font-serif text-4xl text-white sm:text-5xl">Activa el mes, no compras el programa</h1>
+    <p class="mt-3 max-w-2xl text-sm text-cream/80">
+        El .exe se descarga gratis. Pagas US$15 (S/ @(PluginPrice.ToString("0"))) para <strong class="text-white">activar 30 días en 1 PC</strong>.
+        Hay un ejecutable para CorelDRAW y otro para Illustrator. Al abrir, el programa entra con tu usuario y verifica la licencia por internet.
     </p>
 
-    <!-- HERO: suscripción mensual del programa (producto principal, estilo Adobe) -->
-    <div class="mt-10 rounded-3xl border border-emerald-500/30 bg-emerald-500/[0.06] p-6 sm:p-8">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-            <div>
-                <p class="text-xs uppercase tracking-[0.2em] text-emerald-300">Programa · CorelDRAW e Illustrator · 1 PC</p>
-                <h2 class="mt-2 font-serif text-3xl text-white">@PluginName</h2>
-            </div>
-            <p class="font-serif text-4xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/80">/ mes · ≈ US$15</span></p>
-        </div>
-        <ul class="mt-5 grid gap-2 text-sm text-cream/70 sm:grid-cols-2">
-            <li>✓ Armado y acomodo ilimitado en CorelDRAW e Illustrator</li>
-            <li>✓ <strong class="text-white">Lectura de listas con IA ilimitada</strong> (incluida)</li>
-            <li>✓ Nombres y dorsales automáticos desde tu lista</li>
-            <li>✓ Se activa en tu PC (1 licencia por PC)</li>
-        </ul>
-        <button type="button" disabled="@Busy" @onclick="PayPlugin"
-                class="mt-6 rounded-full bg-emerald-500 px-7 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-            Pagar el mes
-        </button>
-        <p class="mt-3 text-xs text-cream/45">En tu cuenta aparece el código de activación para pegarlo una vez en el programa.</p>
+    <div class="mt-10 grid gap-5 md:grid-cols-2">
+        <article class="rounded-3xl border border-emerald-500/30 bg-emerald-500/[0.06] p-6 sm:p-8">
+            <p class="text-xs uppercase tracking-[0.2em] text-emerald-300">CorelDRAW · 1 PC</p>
+            <h2 class="mt-2 font-serif text-3xl text-white">Mes de CorelDRAW</h2>
+            <p class="mt-2 font-serif text-4xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/80">/ 30 días · ≈ US$15</span></p>
+            <ul class="mt-5 space-y-2 text-sm text-cream/80">
+                <li>Descarga el .exe de Corel (gratis)</li>
+                <li>IA ilimitada mientras el mes esté activo</li>
+                <li>Clave de este mes en Mi cuenta al pagar o renovar</li>
+            </ul>
+            @if (HasCorel)
+            {
+                <a href="/api/plugin/download/corel" class="mt-5 inline-block text-sm text-emerald-300 hover:underline">Descargar CorelDRAW</a>
+            }
+            else
+            {
+                <p class="mt-5 text-sm text-cream/55">El .exe se publica cuando el admin lo sube.</p>
+            }
+            <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-corel", null, null)'
+                    class="mt-4 block w-full rounded-full bg-emerald-500 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+                Activar el mes de Corel
+            </button>
+        </article>
+        <article class="rounded-3xl border border-cyan/30 bg-cyan/5 p-6 sm:p-8">
+            <p class="text-xs uppercase tracking-[0.2em] text-cyan">Illustrator · 1 PC</p>
+            <h2 class="mt-2 font-serif text-3xl text-white">Mes de Illustrator</h2>
+            <p class="mt-2 font-serif text-4xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/80">/ 30 días · ≈ US$15</span></p>
+            <ul class="mt-5 space-y-2 text-sm text-cream/80">
+                <li>Descarga el .exe de Illustrator (gratis)</li>
+                <li>IA ilimitada mientras el mes esté activo</li>
+                <li>Clave de este mes en Mi cuenta al pagar o renovar</li>
+            </ul>
+            @if (HasIllustrator)
+            {
+                <a href="/api/plugin/download/illustrator" class="mt-5 inline-block text-sm text-cyan hover:underline">Descargar Illustrator</a>
+            }
+            else
+            {
+                <p class="mt-5 text-sm text-cream/55">El .exe se publica cuando el admin lo sube.</p>
+            }
+            <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-illustrator", null, null)'
+                    class="mt-4 block w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                Activar el mes de Illustrator
+            </button>
+        </article>
     </div>
 
     <!-- Créditos: SOLO para descargar diseños del catálogo -->
@@ -64,7 +90,7 @@
             </div>
             <div>
                 <dt class="font-semibold text-white">¿Cuánto sale el mes?</dt>
-                <dd class="mt-1 text-cream/65">S/ @PluginPrice.ToString("0") al mes (≈ US$15), 1 PC. Activación al instante en tu cuenta.</dd>
+                <dd class="mt-1 text-cream/65">S/ @PluginPrice.ToString("0") al mes (≈ US$15) por programa, 1 PC. El .exe no se vende: solo se activa el mes.</dd>
             </div>
             <div>
                 <dt class="font-semibold text-white">¿Puedo cancelar?</dt>
@@ -72,7 +98,7 @@
             </div>
             <div>
                 <dt class="font-semibold text-white">¿El programa es gratis para bajar?</dt>
-                <dd class="mt-1 text-cream/65">Sí. Lo descargas desde Programas; el cobro es al activar el mes.</dd>
+                <dd class="mt-1 text-cream/65">Sí. Corel e Illustrator se bajan aparte desde Programas. El cobro es al activar ese mes en esa PC.</dd>
             </div>
         </dl>
         <p class="mt-6 text-xs text-cream/50">Activación al instante · Yape o tarjeta · Cancela cuando quieras.</p>
@@ -87,7 +113,8 @@
 @code {
     private List<CreditPackageDto> Packages { get; set; } = [];
     private decimal PluginPrice { get; set; } = 56;
-    private string PluginName { get; set; } = "Plugin Premium · 1 PC · 30 días";
+    private bool HasCorel;
+    private bool HasIllustrator;
     private bool Busy;
     private string? Error;
 
@@ -98,18 +125,14 @@
         {
             Packages = store.Packages;
             PluginPrice = store.PluginMonthPricePen;
-            PluginName = store.PluginPlanName;
+            HasCorel = store.HasCorelDownload;
+            HasIllustrator = store.HasIllustratorDownload;
         }
     }
 
     private async Task PayCredits(CreditPackageDto pack)
     {
         await StartCheckout("credits", pack.Id, null);
-    }
-
-    private async Task PayPlugin()
-    {
-        await StartCheckout("plugin", null, "month-1pc");
     }
 
     private async Task StartCheckout(string kind, Guid? packageId, string? planKey)

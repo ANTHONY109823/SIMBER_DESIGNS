@@ -57,7 +57,8 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
                 l.ExpiresAt,
                 l.HardwareId,
                 l.ActivationCode,
-                l.CreatedAt))
+                l.CreatedAt,
+                l.Edition))
             .ToListAsync(ct);
 
         return Ok(list);

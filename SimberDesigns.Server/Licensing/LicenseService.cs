@@ -14,8 +14,9 @@ public sealed class LicenseSigner
 
     public LicenseSigner(string privateKeyBase64) => _privateKeyBase64 = privateKeyBase64;
 
-    /// <summary>Emite una licencia nueva para un cliente. <paramref name="incluyeIa"/> = versión Premium.</summary>
-    public string Issue(string hardwareId, LicensePlan plan, DateTime expiresUtc, string customer = "", bool incluyeIa = false)
+    /// <summary>Emite una licencia nueva. <paramref name="edition"/> = Corel o Illustrator.
+    /// Vacío = legado. V2 web siempre pasa incluyeIa=true.</summary>
+    public string Issue(string hardwareId, LicensePlan plan, DateTime expiresUtc, string customer = "", bool incluyeIa = false, string? edition = null)
     {
         var info = new LicenseInfo
         {
@@ -24,7 +25,8 @@ public sealed class LicenseSigner
             IssuedUtc = DateTime.UtcNow,
             ExpiresUtc = expiresUtc.ToUniversalTime(),
             Customer = customer,
-            IncluyeIa = incluyeIa
+            IncluyeIa = incluyeIa,
+            Edition = string.IsNullOrWhiteSpace(edition) ? LicenseProgram.Legacy : edition.Trim()
         };
         return Sign(info);
     }

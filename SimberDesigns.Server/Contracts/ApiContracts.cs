@@ -36,19 +36,27 @@ public sealed record ConfirmPaymentRequest(Guid? TransactionId, string? PaymentI
 public sealed record StorefrontDto(
     IReadOnlyList<CreditPackageDto> Packages,
     decimal PluginMonthPricePen,
-    string PluginPlanName);
+    string PluginPlanName,
+    bool HasCorelDownload,
+    bool HasIllustratorDownload);
 public sealed record PluginLicenseDto(
     string Plan,
     string Status,
     string ActivationCode,
     DateTime ExpiresAt,
     bool IsActive,
-    string? HardwareId);
+    string? HardwareId,
+    string Edition);
 
-// El .exe manda su HWID; el servidor devuelve el token FIRMADO (SIMBER.payload.firma) que el
-// plugin valida offline con la llave pública embebida.
-public sealed record PluginActivateRequest(string HardwareId);
-public sealed record PluginTokenDto(string Token, DateTime ExpiresAt, string Plan);
+// El .exe manda su HWID y el programa (Corel / Illustrator); el servidor devuelve el token FIRMADO.
+public sealed record PluginActivateRequest(string HardwareId, string? Edition);
+public sealed record PluginInstallerStatusDto(
+    string Edition,
+    bool Ready,
+    string? FileName,
+    long SizeBytes,
+    DateTime? UpdatedAt);
+public sealed record PluginTokenDto(string Token, DateTime ExpiresAt, string Plan, string Edition);
 
 // ---- Panel de administración ----
 public sealed record AdminMetricsDto(
@@ -69,7 +77,8 @@ public sealed record AdminLicenseDto(
     DateTime ExpiresAt,
     string? HardwareId,
     string ActivationCode,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string Edition);
 
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 

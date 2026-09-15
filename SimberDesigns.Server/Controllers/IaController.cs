@@ -75,7 +75,7 @@ public sealed class IaController(
         // la suscripción de $15/mes está pagada, una licencia vigente ES una suscripción activa.
         var check = new LicenseVerifier(publicKey).Verify(licencia, hwid);
         if (check.Status != LicenseStatus.Valid)
-            return StatusCode(StatusCodes.Status403Forbidden, "Tu suscripción no está activa para esta PC. Renueva el mes en la web.");
+            return StatusCode(StatusCodes.Status403Forbidden, "Tu mes no está activo en esta PC. Renueva en la web.");
 
         // La IA es de la versión web (V2, PREMIUM). Las licencias V1 no la usan.
         if (check.Info?.IncluyeIa != true)

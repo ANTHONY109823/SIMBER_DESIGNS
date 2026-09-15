@@ -15,31 +15,49 @@
             <p class="mt-2 font-serif text-4xl text-gold">@Credits.ToString("0")</p>
             <a href="/recargar" class="mt-4 inline-block text-sm text-gold hover:underline">Recargar</a>
         </article>
-        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <p class="text-xs uppercase tracking-wider text-cream/45">Suscripción del programa · 1 PC</p>
-            @if (License is { IsActive: true })
+        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:col-span-2">
+            <p class="text-xs uppercase tracking-wider text-cream/70">Mes activo · 1 PC por programa</p>
+            @if (Licenses.Count == 0)
             {
-                <p class="mt-2 text-lg text-white">Activa hasta @License.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
-                <p class="mt-1 text-xs @DaysColor">@DaysLabel</p>
-                <p class="mt-1 text-xs text-emerald-300">✓ Incluye lectura de listas con IA ilimitada</p>
-                <p class="mt-3 font-mono text-sm text-cyan">@License.ActivationCode</p>
-                <p class="mt-2 text-xs text-cream/55">Pégalo una vez en el programa. El programa valida tu mes por internet al abrir.</p>
-                @if (DaysLeft <= 10)
-                {
-                    <a href="/recargar" class="mt-4 inline-block rounded-full bg-gold px-5 py-2 text-sm font-semibold text-ink">Renovar mes</a>
-                }
+                <p class="mt-2 text-sm text-cream/80">Aún no hay un mes pagado. El .exe es gratis; aquí aparece la clave cuando pagas o renovas.</p>
+                <a href="/recargar" class="mt-4 inline-block rounded-full bg-gold px-5 py-2 text-sm font-semibold text-ink">Activar un mes</a>
             }
             else
             {
-                <p class="mt-2 text-sm text-cream/55">Sin mes activo.</p>
-                <a href="/recargar" class="mt-4 inline-block rounded-full bg-gold px-5 py-2 text-sm font-semibold text-ink">Pagar el mes (≈ US$15)</a>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    @foreach (var lic in Licenses)
+                    {
+                        <div class="rounded-2xl border border-white/10 p-4">
+                            <p class="text-xs uppercase tracking-wider text-gold">@(string.IsNullOrWhiteSpace(lic.Edition) ? "Programa" : lic.Edition)</p>
+                            @if (lic.IsActive)
+                            {
+                                <p class="mt-2 text-white">Activo hasta @lic.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+                                <p class="mt-1 text-xs text-emerald-300">IA incluida este mes</p>
+                            }
+                            else
+                            {
+                                <p class="mt-2 text-sm text-cream/80">Mes vencido.</p>
+                            }
+                            <p class="mt-3 font-mono text-sm text-cyan">@lic.ActivationCode</p>
+                            <p class="mt-1 text-xs text-cream/70">Clave de este mes. El programa la usa al entrar en esa PC y vuelve a comprobar por internet al abrir.</p>
+                            <a href="/recargar" class="mt-3 inline-block text-sm text-gold hover:underline">@(lic.IsActive ? "Renovar" : "Activar de nuevo")</a>
+                        </div>
+                    }
+                </div>
             }
         </article>
     </div>
 
     <div class="mt-8 flex flex-wrap gap-3">
-        <a href="/api/plugin/download" class="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">Descargar programa</a>
-        <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Cómo se instala</a>
+        @if (HasCorel)
+        {
+            <a href="/api/plugin/download/corel" class="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">Descargar CorelDRAW</a>
+        }
+        @if (HasIllustrator)
+        {
+            <a href="/api/plugin/download/illustrator" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar Illustrator</a>
+        }
+        <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Cómo se activa</a>
     </div>
 
     @if (CreditLogs.Count > 0 || Transactions.Count > 0)
@@ -83,12 +101,11 @@
     private string Name = "";
     private string Email = "";
     private decimal Credits;
-    private PluginLicenseDto? License;
+    private List<PluginLicenseDto> Licenses = [];
     private List<CreditLogDto> CreditLogs = [];
     private List<TransactionDto> Transactions = [];
-    private int DaysLeft => License is null ? 0 : Math.Max(0, (License.ExpiresAt.ToLocalTime().Date - DateTime.Now.Date).Days);
-    private string DaysLabel => DaysLeft == 1 ? "Queda 1 día" : $"Quedan {DaysLeft} días";
-    private string DaysColor => DaysLeft <= 2 ? "text-rose-300" : DaysLeft <= 7 ? "text-amber-300" : "text-cream/55";
+    private bool HasCorel;
+    private bool HasIllustrator;
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,7 +119,10 @@
             Transactions = dash.Transactions ?? [];
         }
 
-        License = await Api.GetPluginLicenseAsync();
+        Licenses = await Api.GetPluginLicensesAsync() ?? [];
+        var store = await Api.GetStorefrontAsync();
+        HasCorel = store?.HasCorelDownload == true;
+        HasIllustrator = store?.HasIllustratorDownload == true;
     }
 
     private static string StatusText(string s) => s switch

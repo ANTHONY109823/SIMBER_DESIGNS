@@ -116,6 +116,8 @@ public sealed class PluginLicense
     public string? HardwareId { get; set; }
     public string Plan { get; set; } = PluginPlans.Month1Pc;
     public string Status { get; set; } = PluginLicenseStatuses.Active;
+    /// <summary>Corel o Illustrator. Vacío = licencia vieja (se ata al primer .exe que active).</summary>
+    public string Edition { get; set; } = string.Empty;
     public string ActivationCode { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; }

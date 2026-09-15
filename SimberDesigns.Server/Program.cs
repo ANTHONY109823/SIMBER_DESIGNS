@@ -37,6 +37,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         .UseSnakeCaseNamingConvention());
 
 builder.Services.AddSingleton<LocalCatalogStorage>();
+builder.Services.AddSingleton<PluginInstallerStorage>();
 builder.Services.AddSingleton<ICloudflareR2Service, CloudflareR2Service>();
 builder.Services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
 builder.Services.AddSingleton<ILemonSqueezySignatureVerifier, LemonSqueezySignatureVerifier>();

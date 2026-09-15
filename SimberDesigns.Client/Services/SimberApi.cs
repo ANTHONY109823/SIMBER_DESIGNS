@@ -32,7 +32,9 @@ public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bo
 public sealed record StorefrontDto(
     List<CreditPackageDto> Packages,
     decimal PluginMonthPricePen,
-    string PluginPlanName);
+    string PluginPlanName,
+    bool HasCorelDownload = false,
+    bool HasIllustratorDownload = false);
 
 public sealed record PluginLicenseDto(
     string Plan,
@@ -40,7 +42,15 @@ public sealed record PluginLicenseDto(
     string ActivationCode,
     DateTime ExpiresAt,
     bool IsActive,
-    string? HardwareId);
+    string? HardwareId,
+    string Edition = "");
+
+public sealed record PluginInstallerStatusDto(
+    string Edition,
+    bool Ready,
+    string? FileName,
+    long SizeBytes,
+    DateTime? UpdatedAt);
 
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 
@@ -105,7 +115,8 @@ public sealed record AdminLicenseDto(
     DateTime ExpiresAt,
     string? HardwareId,
     string ActivationCode,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string Edition = "");
 
 public sealed class SimberApi(HttpClient http)
 {
@@ -240,16 +251,39 @@ public sealed class SimberApi(HttpClient http)
         }
     }
 
-    public async Task<PluginLicenseDto?> GetPluginLicenseAsync()
+    public async Task<List<PluginLicenseDto>?> GetPluginLicensesAsync()
     {
         var response = await http.GetAsync("api/plugin/me");
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            return null;
+            return [];
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<PluginLicenseDto>();
+        return await response.Content.ReadFromJsonAsync<List<PluginLicenseDto>>() ?? [];
+    }
+
+    public async Task<PluginLicenseDto?> GetPluginLicenseAsync()
+    {
+        var all = await GetPluginLicensesAsync();
+        return all?.FirstOrDefault();
+    }
+
+    public Task<List<PluginInstallerStatusDto>?> GetInstallersAsync()
+        => http.GetFromJsonAsync<List<PluginInstallerStatusDto>>("api/plugin/installers");
+
+    public async Task UploadInstallerAsync(string edition, Stream file, string fileName)
+    {
+        using var content = new MultipartFormDataContent();
+        var part = new StreamContent(file);
+        part.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        content.Add(part, "file", fileName);
+        var response = await http.PostAsync($"api/plugin/installers/{Uri.EscapeDataString(edition)}", content);
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo subir el ejecutable." : body);
+        }
     }
 
     public async Task SubmitManualPaymentAsync(Stream proof, string fileName, string itemKey)

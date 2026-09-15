@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SimberDesigns.Licensing;
 using SimberDesigns.Server.Contracts;
 using SimberDesigns.Server.Data;
 using SimberDesigns.Server.Models;
@@ -17,7 +18,8 @@ public sealed class PaymentsController(
     ICloudflareR2Service r2,
     IMercadoPagoService mercadoPago,
     IPaymentFulfillmentService fulfillment,
-    IOptions<MercadoPagoOptions> mercadoPagoOptions) : ControllerBase
+    IOptions<MercadoPagoOptions> mercadoPagoOptions,
+    PluginInstallerStorage installers) : ControllerBase
 {
     [HttpGet("packages")]
     [AllowAnonymous]
@@ -42,7 +44,12 @@ public sealed class PaymentsController(
             .OrderBy(p => p.PriceUsd)
             .Select(p => new CreditPackageDto(p.Id, p.Name, p.CreditsAmount, p.BonusAmount, p.PriceUsd))
             .ToListAsync(cancellationToken);
-        return Ok(new StorefrontDto(items, mercadoPagoOptions.Value.PluginMonthPricePen, "Plugin Premium · 1 PC · 30 días"));
+        return Ok(new StorefrontDto(
+            items,
+            mercadoPagoOptions.Value.PluginMonthPricePen,
+            "Activación 30 días · US$15 por programa",
+            installers.Exists(LicenseProgram.Corel),
+            installers.Exists(LicenseProgram.Illustrator)));
     }
 
     [Authorize]
@@ -68,11 +75,21 @@ public sealed class PaymentsController(
         string notes;
         string currency = "PEN";
 
-        if (kind is "plugin" or "month-1pc" or PluginPlans.Month1Pc)
+        if (kind is "plugin-corel" or "corel")
         {
             amount = mercadoPagoOptions.Value.PluginMonthPricePen;
-            title = "Simber Plugin Premium · 30 días";
-            notes = $"plugin:{PluginPlans.Month1Pc}";
+            title = "Activación 30 días · CorelDRAW";
+            notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Corel}";
+        }
+        else if (kind is "plugin-illustrator" or "plugin-ilus" or "illustrator" or "ilus")
+        {
+            amount = mercadoPagoOptions.Value.PluginMonthPricePen;
+            title = "Activación 30 días · Illustrator";
+            notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Illustrator}";
+        }
+        else if (kind is "plugin" or "month-1pc" or PluginPlans.Month1Pc)
+        {
+            return BadRequest("Elige CorelDRAW o Illustrator. Cada programa se activa un mes por separado.");
         }
         else
         {

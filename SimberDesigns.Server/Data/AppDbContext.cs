@@ -90,8 +90,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.HardwareId).HasMaxLength(200);
             entity.Property(x => x.Plan).HasMaxLength(50);
             entity.Property(x => x.Status).HasMaxLength(50);
+            entity.Property(x => x.Edition).HasMaxLength(40);
             entity.Property(x => x.ActivationCode).HasMaxLength(40);
             entity.HasIndex(x => x.ActivationCode).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.Edition });
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         });
 

@@ -1,20 +1,24 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using SimberDesigns.Licensing;                 // firmador compartido con el .exe (copia exacta)
+using SimberDesigns.Licensing;
 using SimberDesigns.Server.Contracts;
 using SimberDesigns.Server.Data;
 using SimberDesigns.Server.Models;
+using SimberDesigns.Server.Services;
 
 namespace SimberDesigns.Server.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/plugin")]
-public sealed class PluginController(AppDbContext db, IConfiguration configuration) : ControllerBase
+public sealed class PluginController(
+    AppDbContext db,
+    IConfiguration configuration,
+    PluginInstallerStorage installers) : ControllerBase
 {
     [HttpGet("me")]
-    public async Task<ActionResult<PluginLicenseDto>> Mine(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<PluginLicenseDto>>> Mine(CancellationToken cancellationToken)
     {
         var userId = User.GetUserId();
         if (userId is null)
@@ -22,31 +26,19 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             return Unauthorized();
         }
 
-        var license = await db.PluginLicenses
+        var now = DateTime.UtcNow;
+        var licenses = await db.PluginLicenses
             .AsNoTracking()
             .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
             .OrderByDescending(l => l.ExpiresAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        if (license is null)
-        {
-            return NotFound("Aún no hay licencia del plugin. Paga el mes en Recargar.");
-        }
-
-        var active = license.Status == PluginLicenseStatuses.Active && license.ExpiresAt > DateTime.UtcNow;
-        return Ok(new PluginLicenseDto(
-            license.Plan,
-            active ? PluginLicenseStatuses.Active : PluginLicenseStatuses.Expired,
-            license.ActivationCode,
-            license.ExpiresAt,
-            active,
-            license.HardwareId));
+        return Ok(licenses.Select(l => ToDto(l, now)).ToList());
     }
 
     /// <summary>
-    /// "Keygen web": el plugin manda su HWID y, si el mes está pago, el servidor ATA la licencia a esa
-    /// PC (una sola vez) y devuelve un TOKEN FIRMADO con la llave privada. El plugin lo valida offline.
-    /// 402 = sin mes pagado · 409 = la cuenta ya está atada a otra PC.
+    /// El .exe manda su HWID (y opcionalmente Edition). Si el mes está pago, se ata a esa PC
+    /// y se firma el token. 402 = sin mes · 409 = otra PC.
     /// </summary>
     [HttpPost("activate")]
     public async Task<ActionResult<PluginTokenDto>> Activate(PluginActivateRequest request, CancellationToken cancellationToken)
@@ -63,21 +55,22 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             return BadRequest("Falta el hardwareId de la PC.");
         }
 
-        var license = await db.PluginLicenses
-            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
-            .OrderByDescending(l => l.ExpiresAt)
-            .FirstOrDefaultAsync(cancellationToken);
-
+        var edition = LicenseProgram.Normalizar(request.Edition);
+        var license = await FindLicenseAsync(userId.Value, hwid, edition, cancellationToken);
         var now = DateTime.UtcNow;
         if (license is null || license.ExpiresAt <= now)
         {
             return StatusCode(StatusCodes.Status402PaymentRequired, "No tienes el mes pagado. Renueva en la web.");
         }
 
-        // Atar a ESTA PC la primera vez; rechazar si ya pertenece a otra.
         if (string.IsNullOrWhiteSpace(license.HardwareId))
         {
             license.HardwareId = hwid;
+            if (string.IsNullOrWhiteSpace(license.Edition) && !string.IsNullOrWhiteSpace(edition))
+            {
+                license.Edition = edition;
+            }
+
             license.UpdatedAt = now;
             await db.SaveChangesAsync(cancellationToken);
         }
@@ -89,9 +82,8 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
         return Ok(EmitirToken(license, hwid));
     }
 
-    /// <summary>Re-emite el token si la licencia sigue activa y el HWID coincide (renovar al abrir).</summary>
     [HttpGet("token")]
-    public async Task<ActionResult<PluginTokenDto>> Token(CancellationToken cancellationToken)
+    public async Task<ActionResult<PluginTokenDto>> Token([FromQuery] string? edition, CancellationToken cancellationToken)
     {
         var userId = User.GetUserId();
         if (userId is null)
@@ -99,9 +91,16 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             return Unauthorized();
         }
 
-        var license = await db.PluginLicenses
+        var wanted = LicenseProgram.Normalizar(edition);
+        var query = db.PluginLicenses
             .AsNoTracking()
-            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
+            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc);
+        if (!string.IsNullOrWhiteSpace(wanted))
+        {
+            query = query.Where(l => l.Edition == wanted || l.Edition == "");
+        }
+
+        var license = await query
             .OrderByDescending(l => l.ExpiresAt)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -110,6 +109,7 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
         {
             return StatusCode(StatusCodes.Status402PaymentRequired, "No tienes el mes pagado.");
         }
+
         if (string.IsNullOrWhiteSpace(license.HardwareId))
         {
             return Conflict("La licencia aún no está atada a ninguna PC. Activa primero.");
@@ -118,11 +118,7 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
         return Ok(EmitirToken(license, license.HardwareId));
     }
 
-    /// <summary>
-    /// REVALIDACIÓN en cada apertura (estilo Adobe), SIN login: el plugin manda su token firmado
-    /// (ligado al HWID) y el servidor, si la suscripción sigue activa en Postgres, re-emite un token
-    /// fresco. Así el .exe valida contra la BD cada vez que abre sin pedir email/clave. 402 = mes vencido.
-    /// </summary>
+    /// <summary>Al abrir el programa: verifica por internet si el mes sigue vigente en esta PC.</summary>
     [HttpPost("revalidate")]
     [AllowAnonymous]
     public async Task<ActionResult<PluginTokenDto>> Revalidate(CancellationToken cancellationToken)
@@ -134,7 +130,6 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             return Unauthorized("Falta la licencia o el identificador de la PC.");
         }
 
-        // Verificar firma + HWID. Se acepta incluso un token VENCIDO: la vigencia real la manda la BD.
         string publicKey;
         try
         {
@@ -152,44 +147,146 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             return StatusCode(StatusCodes.Status403Forbidden, "Licencia inválida para esta PC.");
         }
 
-        var license = await db.PluginLicenses
-            .Where(l => l.HardwareId == hwid && l.Plan == PluginPlans.Month1Pc)
+        var edition = LicenseProgram.Normalizar(check.Info?.Edition);
+        var query = db.PluginLicenses.Where(l => l.HardwareId == hwid && l.Plan == PluginPlans.Month1Pc);
+        if (!string.IsNullOrWhiteSpace(edition))
+        {
+            query = query.Where(l => l.Edition == edition || l.Edition == "");
+        }
+
+        var license = await query
             .OrderByDescending(l => l.ExpiresAt)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (license is null || license.ExpiresAt <= DateTime.UtcNow)
         {
-            return StatusCode(StatusCodes.Status402PaymentRequired, "Tu suscripción no está activa. Renueva el mes en la web.");
+            return StatusCode(StatusCodes.Status402PaymentRequired, "Tu mes no está activo. Renueva en la web.");
         }
 
         return Ok(EmitirToken(license, hwid));
     }
 
-    /// <summary>
-    /// Descarga del instalador. Es GRATIS/anónima (el cobro se exige al ACTIVAR, no al descargar):
-    /// "descarga, paga el mes y se activa sola". Redirige a la URL configurada del .exe (R2 / GitHub
-    /// Releases). Mientras no esté configurada, avisa que estará disponible pronto.
-    /// </summary>
     [HttpGet("download")]
     [AllowAnonymous]
     public IActionResult Download()
+        => NotFound("Elige CorelDRAW o Illustrator: /api/plugin/download/corel o /api/plugin/download/illustrator");
+
+    [HttpGet("download/{edition}")]
+    [AllowAnonymous]
+    public IActionResult DownloadEdition(string edition)
     {
-        var url = configuration["Plugin:DownloadUrl"]
-                  ?? Environment.GetEnvironmentVariable("SIMBER_PLUGIN_DOWNLOAD_URL");
+        if (!PluginInstallerStorage.TryParseEdition(edition, out var program))
+        {
+            return BadRequest("El programa debe ser Corel o Illustrator.");
+        }
+
+        if (installers.Exists(program))
+        {
+            return PhysicalFile(installers.FilePath(program), "application/octet-stream", installers.DownloadName(program));
+        }
+
+        var url = program == LicenseProgram.Illustrator
+            ? configuration["Plugin:DownloadUrlIllustrator"]
+            : configuration["Plugin:DownloadUrlCorel"];
         if (string.IsNullOrWhiteSpace(url))
         {
-            return NotFound("La descarga estará disponible en breve.");
+            return NotFound("El administrador aún no subió este ejecutable.");
         }
+
         return Redirect(url);
     }
 
-    // ---- Firma del token con la llave privada (secreto de entorno, nunca en el repo) ----
+    [HttpGet("installers")]
+    [Authorize(Roles = Roles.Admin)]
+    public ActionResult<IReadOnlyList<PluginInstallerStatusDto>> Installers()
+        => Ok(new[] { StatusDto(LicenseProgram.Corel), StatusDto(LicenseProgram.Illustrator) });
+
+    [HttpPost("installers/{edition}")]
+    [Authorize(Roles = Roles.Admin)]
+    [RequestSizeLimit(110_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 110_000_000)]
+    public async Task<ActionResult<PluginInstallerStatusDto>> UploadInstaller(string edition, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (!PluginInstallerStorage.TryParseEdition(edition, out var program))
+        {
+            return BadRequest("El programa debe ser Corel o Illustrator.");
+        }
+
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest("Sube el .exe.");
+        }
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".exe" or ".zip"))
+        {
+            return BadRequest("Solo se acepta .exe (o un ZIP del instalador).");
+        }
+
+        await installers.SaveAsync(program, file, cancellationToken);
+        return Ok(StatusDto(program));
+    }
+
+    private PluginInstallerStatusDto StatusDto(string edition)
+    {
+        var info = installers.Info(edition);
+        return new PluginInstallerStatusDto(
+            edition,
+            info is not null,
+            info is null ? null : installers.DownloadName(edition),
+            info?.Length ?? 0,
+            info?.LastWriteTimeUtc);
+    }
+
+    private async Task<PluginLicense?> FindLicenseAsync(Guid userId, string hwid, string edition, CancellationToken cancellationToken)
+    {
+        var licenses = await db.PluginLicenses
+            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
+            .OrderByDescending(l => l.ExpiresAt)
+            .ToListAsync(cancellationToken);
+
+        var samePc = licenses.FirstOrDefault(l =>
+            !string.IsNullOrWhiteSpace(l.HardwareId)
+            && string.Equals(l.HardwareId.Trim(), hwid, StringComparison.OrdinalIgnoreCase)
+            && (string.IsNullOrWhiteSpace(edition) || string.IsNullOrWhiteSpace(l.Edition) || string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase)));
+        if (samePc is not null)
+        {
+            return samePc;
+        }
+
+        IEnumerable<PluginLicense> pool = licenses;
+        if (!string.IsNullOrWhiteSpace(edition))
+        {
+            var match = licenses.Where(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (match.Count > 0)
+            {
+                pool = match;
+            }
+        }
+
+        return pool.FirstOrDefault(l => string.IsNullOrWhiteSpace(l.HardwareId))
+               ?? pool.FirstOrDefault();
+    }
+
+    private static PluginLicenseDto ToDto(PluginLicense license, DateTime now)
+    {
+        var active = license.Status == PluginLicenseStatuses.Active && license.ExpiresAt > now;
+        return new PluginLicenseDto(
+            license.Plan,
+            active ? PluginLicenseStatuses.Active : PluginLicenseStatuses.Expired,
+            license.ActivationCode,
+            license.ExpiresAt,
+            active,
+            license.HardwareId,
+            license.Edition);
+    }
+
     private PluginTokenDto EmitirToken(PluginLicense license, string hardwareId)
     {
         var signer = new LicenseSigner(PrivateKeyBase64());
-        // V2 (web) = versión PREMIUM con IA. Vencimiento = el de la licencia en la BD.
-        string token = signer.Issue(hardwareId, LicensePlan.Mensual, license.ExpiresAt, customer: "", incluyeIa: true);
-        return new PluginTokenDto(token, license.ExpiresAt, license.Plan);
+        var edition = string.IsNullOrWhiteSpace(license.Edition) ? LicenseProgram.Legacy : license.Edition;
+        string token = signer.Issue(hardwareId, LicensePlan.Mensual, license.ExpiresAt, customer: "", incluyeIa: true, edition: edition);
+        return new PluginTokenDto(token, license.ExpiresAt, license.Plan, license.Edition);
     }
 
     private string PrivateKeyBase64()
@@ -201,6 +298,7 @@ public sealed class PluginController(AppDbContext db, IConfiguration configurati
             throw new InvalidOperationException(
                 "Falta la llave privada de licencias. Configura SIMBER_LICENSE_PRIVATE_KEY (o Licensing:PrivateKey).");
         }
+
         return key;
     }
 }

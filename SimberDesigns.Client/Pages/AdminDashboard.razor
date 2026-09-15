@@ -9,7 +9,7 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl md:text-3xl font-extrabold text-white">Dashboard</h1>
-            <p class="text-slate-400 text-sm mt-1">Resumen del negocio y de las ventas del plugin.</p>
+            <p class="text-slate-400 text-sm mt-1">Meses activados (Corel e Illustrator) y ventas del catálogo.</p>
         </div>
         <button @onclick="Load" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm px-4 py-2 rounded-lg">↻ Actualizar</button>
     </div>
@@ -44,9 +44,15 @@
             </a>
         </div>
 
-        <div class="mt-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
-            <p class="text-emerald-300 font-bold">Plan del plugin V2 (con IA)</p>
-            <p class="text-slate-300 text-sm mt-1"><span class="text-2xl font-black text-white">$15</span> USD / mes por PC · pago automático por la pasarela · se activa solo.</p>
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <a href="/admin/installers" class="block bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-emerald-500/40">
+                <p class="text-lg font-bold text-white">⬇ Ejecutables</p>
+                <p class="text-slate-400 text-sm mt-1">Sube el .exe de Corel y el de Illustrator para que el cliente los baje gratis.</p>
+            </a>
+            <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
+                <p class="text-emerald-300 font-bold">Activación mensual (no es el precio del .exe)</p>
+                <p class="text-slate-300 text-sm mt-1"><span class="text-2xl font-black text-white">$15</span> USD / 30 días · 1 PC · Corel o Illustrator por separado · IA incluida.</p>
+            </div>
         </div>
     }
 </div>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SimberDesigns.Licensing;
 using SimberDesigns.Server.Data;
 using SimberDesigns.Server.Models;
 
@@ -28,7 +29,7 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
 
         if (IsPluginPurchase(transaction.Notes))
         {
-            await ExtendPluginLicenseAsync(transaction.UserId, cancellationToken);
+            await ExtendPluginLicenseAsync(transaction.UserId, EditionFromNotes(transaction.Notes), cancellationToken);
         }
         else if (transaction.CreditPackageId is Guid packageId)
         {
@@ -66,10 +67,23 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
         });
     }
 
-    private async Task ExtendPluginLicenseAsync(Guid userId, CancellationToken cancellationToken)
+    private async Task ExtendPluginLicenseAsync(Guid userId, string edition, CancellationToken cancellationToken)
     {
-        var license = await db.PluginLicenses
-            .FirstOrDefaultAsync(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc, cancellationToken);
+        var licenses = await db.PluginLicenses
+            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
+            .ToListAsync(cancellationToken);
+
+        PluginLicense? license = null;
+        if (!string.IsNullOrWhiteSpace(edition))
+        {
+            license = licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase))
+                      ?? licenses.FirstOrDefault(l => string.IsNullOrWhiteSpace(l.Edition));
+        }
+        else
+        {
+            license = licenses.FirstOrDefault();
+        }
+
         var now = DateTime.UtcNow;
         if (license is null)
         {
@@ -79,6 +93,7 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
                 UserId = userId,
                 Plan = PluginPlans.Month1Pc,
                 Status = PluginLicenseStatuses.Active,
+                Edition = edition,
                 ActivationCode = NewActivationCode(),
                 ExpiresAt = now.AddDays(30),
                 CreatedAt = now,
@@ -91,10 +106,28 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
         license.ExpiresAt = start.AddDays(30);
         license.Status = PluginLicenseStatuses.Active;
         license.UpdatedAt = now;
-        if (string.IsNullOrWhiteSpace(license.ActivationCode))
+        if (string.IsNullOrWhiteSpace(license.Edition) && !string.IsNullOrWhiteSpace(edition))
         {
-            license.ActivationCode = NewActivationCode();
+            license.Edition = edition;
         }
+
+        license.ActivationCode = NewActivationCode();
+    }
+
+    private static string EditionFromNotes(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes))
+        {
+            return "";
+        }
+
+        var parts = notes.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length >= 3)
+        {
+            return LicenseProgram.Normalizar(parts[2]);
+        }
+
+        return "";
     }
 
     private static string NewActivationCode()

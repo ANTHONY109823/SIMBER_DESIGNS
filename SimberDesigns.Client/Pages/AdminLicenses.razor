@@ -30,6 +30,7 @@
                 <thead class="bg-slate-800/70 text-slate-400 text-xs uppercase">
                     <tr>
                         <th class="text-left px-4 py-3">Cliente</th>
+                        <th class="text-left px-4 py-3">Programa</th>
                         <th class="text-left px-4 py-3">Plan</th>
                         <th class="text-left px-4 py-3">Estado</th>
                         <th class="text-left px-4 py-3">Vence</th>
@@ -41,7 +42,7 @@
                 <tbody>
                     @if (_rows.Count == 0)
                     {
-                        <tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Sin licencias todavía. Cuando alguien pague el plugin, aparecerá aquí.</td></tr>
+                        <tr><td colspan="8" class="px-4 py-10 text-center text-slate-500">Sin licencias todavía. Cuando alguien pague el mes de Corel o Illustrator, aparecerá aquí.</td></tr>
                     }
                     @foreach (var r in _rows)
                     {
@@ -50,6 +51,7 @@
                                 <div class="font-semibold text-white">@(string.IsNullOrWhiteSpace(r.CustomerName) ? "—" : r.CustomerName)</div>
                                 <div class="text-xs text-slate-400">@r.CustomerEmail</div>
                             </td>
+                            <td class="px-4 py-3 text-slate-300">@(string.IsNullOrWhiteSpace(r.Edition) ? "—" : r.Edition)</td>
                             <td class="px-4 py-3 text-slate-300">@r.Plan</td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-0.5 rounded-full text-xs @(r.IsActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" : "bg-rose-500/10 text-rose-400 border border-rose-500/25")">

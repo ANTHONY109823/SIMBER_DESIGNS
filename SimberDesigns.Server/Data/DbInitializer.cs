@@ -105,6 +105,9 @@ public static class DbInitializer
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_plugin_licenses_user ON plugin_licenses(user_id);
+            ALTER TABLE plugin_licenses ADD COLUMN IF NOT EXISTS edition VARCHAR(40) NOT NULL DEFAULT '';
+            ALTER TABLE plugin_licenses ADD COLUMN IF NOT EXISTS activation_code VARCHAR(40) NOT NULL DEFAULT '';
+            CREATE INDEX IF NOT EXISTS idx_plugin_licenses_user_edition ON plugin_licenses(user_id, edition);
 
             CREATE TABLE IF NOT EXISTS site_content (
                 key VARCHAR(120) PRIMARY KEY,
