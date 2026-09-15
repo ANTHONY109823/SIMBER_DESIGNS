@@ -63,4 +63,71 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
 
         return Ok(list);
     }
+
+    [HttpGet("customers")]
+    public async Task<ActionResult<IReadOnlyList<AdminCustomerDto>>> Customers([FromQuery] string? q, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var query = db.Users.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim().ToLower();
+            query = query.Where(u => u.Email.ToLower().Contains(term) || u.FullName.ToLower().Contains(term));
+        }
+
+        var users = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Take(500)
+            .ToListAsync(ct);
+
+        var userIds = users.Select(u => u.Id).ToList();
+        var activeByUser = await db.PluginLicenses.AsNoTracking()
+            .Where(l => userIds.Contains(l.UserId) && l.Status == PluginLicenseStatuses.Active && l.ExpiresAt > now)
+            .GroupBy(l => l.UserId)
+            .Select(g => new { UserId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+
+        return Ok(users.Select(u => new AdminCustomerDto(
+            u.Id,
+            u.Email,
+            u.FullName,
+            u.Role,
+            u.CreditsBalance,
+            activeByUser.GetValueOrDefault(u.Id),
+            u.CreatedAt)).ToList());
+    }
+
+    [HttpPost("customers/{id:guid}/credits")]
+    public async Task<ActionResult<AdminCustomerDto>> AdjustCredits(Guid id, AdjustCreditsRequest request, CancellationToken ct)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (user.Role == Roles.Admin)
+        {
+            return BadRequest("No se ajustan créditos de un administrador.");
+        }
+
+        var delta = request.Credits;
+        user.CreditsBalance = Math.Max(0, user.CreditsBalance + delta);
+        user.UpdatedAt = DateTime.UtcNow;
+        db.CreditTransactions.Add(new CreditTransaction
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CreditsChanged = delta,
+            TxType = delta >= 0 ? CreditTxTypes.Recharge : CreditTxTypes.Refund,
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+
+        var now = DateTime.UtcNow;
+        var active = await db.PluginLicenses.CountAsync(
+            l => l.UserId == user.Id && l.Status == PluginLicenseStatuses.Active && l.ExpiresAt > now, ct);
+
+        return Ok(new AdminCustomerDto(user.Id, user.Email, user.FullName, user.Role, user.CreditsBalance, active, user.CreatedAt));
+    }
 }

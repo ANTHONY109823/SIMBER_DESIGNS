@@ -5,15 +5,15 @@
 
 <PageTitle>Contenido de la web · Simber Admin</PageTitle>
 
-<div class="p-6 md:p-8 max-w-4xl">
-    <div class="flex items-center justify-between mb-6">
+<div class="p-6 md:p-8 max-w-5xl">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold text-white">Contenido de la web</h1>
-            <p class="text-slate-400 text-sm mt-1">Edita los textos y sube las fotos de la página <a href="/programas" target="_blank" class="text-emerald-400 underline">/programas</a>. Se guarda en la base de datos.</p>
+            <h1 class="text-2xl font-extrabold text-white md:text-3xl">Contenido de la web</h1>
+            <p class="mt-1 text-sm text-slate-400">Textos e imágenes de Inicio, Catálogo, Programas y Encárganos.</p>
         </div>
         <button @onclick="GuardarTextos" disabled="@_saving"
-                class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded-lg disabled:opacity-50">
-            @(_saving ? "Guardando…" : "💾 Grabar textos")
+                class="rounded-lg bg-emerald-500 px-5 py-2 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50">
+            @(_saving ? "Guardando…" : "Grabar textos")
         </button>
     </div>
 
@@ -22,73 +22,104 @@
         <div class="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">@_msg</div>
     }
 
-    <!-- TEXTOS -->
-    <section class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
-        <h2 class="font-bold text-white">Textos</h2>
-        @foreach (var f in TextFields)
+    <div class="mb-6 flex flex-wrap gap-2">
+        @foreach (var tab in Tabs)
+        {
+            <button type="button" @onclick="() => _tab = tab.Id"
+                    class="rounded-full px-4 py-2 text-sm @(_tab == tab.Id ? "bg-emerald-500 font-semibold text-slate-950" : "border border-slate-700 text-slate-300")">
+                @tab.Label
+            </button>
+        }
+    </div>
+
+    <section class="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-6">
+        <h2 class="font-bold text-white">Textos · @Tabs.First(t => t.Id == _tab).Label</h2>
+        @foreach (var f in TextFields.Where(x => x.Section == _tab))
         {
             <div>
-                <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">@f.Label</label>
+                <label class="mb-1 block text-xs uppercase tracking-wider text-slate-400">@f.Label</label>
                 @if (f.Multiline)
                 {
-                    <textarea @bind="_texts[f.Key]" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"></textarea>
+                    <textarea @bind="_texts[f.Key]" rows="2" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"></textarea>
                 }
                 else
                 {
-                    <input @bind="_texts[f.Key]" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" />
+                    <input @bind="_texts[f.Key]" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
                 }
             </div>
         }
     </section>
 
-    <!-- IMÁGENES -->
-    <section class="bg-slate-900 border border-slate-800 rounded-xl p-6 mt-6">
-        <h2 class="font-bold text-white mb-4">Fotos <span class="text-slate-500 text-sm font-normal">(JPG/PNG, se guardan al elegir el archivo)</span></h2>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach (var img in ImageFields)
-            {
-                <div class="rounded-lg border border-slate-800 overflow-hidden bg-slate-950">
-                    <div class="relative h-32 bg-gradient-to-br from-slate-800 to-slate-950">
-                        <img src="@($"/api/content/asset/{img.Key}?v={_bust}")" onerror="this.style.display='none'"
-                             class="absolute inset-0 h-full w-full object-cover" />
-                        <span class="absolute bottom-1 left-2 text-[11px] text-slate-300 bg-slate-950/70 px-1.5 rounded">@img.Label</span>
+    @if (ImageFields.Any(x => x.Section == _tab))
+    {
+        <section class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="mb-4 font-bold text-white">Imágenes</h2>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var img in ImageFields.Where(x => x.Section == _tab))
+                {
+                    <div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+                        <div class="relative h-32 bg-gradient-to-br from-slate-800 to-slate-950">
+                            <img src="@($"/api/content/asset/{img.Key}?v={_bust}")" onerror="this.style.display='none'"
+                                 class="absolute inset-0 h-full w-full object-cover" />
+                            <span class="absolute bottom-1 left-2 rounded bg-slate-950/70 px-1.5 text-[11px] text-slate-300">@img.Label</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 p-3">
+                            <InputFile OnChange="@(e => Subir(img.Key, e))" accept="image/*" class="w-40 text-xs text-slate-400" />
+                            @if (_uploading == img.Key) { <span class="text-xs text-emerald-400">subiendo…</span> }
+                        </div>
                     </div>
-                    <div class="p-3 flex items-center justify-between gap-2">
-                        <InputFile OnChange="@(e => Subir(img.Key, e))" accept="image/*" class="text-xs text-slate-400 w-40" />
-                        @if (_uploading == img.Key) { <span class="text-xs text-emerald-400">subiendo…</span> }
-                    </div>
-                </div>
-            }
-        </div>
-    </section>
+                }
+            </div>
+        </section>
+    }
 </div>
 
 @code {
+    private string _tab = "home";
     private readonly Dictionary<string, string> _texts = new();
     private bool _saving;
     private string? _uploading;
     private string _msg = "";
     private long _bust = DateTime.UtcNow.Ticks;
 
-    private sealed record TextField(string Key, string Label, bool Multiline);
-    private sealed record ImageField(string Key, string Label);
+    private sealed record Tab(string Id, string Label);
+    private sealed record TextField(string Section, string Key, string Label, bool Multiline);
+    private sealed record ImageField(string Section, string Key, string Label);
+
+    private static readonly Tab[] Tabs =
+    [
+        new("home", "Inicio"),
+        new("catalog", "Catálogo"),
+        new("programas", "Programas"),
+        new("encarganos", "Encárganos")
+    ];
 
     private static readonly TextField[] TextFields =
     [
-        new("programas.badge", "Etiqueta superior", false),
-        new("programas.desc", "Descripción principal", true),
-        new("programas.price", "Precio (solo número, ej. 15)", false),
-        new("programas.precio.titulo", "Título de la sección de precio", false),
-        new("programas.precio.subtitulo", "Subtítulo de la sección de precio", true),
+        new("home", "home.hero.eyebrow", "Etiqueta del hero", false),
+        new("home", "home.hero.title", "Título del hero", true),
+        new("home", "home.hero.desc", "Texto del hero", true),
+        new("home", "home.steps.title", "Título de pasos", false),
+        new("catalog", "catalog.eyebrow", "Etiqueta", false),
+        new("catalog", "catalog.title", "Título (usa | para partir, ej. Fútbol|Vóley)", false),
+        new("catalog", "catalog.desc", "Subtítulo", true),
+        new("programas", "programas.badge", "Etiqueta superior", false),
+        new("programas", "programas.desc", "Descripción principal", true),
+        new("encarganos", "encarganos.eyebrow", "Etiqueta", false),
+        new("encarganos", "encarganos.title", "Título", false),
+        new("encarganos", "encarganos.gallery.title", "Título galería trabajos", false)
     ];
 
     private static readonly ImageField[] ImageFields =
     [
-        new("prog-armado", "Imagen principal (armado)"),
-        new("prog-1", "Paso 1 · lista"),
-        new("prog-2", "Paso 2 · molde"),
-        new("prog-3", "Paso 3 · armado"),
-        new("prog-4", "Paso 4 · resultado"),
+        new("programas", "prog-armado", "Imagen principal (armado)"),
+        new("programas", "prog-1", "Paso 1 · lista"),
+        new("programas", "prog-2", "Paso 2 · molde"),
+        new("programas", "prog-3", "Paso 3 · armado"),
+        new("programas", "prog-4", "Paso 4 · resultado"),
+        new("encarganos", "encarganos-1", "Trabajo principal"),
+        new("encarganos", "encarganos-2", "Trabajo 2"),
+        new("encarganos", "encarganos-3", "Trabajo 3")
     ];
 
     protected override async Task OnInitializedAsync()
@@ -97,7 +128,10 @@
         try
         {
             var c = await Api.GetContentAsync();
-            foreach (var f in TextFields) if (c.TryGetValue(f.Key, out var v)) _texts[f.Key] = v;
+            foreach (var f in TextFields)
+            {
+                if (c.TryGetValue(f.Key, out var v)) _texts[f.Key] = v;
+            }
         }
         catch { }
     }
@@ -105,7 +139,7 @@
     private async Task GuardarTextos()
     {
         _saving = true; _msg = "";
-        try { await Api.SaveContentAsync(_texts); _msg = "Textos guardados. Recarga /programas para verlos."; }
+        try { await Api.SaveContentAsync(_texts); _msg = "Textos guardados."; }
         catch { _msg = "No se pudieron guardar los textos."; }
         finally { _saving = false; }
     }
@@ -119,10 +153,10 @@
         {
             await using var stream = file.OpenReadStream(15_000_000);
             var url = await Api.UploadAssetAsync(key, stream, file.Name, file.ContentType);
-            _bust = DateTime.UtcNow.Ticks;   // refresca la vista previa
+            _bust = DateTime.UtcNow.Ticks;
             _msg = url is null ? "No se pudo subir la imagen." : "Imagen subida.";
         }
-        catch { _msg = "Error al subir la imagen (¿muy pesada?)."; }
+        catch { _msg = "Error al subir la imagen."; }
         finally { _uploading = null; }
     }
 }

@@ -6,7 +6,7 @@
 
 <section class="mx-auto max-w-6xl px-6 py-16">
     <p class="text-xs uppercase tracking-[0.28em] text-cyan">Cómo funciona</p>
-    <h2 class="mt-2 font-serif text-3xl text-white">De la lista al corte, en cuatro pasos</h2>
+    <h2 class="mt-2 font-serif text-3xl text-white">@T("home.steps.title", "De la lista al corte, en cuatro pasos")</h2>
     <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         @foreach (var step in Steps)
         {
@@ -76,6 +76,10 @@
 @code {
     private List<DesignDto> Preview = [];
     private int CatalogCount;
+    private Dictionary<string, string> _c = new();
+
+    private string T(string key, string fallback)
+        => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
 
     private static readonly (string Num, string Title, string Text)[] Steps =
     [
@@ -87,6 +91,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
         var designs = await Api.GetDesignsAsync() ?? [];
         CatalogCount = designs.Count;
         Preview = designs.Take(6).ToList();

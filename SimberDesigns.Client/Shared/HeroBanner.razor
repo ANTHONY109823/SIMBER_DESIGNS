@@ -1,12 +1,14 @@
+@inject SimberApi Api
+
 <section class="relative isolate min-h-[78vh] overflow-hidden bg-ink text-cream">
     <img src="images/simber_designs_hero_banner.png"
          alt="Vectores deportivos Simber Designs para sublimación"
          class="absolute inset-0 h-full w-full object-cover object-center" />
     <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/75 to-ink/10"></div>
     <div class="relative mx-auto flex min-h-[78vh] max-w-6xl flex-col justify-end px-6 py-16 sm:justify-center sm:py-24">
-        <p class="text-xs uppercase tracking-[0.35em] text-gold">Vectores · Sublimación · Wireframe</p>
-        <h1 class="mt-4 max-w-xl font-serif text-4xl leading-none sm:text-6xl">Del patrón a la camiseta en menos de tres clics.</h1>
-        <p class="mt-6 max-w-lg text-sm text-cream/80 sm:text-base">Catálogo CDR y programas para CorelDRAW e Illustrator.</p>
+        <p class="text-xs uppercase tracking-[0.35em] text-gold">@T("home.hero.eyebrow", "Vectores · Sublimación · Wireframe")</p>
+        <h1 class="mt-4 max-w-xl font-serif text-4xl leading-none sm:text-6xl">@T("home.hero.title", "Del patrón a la camiseta en menos de tres clics.")</h1>
+        <p class="mt-6 max-w-lg text-sm text-cream/80 sm:text-base">@T("home.hero.desc", "Catálogo CDR y programas para CorelDRAW e Illustrator.")</p>
         <div class="mt-8 flex flex-wrap gap-3">
             <a href="/catalog" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Ver catálogo</a>
             <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Programas</a>
@@ -14,3 +16,13 @@
     </div>
 </section>
 
+@code {
+    private Dictionary<string, string> _c = new();
+    private string T(string key, string fallback)
+        => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+    }
+}

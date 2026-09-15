@@ -80,6 +80,17 @@ public sealed record AdminLicenseDto(
     DateTime CreatedAt,
     string Edition);
 
+public sealed record AdminCustomerDto(
+    Guid Id,
+    string Email,
+    string FullName,
+    string Role,
+    decimal CreditsBalance,
+    int ActiveLicenses,
+    DateTime CreatedAt);
+
+public sealed record AdjustCreditsRequest(decimal Credits, string? Note);
+
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 
 public sealed record AccountDashboardDto(

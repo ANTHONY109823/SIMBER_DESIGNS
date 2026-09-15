@@ -118,6 +118,15 @@ public sealed record AdminLicenseDto(
     DateTime CreatedAt,
     string Edition = "");
 
+public sealed record AdminCustomerDto(
+    Guid Id,
+    string Email,
+    string FullName,
+    string Role,
+    decimal CreditsBalance,
+    int ActiveLicenses,
+    DateTime CreatedAt);
+
 public sealed class SimberApi(HttpClient http)
 {
     public Task<AdminMetricsDto?> GetAdminMetricsAsync()
@@ -126,6 +135,20 @@ public sealed class SimberApi(HttpClient http)
     public Task<List<AdminLicenseDto>?> GetAdminLicensesAsync(string? q = null)
         => http.GetFromJsonAsync<List<AdminLicenseDto>>(
             string.IsNullOrWhiteSpace(q) ? "api/admin/licenses" : $"api/admin/licenses?q={Uri.EscapeDataString(q)}");
+
+    public Task<List<AdminCustomerDto>?> GetAdminCustomersAsync(string? q = null)
+        => http.GetFromJsonAsync<List<AdminCustomerDto>>(
+            string.IsNullOrWhiteSpace(q) ? "api/admin/customers" : $"api/admin/customers?q={Uri.EscapeDataString(q)}");
+
+    public async Task AdjustCustomerCreditsAsync(Guid userId, decimal credits)
+    {
+        var response = await http.PostAsJsonAsync($"api/admin/customers/{userId}/credits", new { credits, note = (string?)null });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo ajustar créditos." : body);
+        }
+    }
 
     // ---- CMS: contenido de la web ----
     public async Task<Dictionary<string, string>> GetContentAsync()

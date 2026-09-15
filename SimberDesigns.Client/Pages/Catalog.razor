@@ -11,10 +11,14 @@
 
     <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
         <div class="mx-auto max-w-2xl text-center">
-            <p class="text-xs uppercase tracking-[0.28em] text-gold">Catálogo CDR</p>
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">@T("catalog.eyebrow", "Catálogo CDR")</p>
             <h1 class="mt-3 font-serif text-4xl tracking-tight text-white sm:text-6xl">
-                Fútbol y <span class="text-gold">Vóley</span>
+                @((MarkupString)CatalogTitleHtml)
             </h1>
+            @if (!string.IsNullOrWhiteSpace(T("catalog.desc", "")))
+            {
+                <p class="mt-3 text-sm text-cream/80">@T("catalog.desc", "")</p>
+            }
         </div>
 
         @if (FreeDaily.Count > 0)
@@ -215,15 +219,33 @@
     private List<DesignItem> allDesigns = new();
     private List<DesignItem> filteredDesigns = new();
     private string? errorMessage;
+    private Dictionary<string, string> _c = new();
     private bool HasVisualSearch => activeVisualSearchImage != null;
     private List<DesignItem> FreeDaily => allDesigns.Where(d => d.IsFreeDaily).ToList();
     private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns.Take(visibleCount);
+
+    private string T(string key, string fallback)
+        => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+
+    private string CatalogTitleHtml
+    {
+        get
+        {
+            var raw = T("catalog.title", "Fútbol|Vóley");
+            var parts = raw.Split('|', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+                return $"{System.Net.WebUtility.HtmlEncode(parts[0])} y <span class=\"text-gold\">{System.Net.WebUtility.HtmlEncode(parts[1])}</span>";
+            return System.Net.WebUtility.HtmlEncode(raw);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         var auth = await AuthState.GetAuthenticationStateAsync();
         isAuthenticated = auth.User.Identity?.IsAuthenticated == true;
         isAdmin = auth.User.IsInRole("Admin");
+
+        try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
 
         try
         {

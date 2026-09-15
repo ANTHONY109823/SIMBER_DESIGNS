@@ -140,7 +140,7 @@ public static class DbInitializer
     {
         var hasher = new PasswordHasher<User>();
 
-        if (!await db.Users.AnyAsync())
+        if (!await db.Users.AnyAsync(u => u.Email == "admin@simber.designs"))
         {
             var admin = new User
             {
@@ -153,8 +153,14 @@ public static class DbInitializer
                 UpdatedAt = DateTime.UtcNow
             };
             admin.PasswordHash = hasher.HashPassword(admin, "Admin123!");
+            db.Users.Add(admin);
+            logger.LogInformation("Usuario administrador sembrado (credenciales solo por configuración / entrega privada).");
+        }
 
-            var demo = new User
+        var demo = await db.Users.FirstOrDefaultAsync(u => u.Email == "demo@simber.designs");
+        if (demo is null)
+        {
+            demo = new User
             {
                 Id = Guid.NewGuid(),
                 Email = "demo@simber.designs",
@@ -165,8 +171,7 @@ public static class DbInitializer
                 UpdatedAt = DateTime.UtcNow
             };
             demo.PasswordHash = hasher.HashPassword(demo, "Demo123!");
-
-            db.Users.AddRange(admin, demo);
+            db.Users.Add(demo);
             db.Subscriptions.Add(new Subscription
             {
                 Id = Guid.NewGuid(),
@@ -179,7 +184,7 @@ public static class DbInitializer
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
-            logger.LogInformation("Usuario administrador sembrado (credenciales solo por configuración / entrega privada).");
+            logger.LogInformation("Usuario demo cliente sembrado (credenciales solo por entrega privada).");
         }
 
         if (!await db.Designs.AnyAsync())
@@ -208,7 +213,35 @@ public static class DbInitializer
             logger.LogInformation("Paquetes de créditos en soles listos (160 / 400 / 800).");
         }
 
+        await SeedDefaultContentAsync(db);
         await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedDefaultContentAsync(AppDbContext db)
+    {
+        var defaults = new Dictionary<string, string>
+        {
+            ["home.hero.eyebrow"] = "Vectores · Sublimación · Wireframe",
+            ["home.hero.title"] = "Del patrón a la camiseta en menos de tres clics.",
+            ["home.hero.desc"] = "Catálogo CDR y programas para CorelDRAW e Illustrator.",
+            ["home.steps.title"] = "De la lista al corte, en cuatro pasos",
+            ["catalog.eyebrow"] = "Catálogo CDR",
+            ["catalog.title"] = "Fútbol|Vóley",
+            ["catalog.desc"] = "",
+            ["programas.badge"] = "Herramienta · CorelDRAW e Illustrator",
+            ["programas.desc"] = "Arma mockups, nombres y dorsales en CorelDRAW e Illustrator.",
+            ["encarganos.eyebrow"] = "Cotización",
+            ["encarganos.title"] = "Encárganos a nosotros",
+            ["encarganos.gallery.title"] = "Así queda en cancha"
+        };
+
+        var existing = await db.SiteContents.Select(c => c.Key).ToListAsync();
+        var now = DateTime.UtcNow;
+        foreach (var (key, value) in defaults)
+        {
+            if (existing.Contains(key)) continue;
+            db.SiteContents.Add(new SiteContent { Key = key, Value = value, UpdatedAt = now });
+        }
     }
 
     private static Design CreateDesign(string title, string slug, string category, string description)

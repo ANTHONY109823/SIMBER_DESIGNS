@@ -1,0 +1,118 @@
+@page "/admin/customers"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<PageTitle>Clientes · Simber Admin</PageTitle>
+
+<div class="p-6 md:p-8">
+    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="text-2xl font-extrabold text-white md:text-3xl">Clientes y créditos</h1>
+            <p class="mt-1 text-sm text-slate-400">Cuentas registradas, saldo CDR y meses activos.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <input @bind="_q" @bind:event="oninput" placeholder="Buscar email o nombre…"
+                   class="w-64 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm" />
+            <button @onclick="Load" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-500">Buscar</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_msg))
+    {
+        <p class="mb-4 text-sm @(_msg.StartsWith("Listo") ? "text-emerald-400" : "text-rose-400")">@_msg</p>
+    }
+
+    <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-800/70 text-xs uppercase text-slate-400">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Cliente</th>
+                        <th class="px-4 py-3 text-left">Rol</th>
+                        <th class="px-4 py-3 text-left">Créditos</th>
+                        <th class="px-4 py-3 text-left">Meses activos</th>
+                        <th class="px-4 py-3 text-left">Alta</th>
+                        <th class="px-4 py-3 text-left">Ajuste</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_rows.Count == 0)
+                    {
+                        <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500">Sin clientes.</td></tr>
+                    }
+                    @foreach (var r in _rows)
+                    {
+                        <tr class="border-t border-slate-800 hover:bg-slate-800/40">
+                            <td class="px-4 py-3">
+                                <div class="font-semibold text-white">@r.FullName</div>
+                                <div class="text-xs text-slate-400">@r.Email</div>
+                            </td>
+                            <td class="px-4 py-3 text-slate-300">@r.Role</td>
+                            <td class="px-4 py-3 font-semibold text-emerald-300">@r.CreditsBalance.ToString("0")</td>
+                            <td class="px-4 py-3 text-slate-300">@r.ActiveLicenses</td>
+                            <td class="px-4 py-3 text-xs text-slate-400">@r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            <td class="px-4 py-3">
+                                @if (r.Role != "Admin")
+                                {
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" @bind="_delta[r.Id]" class="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs" placeholder="+/-" />
+                                        <button @onclick="() => Adjust(r)" class="rounded bg-slate-700 px-2 py-1 text-xs hover:bg-emerald-600">OK</button>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<AdminCustomerDto> _rows = [];
+    private readonly Dictionary<Guid, decimal> _delta = new();
+    private string _q = "";
+    private string? _msg;
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        _msg = null;
+        try
+        {
+            _rows = await Api.GetAdminCustomersAsync(_q) ?? [];
+            foreach (var r in _rows)
+            {
+                _delta.TryAdd(r.Id, 0);
+            }
+        }
+        catch
+        {
+            _rows = [];
+        }
+    }
+
+    private async Task Adjust(AdminCustomerDto row)
+    {
+        _msg = null;
+        if (!_delta.TryGetValue(row.Id, out var amount) || amount == 0)
+        {
+            _msg = "Indica cuántos créditos sumar o restar.";
+            return;
+        }
+
+        try
+        {
+            await Api.AdjustCustomerCreditsAsync(row.Id, amount);
+            _delta[row.Id] = 0;
+            _msg = "Listo.";
+            await Load();
+        }
+        catch (Exception ex)
+        {
+            _msg = ex.Message;
+        }
+    }
+}
