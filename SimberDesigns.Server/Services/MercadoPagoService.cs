@@ -49,6 +49,11 @@ public sealed class MercadoPagoService(HttpClient http, IOptions<MercadoPagoOpti
         string pendingUrl,
         CancellationToken cancellationToken)
     {
+        EnsureHttpsUrl(successUrl, "back_urls.success");
+        EnsureHttpsUrl(failureUrl, "back_urls.failure");
+        EnsureHttpsUrl(pendingUrl, "back_urls.pending");
+        EnsureHttpsUrl(notificationUrl, "notification_url");
+
         var body = new
         {
             items = new[]
@@ -100,6 +105,16 @@ public sealed class MercadoPagoService(HttpClient http, IOptions<MercadoPagoOpti
         }
 
         return new MercadoPagoPreferenceResult(id, checkout);
+    }
+
+    private static void EnsureHttpsUrl(string url, string name)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"{name} debe ser https://… (configura MercadoPago__PublicBaseUrl con la URL pública). Valor: {url}");
+        }
     }
 
     public async Task<MercadoPagoPaymentResult?> GetPaymentAsync(string paymentId, CancellationToken cancellationToken)

@@ -1,5 +1,8 @@
 @page "/programas"
+@using Microsoft.AspNetCore.Components.Authorization
 @inject SimberApi Api
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Programas · Simber Designs</PageTitle>
 
@@ -16,6 +19,10 @@
             <p class="mt-4 text-lg text-cream/85">
                 @T("programas.desc", "Arma mockups, nombres y dorsales en CorelDRAW e Illustrator.")
             </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+                <a href="#activar" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar y activar</a>
+                <a href="#funciones" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Ver funciones</a>
+            </div>
         </div>
 
         <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-orange-950/40">
@@ -27,6 +34,79 @@
             </div>
             <img src="@Gallery[0].Src" alt="@Gallery[0].Alt" class="h-72 w-full object-cover sm:h-80" />
         </div>
+    </div>
+</section>
+
+<section id="activar" class="scroll-mt-24 border-b border-white/10 bg-white/[0.03]">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <h2 class="font-serif text-3xl text-white">Descargar y activar</h2>
+        <p class="mt-2 max-w-2xl text-sm text-cream/80">
+            La descarga es gratis. Para usar el programa pagas el mes (S/ @PluginPrice.ToString("0") / 30 días · 1 PC).
+            Al abrir el .exe inicia sesión; sin internet o sin pago no se activa.
+        </p>
+
+        <div class="mt-8 grid gap-4 lg:grid-cols-2">
+            <article class="rounded-3xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
+                <p class="text-xs uppercase tracking-wider text-emerald-300">CorelDRAW · 1 PC</p>
+                <p class="mt-2 font-serif text-3xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/70">/ 30 días</span></p>
+                @if (LicenseFor("Corel") is { } corel)
+                {
+                    <p class="mt-2 text-sm @(corel.IsActive ? "text-white" : "text-cream/70")">
+                        @(corel.IsActive ? $"Activo hasta {corel.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "Mes vencido")
+                    </p>
+                }
+                <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+                    @if (HasCorel)
+                    {
+                        <a href="/api/plugin/download/corel" data-enhance-nav="false"
+                           class="flex-1 rounded-full border border-emerald-400/40 px-4 py-3 text-center text-sm font-semibold text-emerald-200 hover:bg-emerald-500/10">
+                            Descargar .exe
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="flex-1 rounded-full border border-white/10 px-4 py-3 text-center text-sm text-cream/40">.exe aún no subido</span>
+                    }
+                    <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-corel")'
+                            class="flex-1 rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+                        @(IsLoggedIn ? (LicenseFor("Corel")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Entrar para activar")
+                    </button>
+                </div>
+            </article>
+
+            <article class="rounded-3xl border border-cyan/25 bg-cyan/5 p-6">
+                <p class="text-xs uppercase tracking-wider text-cyan">Illustrator · 1 PC</p>
+                <p class="mt-2 font-serif text-3xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/70">/ 30 días</span></p>
+                @if (LicenseFor("Illustrator") is { } ilus)
+                {
+                    <p class="mt-2 text-sm @(ilus.IsActive ? "text-white" : "text-cream/70")">
+                        @(ilus.IsActive ? $"Activo hasta {ilus.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "Mes vencido")
+                    </p>
+                }
+                <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+                    @if (HasIllustrator)
+                    {
+                        <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
+                           class="flex-1 rounded-full border border-gold/40 px-4 py-3 text-center text-sm font-semibold text-gold hover:bg-gold/10">
+                            Descargar .exe
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="flex-1 rounded-full border border-white/10 px-4 py-3 text-center text-sm text-cream/40">.exe aún no subido</span>
+                    }
+                    <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-illustrator")'
+                            class="flex-1 rounded-full bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                        @(IsLoggedIn ? (LicenseFor("Illustrator")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Entrar para activar")
+                    </button>
+                </div>
+            </article>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <p class="mt-4 text-sm text-rose-400" role="alert">@Error</p>
+        }
     </div>
 </section>
 
@@ -81,16 +161,71 @@
     </div>
 </section>
 
-
 @code {
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
     private Dictionary<string, string> _c = new();
+    private decimal PluginPrice = 56;
+    private bool HasCorel;
+    private bool HasIllustrator;
+    private bool IsLoggedIn;
+    private bool Busy;
+    private string? Error;
+    private List<PluginLicenseDto> Licenses = [];
+
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+
+    private PluginLicenseDto? LicenseFor(string edition)
+        => Licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        IsLoggedIn = auth.User.Identity?.IsAuthenticated == true;
+
+        var store = await Api.GetStorefrontAsync();
+        HasCorel = store?.HasCorelDownload == true;
+        HasIllustrator = store?.HasIllustratorDownload == true;
+        if (store is not null && store.PluginMonthPricePen > 0)
+            PluginPrice = store.PluginMonthPricePen;
+
+        if (IsLoggedIn)
+            Licenses = await Api.GetPluginLicensesAsync() ?? [];
+    }
+
+    private async Task StartCheckout(string kind)
+    {
+        Error = null;
+        if (!IsLoggedIn)
+        {
+            Nav.NavigateTo($"/login?returnUrl=/programas#activar");
+            return;
+        }
+
+        Busy = true;
+        try
+        {
+            var checkout = await Api.CheckoutAsync(kind, null, null);
+            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
+            {
+                Error = "No se pudo abrir Mercado Pago.";
+                return;
+            }
+
+            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            var t = ex.Message.Trim();
+            if (t.Length >= 2 && t[0] == '"' && t[^1] == '"') t = t[1..^1];
+            Error = string.IsNullOrWhiteSpace(t) ? "No se pudo iniciar el pago." : t;
+        }
+        finally
+        {
+            Busy = false;
+        }
     }
 
     private static readonly FeatureItem[] Features =
@@ -100,7 +235,7 @@
         new("Corel e Illustrator", "Trabaja dentro de tu programa; tú solo exportas e imprimes como siempre."),
         new("Lectura con IA", "Lee la lista de jugadores desde una foto o un archivo, sin teclear."),
         new("Aprovecha la tela", "Acomoda las piezas al ancho de tu rollo y en bloques para desperdiciar menos."),
-        new("Se activa solo", "Pagas el mes en la web y la herramienta se activa sola para tu PC.")
+        new("Login + pago", "Como Adobe o Cursor: descargas gratis, pero sin cuenta, pago e internet no se activa.")
     ];
 
     private static readonly GalleryShot[] Gallery =

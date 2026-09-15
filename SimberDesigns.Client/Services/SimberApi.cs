@@ -258,7 +258,10 @@ public sealed class SimberApi(HttpClient http)
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo iniciar el pago." : body);
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "No se pudo iniciar el pago." : msg);
         }
 
         return await response.Content.ReadFromJsonAsync<CheckoutResponse>();

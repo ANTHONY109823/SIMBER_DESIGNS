@@ -16,55 +16,21 @@
             <p class="mt-2 font-serif text-4xl text-gold">@Credits.ToString("0")</p>
         </article>
         <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <p class="text-xs uppercase tracking-wider text-cream/45">Programa</p>
-            <p class="mt-2 text-sm text-cream/80">El mes se paga aquí, 1 PC.</p>
+            <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
+            <p class="mt-2 text-sm text-cream/80">Descarga y activa el mes en Programas.</p>
+            <a href="/programas#activar" class="mt-4 inline-flex rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-emerald-400">Ir a Programas</a>
         </article>
     </div>
 
-    <section class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Activar o renovar</h2>
-        <div class="mt-6 grid gap-4 sm:grid-cols-2">
-            <article class="rounded-3xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
-                <p class="text-xs uppercase tracking-wider text-emerald-300">CorelDRAW · 1 PC</p>
-                <p class="mt-2 font-serif text-3xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/70">/ 30 días</span></p>
-                @if (LicenseFor("Corel") is { } corel)
-                {
-                    <p class="mt-2 text-sm @(corel.IsActive ? "text-white" : "text-cream/70")">
-                        @(corel.IsActive ? $"Activo hasta {corel.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "Mes vencido")
-                    </p>
-                    <p class="mt-2 font-mono text-sm text-cyan">@corel.ActivationCode</p>
-                }
-                <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-corel")'
-                        class="mt-5 w-full rounded-full bg-emerald-500 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                    @(LicenseFor("Corel")?.IsActive == true ? "Renovar Corel" : "Activar Corel")
-                </button>
-            </article>
-            <article class="rounded-3xl border border-cyan/25 bg-cyan/5 p-6">
-                <p class="text-xs uppercase tracking-wider text-cyan">Illustrator · 1 PC</p>
-                <p class="mt-2 font-serif text-3xl text-gold">S/ @PluginPrice.ToString("0") <span class="text-base text-cream/70">/ 30 días</span></p>
-                @if (LicenseFor("Illustrator") is { } ilus)
-                {
-                    <p class="mt-2 text-sm @(ilus.IsActive ? "text-white" : "text-cream/70")">
-                        @(ilus.IsActive ? $"Activo hasta {ilus.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "Mes vencido")
-                    </p>
-                    <p class="mt-2 font-mono text-sm text-cyan">@ilus.ActivationCode</p>
-                }
-                <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-illustrator")'
-                        class="mt-5 w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
-                    @(LicenseFor("Illustrator")?.IsActive == true ? "Renovar Illustrator" : "Activar Illustrator")
-                </button>
-            </article>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(Error))
+    <section id="creditos" class="mt-10 scroll-mt-24">
+        <h2 class="font-serif text-2xl text-white">Recarga créditos</h2>
+        <p class="mt-1 text-sm text-cream/70">Solo para descargar vectores del catálogo.</p>
+        @if (Packages.Count == 0)
         {
-            <p class="mt-4 text-sm text-rose-400" role="alert">@Error</p>
+            <p class="mt-4 text-sm text-cream/50">No hay paquetes cargados aún.</p>
         }
-    </section>
-
-    @if (Packages.Count > 0)
-    {
-        <section class="mt-10">
-            <h2 class="font-serif text-2xl text-white">Créditos</h2>
+        else
+        {
             <div class="mt-6 grid gap-4 sm:grid-cols-3">
                 @foreach (var pack in Packages)
                 {
@@ -78,20 +44,36 @@
                     </article>
                 }
             </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <p class="mt-4 text-sm text-rose-400" role="alert">@Error</p>
+        }
+    </section>
+
+    @if (Licenses.Count > 0)
+    {
+        <section class="mt-10">
+            <h2 class="font-serif text-xl text-white">Tus activaciones</h2>
+            <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                @foreach (var lic in Licenses)
+                {
+                    <li class="px-4 py-3 text-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-white">@lic.Edition</span>
+                            <span class="@(lic.IsActive ? "text-emerald-300" : "text-cream/50")">
+                                @(lic.IsActive ? $"activo · {lic.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "vencido")
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(lic.ActivationCode))
+                        {
+                            <p class="mt-1 font-mono text-xs text-cyan">@lic.ActivationCode</p>
+                        }
+                    </li>
+                }
+            </ul>
         </section>
     }
-
-    <div class="mt-8 flex flex-wrap gap-3">
-        @if (HasCorel)
-        {
-            <a href="/api/plugin/download/corel" data-enhance-nav="false" class="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">Descargar CorelDRAW</a>
-        }
-        @if (HasIllustrator)
-        {
-            <a href="/api/plugin/download/illustrator" data-enhance-nav="false" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar Illustrator</a>
-        }
-        <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Programas</a>
-    </div>
 
     @if (CreditLogs.Count > 0 || Transactions.Count > 0)
     {
@@ -134,12 +116,9 @@
     private string Name = "";
     private string Email = "";
     private decimal Credits;
-    private decimal PluginPrice = 56;
     private List<PluginLicenseDto> Licenses = [];
     private List<CreditLogDto> CreditLogs = [];
     private List<TransactionDto> Transactions = [];
-    private bool HasCorel;
-    private bool HasIllustrator;
     private bool Busy;
     private string? Error;
     private List<CreditPackageDto> Packages = [];
@@ -158,26 +137,16 @@
 
         Licenses = await Api.GetPluginLicensesAsync() ?? [];
         var store = await Api.GetStorefrontAsync();
-        HasCorel = store?.HasCorelDownload == true;
-        HasIllustrator = store?.HasIllustratorDownload == true;
         Packages = store?.Packages ?? [];
-        if (store is not null && store.PluginMonthPricePen > 0)
-            PluginPrice = store.PluginMonthPricePen;
     }
 
-    private PluginLicenseDto? LicenseFor(string edition)
-        => Licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase));
-
     private async Task PayCredits(CreditPackageDto pack)
-        => await StartCheckout("credits", pack.Id);
-
-    private async Task StartCheckout(string kind, Guid? packageId = null)
     {
         Error = null;
         Busy = true;
         try
         {
-            var checkout = await Api.CheckoutAsync(kind, packageId, null);
+            var checkout = await Api.CheckoutAsync("credits", pack.Id, null);
             if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
             {
                 Error = "No se pudo abrir Mercado Pago.";
@@ -188,12 +157,20 @@
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Error = CleanError(ex.Message);
         }
         finally
         {
             Busy = false;
         }
+    }
+
+    private static string CleanError(string raw)
+    {
+        var t = raw.Trim();
+        if (t.Length >= 2 && t[0] == '"' && t[^1] == '"')
+            t = t[1..^1];
+        return string.IsNullOrWhiteSpace(t) ? "No se pudo iniciar el pago." : t;
     }
 
     private static string StatusText(string s) => s switch

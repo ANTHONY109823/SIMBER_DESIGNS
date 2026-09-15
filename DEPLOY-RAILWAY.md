@@ -37,7 +37,7 @@ Usa doble guion bajo `__` para las secciones anidadas:
 | `MercadoPago__AccessToken` | tu Access Token real de Mercado Pago | 🔴 sí |
 | `MercadoPago__PublicKey` | tu Public Key de Mercado Pago | no (es publicable) |
 | `MercadoPago__WebhookSecret` | el secreto del webhook | 🔴 sí |
-| `MercadoPago__PublicBaseUrl` | la URL pública de Railway (ver abajo) | no |
+| `MercadoPago__PublicBaseUrl` | la URL pública **https://…** de Railway (obligatoria; sin esto el checkout falla y el pago queda “en proceso”) | no |
 | `MercadoPago__UseFakeCheckout` | `false` (para cobrar de verdad) | no |
 | `MercadoPago__UseSandbox` | `true` para pruebas / `false` producción | no |
 | `CloudflareR2__UseFakeClient` | `true` (o configura R2 real si usas catálogo con archivos) | — |

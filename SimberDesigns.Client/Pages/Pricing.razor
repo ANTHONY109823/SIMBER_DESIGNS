@@ -3,7 +3,7 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
 
-<PageTitle>Simber Designs</PageTitle>
+<PageTitle>Recarga créditos · Simber Designs</PageTitle>
 
 @code {
     protected override async Task OnInitializedAsync()
@@ -11,10 +11,10 @@
         var auth = await AuthState.GetAuthenticationStateAsync();
         if (auth.User.Identity?.IsAuthenticated == true)
         {
-            Nav.NavigateTo("/cuenta", replace: true);
+            Nav.NavigateTo("/cuenta#creditos", replace: true);
             return;
         }
 
-        Nav.NavigateTo("/programas", replace: true);
+        Nav.NavigateTo("/login?returnUrl=/cuenta#creditos", replace: true);
     }
 }

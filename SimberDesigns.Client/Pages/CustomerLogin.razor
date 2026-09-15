@@ -72,7 +72,24 @@
             }
 
             await Auth.SignInAsync(result.Token);
-            Nav.NavigateTo(string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase) ? "/admin" : "/cuenta");
+            if (string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                Nav.NavigateTo("/admin");
+                return;
+            }
+
+            var returnUrl = "/cuenta";
+            var q = Nav.ToAbsoluteUri(Nav.Uri).Query;
+            const string key = "returnUrl=";
+            var idx = q.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                var raw = Uri.UnescapeDataString(q[(idx + key.Length)..].Split('&')[0]);
+                if (raw.StartsWith('/') && !raw.StartsWith("//", StringComparison.Ordinal))
+                    returnUrl = raw;
+            }
+
+            Nav.NavigateTo(returnUrl);
         }
         finally
         {

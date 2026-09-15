@@ -138,19 +138,30 @@ public sealed class PaymentsController(
             return Ok(new CheckoutResponse($"{origin}/pago/ok?tx={tx.Id}&fake=1", tx.Id, true));
         }
 
-        var preference = await mercadoPago.CreatePreferenceAsync(
-            title,
-            amount,
-            user.Email,
-            tx.Id.ToString(),
-            $"{origin}/api/webhooks/mercadopago",
-            $"{origin}/pago/ok",
-            $"{origin}/pago/error",
-            $"{origin}/pago/pendiente",
-            cancellationToken);
-        tx.ExternalReferenceId = preference.PreferenceId;
-        await db.SaveChangesAsync(cancellationToken);
-        return Ok(new CheckoutResponse(preference.CheckoutUrl, tx.Id, false));
+        try
+        {
+            var preference = await mercadoPago.CreatePreferenceAsync(
+                title,
+                amount,
+                user.Email,
+                tx.Id.ToString(),
+                $"{origin}/api/webhooks/mercadopago",
+                $"{origin}/pago/ok",
+                $"{origin}/pago/error",
+                $"{origin}/pago/pendiente",
+                cancellationToken);
+            tx.ExternalReferenceId = preference.PreferenceId;
+            await db.SaveChangesAsync(cancellationToken);
+            return Ok(new CheckoutResponse(preference.CheckoutUrl, tx.Id, false));
+        }
+        catch (Exception ex)
+        {
+            tx.Status = TransactionStatuses.Rejected;
+            tx.Notes = $"{notes}|checkout_error:{ex.Message}";
+            tx.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return BadRequest($"No se pudo abrir Mercado Pago. Revisa Access Token y que MercadoPago__PublicBaseUrl sea https://… ({ex.Message})");
+        }
     }
 
     [Authorize]
@@ -513,10 +524,31 @@ public sealed class PaymentsController(
         var configured = mercadoPagoOptions.Value.PublicBaseUrl;
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            return configured.TrimEnd('/');
+            var baseUrl = configured.Trim().TrimEnd('/');
+            if (baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                && !baseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                baseUrl = "https://" + baseUrl["http://".Length..];
+            }
+
+            return baseUrl;
         }
 
-        return $"{Request.Scheme}://{Request.Host}";
+        // Detrás de Railway el esquema suele llegar como http; Mercado Pago exige https
+        // en back_urls y notification_url (si no, el checkout falla y queda "en proceso").
+        var forwarded = Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+        var scheme = !string.IsNullOrWhiteSpace(forwarded)
+            ? forwarded.Split(',')[0].Trim()
+            : Request.Scheme;
+        var host = Request.Host.Value ?? "localhost";
+        if (!host.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+            && !host.StartsWith("127.", StringComparison.Ordinal)
+            && string.Equals(scheme, "http", StringComparison.OrdinalIgnoreCase))
+        {
+            scheme = "https";
+        }
+
+        return $"{scheme}://{host}".TrimEnd('/');
     }
 
     private static int? ResolveVariantId(CheckoutRequest request, LemonSqueezyOptions lemon)
