@@ -16,6 +16,38 @@
             <p class="mt-4 text-lg text-cream/85">
                 @T("programas.desc", "Arma mockups, nombres y dorsales en CorelDRAW e Illustrator.")
             </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+                @if (HasCorel)
+                {
+                    <a href="/api/plugin/download/corel" data-enhance-nav="false"
+                       class="inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/40 transition hover:brightness-110"
+                       style="background:#00A651;">
+                        Descargar CorelDRAW
+                    </a>
+                }
+                else
+                {
+                    <span class="inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white/50"
+                          style="background:#00A65166;" title="Aún no disponible">
+                        Descargar CorelDRAW
+                    </span>
+                }
+                @if (HasIllustrator)
+                {
+                    <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
+                       class="inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-900/40 transition hover:brightness-110"
+                       style="background:#FF9A00;">
+                        Descargar Illustrator
+                    </a>
+                }
+                else
+                {
+                    <span class="inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white/50"
+                          style="background:#FF9A0066;" title="Aún no disponible">
+                        Descargar Illustrator
+                    </span>
+                }
+            </div>
         </div>
 
         <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-orange-950/40">
@@ -26,45 +58,6 @@
                 <span class="ml-2 text-xs text-cream/70">SIMBER DESIGNS · CorelDRAW / Illustrator</span>
             </div>
             <img src="@Gallery[0].Src" alt="@Gallery[0].Alt" class="h-72 w-full object-cover sm:h-80" />
-        </div>
-    </div>
-</section>
-
-<section id="descargas" class="scroll-mt-24 border-b border-white/10 bg-white/[0.03]">
-    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <h2 class="font-serif text-3xl text-white">Descargas</h2>
-        <div class="mt-8 grid gap-4 sm:grid-cols-2">
-            <article class="rounded-3xl border border-emerald-500/25 bg-emerald-500/[0.05] p-6">
-                <p class="text-xs uppercase tracking-wider text-emerald-300">CorelDRAW</p>
-                <h3 class="mt-2 font-serif text-2xl text-white">Simber Corel</h3>
-                @if (HasCorel)
-                {
-                    <a href="/api/plugin/download/corel" data-enhance-nav="false"
-                       class="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
-                        Descargar
-                    </a>
-                }
-                else
-                {
-                    <p class="mt-6 text-sm text-cream/45">Próximamente</p>
-                }
-            </article>
-
-            <article class="rounded-3xl border border-cyan/25 bg-cyan/5 p-6">
-                <p class="text-xs uppercase tracking-wider text-cyan">Illustrator</p>
-                <h3 class="mt-2 font-serif text-2xl text-white">Simber Illustrator</h3>
-                @if (HasIllustrator)
-                {
-                    <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
-                       class="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
-                        Descargar
-                    </a>
-                }
-                else
-                {
-                    <p class="mt-6 text-sm text-cream/45">Próximamente</p>
-                }
-            </article>
         </div>
     </div>
 </section>
