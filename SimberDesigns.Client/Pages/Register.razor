@@ -32,11 +32,11 @@
                     </div>
                 </label>
                 <button class="min-h-11 w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink disabled:opacity-60" type="submit" disabled="@Busy">
-                    @(Busy ? "Creando…" : "Crear y entrar")
+                    @(Busy ? "Creando…" : "Crear e ingresar")
                 </button>
             </EditForm>
             <p class="mt-6 text-sm text-cream/80">
-                ¿Ya tienes cuenta? <a href="/login" class="text-gold hover:underline">Entrar</a>
+                ¿Ya tienes cuenta? <a href="/login" class="text-gold hover:underline">Ingresar</a>
             </p>
             @if (!string.IsNullOrWhiteSpace(Error))
             {

@@ -69,7 +69,7 @@
                     }
                     <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-corel")'
                             class="flex-1 rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                        @(IsLoggedIn ? (LicenseFor("Corel")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Entrar para activar")
+                        @(IsLoggedIn ? (LicenseFor("Corel")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Ingresar para activar")
                     </button>
                 </div>
             </article>
@@ -97,7 +97,7 @@
                     }
                     <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-illustrator")'
                             class="flex-1 rounded-full bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
-                        @(IsLoggedIn ? (LicenseFor("Illustrator")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Entrar para activar")
+                        @(IsLoggedIn ? (LicenseFor("Illustrator")?.IsActive == true ? "Renovar mes" : "Pagar y activar") : "Ingresar para activar")
                     </button>
                 </div>
             </article>
