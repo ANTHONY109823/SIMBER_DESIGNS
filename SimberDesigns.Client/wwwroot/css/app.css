@@ -123,3 +123,71 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ——— Hero inicio: vida + carrusel vertical (desktop) ——— */
+.hero-bg {
+    transform-origin: 70% 45%;
+    animation: hero-bg-breathe 12s ease-in-out infinite;
+}
+
+.hero-light-sweep {
+    background: linear-gradient(
+        115deg,
+        transparent 35%,
+        rgba(46, 230, 255, 0.0) 42%,
+        rgba(46, 230, 255, 0.18) 48%,
+        rgba(255, 106, 26, 0.22) 52%,
+        rgba(255, 106, 26, 0.0) 58%,
+        transparent 65%
+    );
+    background-size: 220% 220%;
+    mix-blend-mode: screen;
+    animation: hero-light-run 5.5s ease-in-out infinite;
+    opacity: 0.85;
+}
+
+.hero-v-carousel {
+    height: min(68vh, 32rem);
+    mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+}
+
+.hero-v-track {
+    animation: hero-v-scroll 28s linear infinite;
+    will-change: transform;
+}
+
+.hero-v-carousel:hover .hero-v-track {
+    animation-play-state: paused;
+}
+
+@keyframes hero-bg-breathe {
+    0%, 100% { transform: scale(1) translate3d(0, 0, 0); }
+    50% { transform: scale(1.045) translate3d(-1.2%, -0.6%, 0); }
+}
+
+@keyframes hero-light-run {
+    0% { background-position: 120% 40%; opacity: 0.35; }
+    40% { opacity: 0.9; }
+    100% { background-position: -40% 60%; opacity: 0.35; }
+}
+
+@keyframes hero-v-scroll {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, -50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-bg,
+    .hero-light-sweep,
+    .hero-v-track {
+        animation: none !important;
+    }
+}
+
+@media (max-width: 1023px) {
+    .hero-stage {
+        min-height: 22rem;
+        height: calc(100vh - 7.25rem) !important;
+    }
+}

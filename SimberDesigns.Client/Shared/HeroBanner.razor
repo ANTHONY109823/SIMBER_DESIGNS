@@ -1,30 +1,72 @@
 @inject SimberApi Api
+@implements IDisposable
 
-@* Altura fija al viewport (menos header ~4.5rem desktop). Inline evita fallos de clases Tailwind. *@
-<section class="relative isolate overflow-hidden bg-ink text-cream"
+@* Altura al viewport menos header. Carrusel vertical solo desktop. *@
+<section class="hero-stage relative isolate overflow-hidden bg-ink text-cream"
          style="height: calc(100vh - 4.5rem); min-height: 28rem;">
-    <img src="images/simber_designs_hero_banner.png"
-         alt="Vectores deportivos Simber Designs para sublimación"
-         class="absolute inset-0 h-full w-full object-cover object-center" />
-    <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/70 to-transparent"></div>
-    <div class="relative z-10 mx-auto flex h-full max-w-6xl flex-col justify-end px-6 py-12 sm:justify-center sm:py-16">
-        <p class="text-xs uppercase tracking-[0.35em] text-gold">@T("home.hero.eyebrow", "Vectores · Sublimación · Wireframe")</p>
-        <h1 class="mt-4 max-w-xl font-serif text-4xl leading-none sm:text-6xl">@T("home.hero.title", "Del patrón a la camiseta en menos de tres clics.")</h1>
-        <p class="mt-6 max-w-lg text-sm text-cream/80 sm:text-base">@T("home.hero.desc", "Catálogo CDR y programas para CorelDRAW e Illustrator.")</p>
-        <div class="mt-8 flex flex-wrap gap-3">
-            <a href="/catalog" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Ver catálogo</a>
-            <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Programas</a>
+    <div class="hero-bg absolute inset-0">
+        <img src="images/simber_designs_hero_banner.png"
+             alt="Vectores deportivos Simber Designs para sublimación"
+             class="h-full w-full object-cover object-center" />
+    </div>
+    <div class="hero-light-sweep pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/75 to-transparent lg:via-ink/55"></div>
+
+    <div class="relative z-10 mx-auto flex h-full max-w-6xl items-stretch gap-6 px-6 py-12 lg:gap-10 lg:py-16">
+        @if (Preview.Count > 0)
+        {
+            <aside class="hero-v-carousel hidden w-[6.5rem] shrink-0 self-center overflow-hidden rounded-2xl border border-white/10 bg-ink/40 py-2 lg:block xl:w-28"
+                   aria-label="Diseños del catálogo">
+                <div class="hero-v-track flex flex-col gap-3 px-2">
+                    @foreach (var d in PreviewLoop)
+                    {
+                        <a href="/catalog" class="block overflow-hidden rounded-xl border border-white/10 transition hover:border-gold/50"
+                           title="@d.Title">
+                            <img src="@d.PreviewUrl" alt="" class="aspect-[3/4] w-full object-cover" loading="lazy" />
+                        </a>
+                    }
+                </div>
+            </aside>
+        }
+
+        <div class="flex min-w-0 flex-1 flex-col justify-end sm:justify-center">
+            <p class="text-xs uppercase tracking-[0.35em] text-gold">@T("home.hero.eyebrow", "Vectores · Sublimación · Wireframe")</p>
+            <h1 class="mt-4 max-w-xl font-serif text-4xl leading-none sm:text-5xl lg:text-6xl">@T("home.hero.title", "Del patrón a la camiseta en menos de tres clics.")</h1>
+            <p class="mt-6 max-w-lg text-sm text-cream/80 sm:text-base">@T("home.hero.desc", "Catálogo CDR y programas para CorelDRAW e Illustrator.")</p>
+            <div class="mt-8 flex flex-wrap gap-3">
+                <a href="/catalog" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Ver catálogo</a>
+                <a href="/programas" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Programas</a>
+            </div>
         </div>
     </div>
 </section>
 
 @code {
     private Dictionary<string, string> _c = new();
+    private List<DesignDto> Preview = [];
+    private List<DesignDto> PreviewLoop = [];
+
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
 
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+        try
+        {
+            Preview = (await Api.GetDesignsAsync() ?? [])
+                .Where(d => !string.IsNullOrWhiteSpace(d.PreviewUrl))
+                .Take(10)
+                .ToList();
+            // Duplicado para el loop infinito CSS
+            PreviewLoop = Preview.Count > 0 ? Preview.Concat(Preview).ToList() : [];
+        }
+        catch
+        {
+            Preview = [];
+            PreviewLoop = [];
+        }
     }
+
+    public void Dispose() { }
 }
