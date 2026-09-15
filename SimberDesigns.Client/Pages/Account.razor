@@ -14,7 +14,6 @@
         <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
             <p class="text-xs uppercase tracking-wider text-cream/45">Créditos CDR</p>
             <p class="mt-2 font-serif text-4xl text-gold">@Credits.ToString("0")</p>
-            <a href="/catalog#creditos" class="mt-4 inline-block text-sm text-gold hover:underline">Recargar en el catálogo</a>
         </article>
         <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
             <p class="text-xs uppercase tracking-wider text-cream/45">Programa</p>
@@ -61,6 +60,26 @@
             <p class="mt-4 text-sm text-rose-400" role="alert">@Error</p>
         }
     </section>
+
+    @if (Packages.Count > 0)
+    {
+        <section class="mt-10">
+            <h2 class="font-serif text-2xl text-white">Créditos</h2>
+            <div class="mt-6 grid gap-4 sm:grid-cols-3">
+                @foreach (var pack in Packages)
+                {
+                    <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                        <p class="font-serif text-3xl text-gold">S/ @pack.PriceUsd.ToString("0")</p>
+                        <p class="mt-1 text-sm text-cream/70">@(pack.CreditsAmount + pack.BonusAmount) créditos</p>
+                        <button type="button" disabled="@Busy" @onclick="() => PayCredits(pack)"
+                                class="mt-4 w-full rounded-full bg-gold py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                            Comprar
+                        </button>
+                    </article>
+                }
+            </div>
+        </section>
+    }
 
     <div class="mt-8 flex flex-wrap gap-3">
         @if (HasCorel)
@@ -123,6 +142,7 @@
     private bool HasIllustrator;
     private bool Busy;
     private string? Error;
+    private List<CreditPackageDto> Packages = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,6 +160,7 @@
         var store = await Api.GetStorefrontAsync();
         HasCorel = store?.HasCorelDownload == true;
         HasIllustrator = store?.HasIllustratorDownload == true;
+        Packages = store?.Packages ?? [];
         if (store is not null && store.PluginMonthPricePen > 0)
             PluginPrice = store.PluginMonthPricePen;
     }
@@ -147,13 +168,16 @@
     private PluginLicenseDto? LicenseFor(string edition)
         => Licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase));
 
-    private async Task StartCheckout(string kind)
+    private async Task PayCredits(CreditPackageDto pack)
+        => await StartCheckout("credits", pack.Id);
+
+    private async Task StartCheckout(string kind, Guid? packageId = null)
     {
         Error = null;
         Busy = true;
         try
         {
-            var checkout = await Api.CheckoutAsync(kind, null, null);
+            var checkout = await Api.CheckoutAsync(kind, packageId, null);
             if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
             {
                 Error = "No se pudo abrir Mercado Pago.";
