@@ -3,8 +3,10 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Net.Http.Headers;
 using Npgsql;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
@@ -22,6 +24,22 @@ builder.Services.Configure<MercadoPagoOptions>(builder.Configuration.GetSection(
 builder.Services.Configure<OnnxOptions>(builder.Configuration.GetSection(OnnxOptions.SectionName));
 builder.Services.Configure<AnthropicOptions>(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 builder.Services.AddHttpClient("anthropic");
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+    [
+        "application/octet-stream",
+        "application/wasm",
+        "application/json",
+        "image/svg+xml"
+    ]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Falta ConnectionStrings:DefaultConnection.");
@@ -100,13 +118,50 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+app.UseResponseCompression();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
-app.UseHttpsRedirection();
+
+// Redirige a https solo cuando el proxy no indica ya https (evita loops raros).
+app.Use(async (ctx, next) =>
+{
+    var forwarded = ctx.Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+    var isHttps = string.Equals(ctx.Request.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(forwarded, "https", StringComparison.OrdinalIgnoreCase);
+    if (!app.Environment.IsDevelopment()
+        && !isHttps
+        && !ctx.Request.Host.Host.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+    {
+        var url = $"https://{ctx.Request.Host}{ctx.Request.PathBase}{ctx.Request.Path}{ctx.Request.QueryString}";
+        ctx.Response.Redirect(url, permanent: true);
+        return;
+    }
+
+    await next();
+});
+
 app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? "";
+        if (path.StartsWith("/_framework/", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/js/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/programas/", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public,max-age=604800";
+        }
+    }
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
