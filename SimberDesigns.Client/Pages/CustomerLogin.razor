@@ -7,15 +7,13 @@
 
 <PageTitle>Entrar · Simber Designs</PageTitle>
 
-<div class="grid min-h-screen w-full lg:grid-cols-2">
-    <section class="flex items-center justify-center px-6 py-16">
+<div class="flex min-h-screen w-full items-center justify-center px-6 py-16">
         <div class="w-full max-w-sm">
             <a href="/" class="mb-8 flex items-center gap-2 font-serif text-2xl uppercase tracking-wide">
                 <img src="/favicon.png?v=4" alt="" class="h-8 w-8 rounded-md object-cover" />
                 Simber <span class="text-gold">Designs</span>
             </a>
             <h1 class="font-serif text-3xl text-white">Entrar</h1>
-            <p class="mt-2 text-sm text-cream/80">Tu cuenta para pagar el mes, bajar el programa y descargar CDR.</p>
             <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
                 <label class="block text-sm">
                     <span class="text-cream/85">Correo</span>
@@ -45,18 +43,6 @@
                 <a href="/" class="text-cream/75 hover:text-white">Ir a la web</a>
             </p>
         </div>
-    </section>
-    <aside class="hidden items-center bg-gradient-to-br from-ink via-ink to-orange-950/40 px-12 lg:flex">
-        <div class="max-w-md">
-            <p class="text-xs uppercase tracking-[0.28em] text-gold">Tu mes incluye</p>
-            <ul class="mt-6 space-y-4 text-sm text-cream/85">
-                <li>Un .exe para CorelDRAW y otro para Illustrator (gratis)</li>
-                <li>El mes se activa desde tu cuenta, en 1 PC</li>
-                <li>Lectura de listas con IA mientras el mes esté vigente</li>
-                <li>Catálogo de vectores con créditos aparte</li>
-            </ul>
-        </div>
-    </aside>
 </div>
 
 @code {

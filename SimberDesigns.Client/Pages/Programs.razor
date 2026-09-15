@@ -14,24 +14,8 @@
                 Simber <span class="text-gold">Designs</span>
             </h1>
             <p class="mt-4 text-lg text-cream/85">
-                @T("programas.desc", "Herramienta de apoyo para CorelDRAW e Illustrator: arma mockups, nombres, dorsales y colorways de sublimación en tu PC.")
+                @T("programas.desc", "Arma mockups, nombres y dorsales en CorelDRAW e Illustrator.")
             </p>
-            <ul class="mt-6 space-y-2 text-sm text-cream/80">
-                <li>Windows · dos ejecutables distintos: uno para CorelDRAW y otro para Illustrator</li>
-                <li>La descarga es gratis. El mes se activa desde tu cuenta, en 1 PC</li>
-                <li>Entras con usuario y contraseña; al pagar aparece la clave del mes en Mi cuenta</li>
-                <li>Al abrir, el programa se conecta a internet y comprueba si el mes sigue vigente</li>
-            </ul>
-            <div class="mt-8 flex flex-wrap gap-3">
-                <a href="/api/plugin/download/corel" data-enhance-nav="false"
-                   class="inline-flex min-h-11 items-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">
-                    Descargar CorelDRAW
-                </a>
-                <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
-                   class="inline-flex min-h-11 items-center rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
-                    Descargar Illustrator
-                </a>
-            </div>
         </div>
 
         <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-orange-950/40">
@@ -97,31 +81,6 @@
     </div>
 </section>
 
-<section id="descargas" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-    <h2 class="font-serif text-3xl text-white">Descargas</h2>
-    <p class="mt-2 max-w-2xl text-sm text-cream/80">
-        Baja el ejecutable de tu programa. El mes se paga después, en Mi cuenta, cuando ya quieras activarlo en tu PC.
-    </p>
-
-    <div class="mt-8 grid gap-6 md:grid-cols-2">
-        <article class="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-8">
-            <span class="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">CorelDRAW</span>
-            <h3 class="mt-6 font-serif text-3xl text-white">SIMBER DESIGNS Corel</h3>
-            <p class="mt-4 text-sm text-cream/80">Ejecutable para CorelDRAW. Gratis para bajar. Se activa en 1 PC desde tu cuenta.</p>
-            <a href="/api/plugin/download/corel" data-enhance-nav="false"
-               class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-ink hover:bg-emerald-400">Descargar CorelDRAW</a>
-            <a href="/cuenta" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-cream/80 hover:text-gold">Activar desde Mi cuenta</a>
-        </article>
-        <article class="rounded-2xl border border-cyan/30 bg-cyan/5 p-8">
-            <span class="rounded-full bg-cyan px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink">Illustrator</span>
-            <h3 class="mt-6 font-serif text-3xl text-white">SIMBER DESIGNS Illustrator</h3>
-            <p class="mt-4 text-sm text-cream/80">Ejecutable para Illustrator. Gratis para bajar. Se activa en 1 PC desde tu cuenta.</p>
-            <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
-               class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-gold px-4 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Descargar Illustrator</a>
-            <a href="/cuenta" class="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm text-cream/80 hover:text-gold">Activar desde Mi cuenta</a>
-        </article>
-    </div>
-</section>
 
 @code {
     private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
