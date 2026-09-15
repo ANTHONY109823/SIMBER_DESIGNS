@@ -169,9 +169,12 @@
     private string MinDate => DateTime.Today.ToString("yyyy-MM-dd");
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
-    private string TrabajoPrincipal => "/api/content/asset/encarganos-1";
+    private string TrabajoPrincipal =>
+        Designs.Count > 0 ? Designs[0].PreviewUrl : "/api/content/asset/encarganos-1";
     private IEnumerable<string> Trabajos =>
-        ["/api/content/asset/encarganos-2", "/api/content/asset/encarganos-3"];
+        Designs.Skip(1).Take(4).Select(d => d.PreviewUrl)
+            .Concat(["/api/content/asset/encarganos-2", "/api/content/asset/encarganos-3"])
+            .Take(4);
 
     protected override async Task OnInitializedAsync()
     {
