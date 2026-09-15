@@ -73,16 +73,29 @@
             }
 
             await Auth.SignInAsync(result.Token);
-            var uri = Nav.ToAbsoluteUri(Nav.Uri);
-            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-            var returnUrl = query.TryGetValue("returnUrl", out var r) ? r.ToString() : null;
-            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith('/'))
-                returnUrl = "/cuenta";
-            Nav.NavigateTo(returnUrl);
+            Nav.NavigateTo(ResolveReturnUrl());
         }
         finally
         {
             Busy = false;
         }
+    }
+
+    private string ResolveReturnUrl()
+    {
+        var abs = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = abs.Query.TrimStart('?');
+        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Equals("returnUrl", StringComparison.OrdinalIgnoreCase))
+            {
+                var decoded = Uri.UnescapeDataString(kv[1]);
+                if (decoded.StartsWith('/') && !decoded.StartsWith("//", StringComparison.Ordinal))
+                    return decoded;
+            }
+        }
+
+        return "/cuenta";
     }
 }
