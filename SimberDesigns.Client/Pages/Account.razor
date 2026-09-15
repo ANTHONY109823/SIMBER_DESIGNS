@@ -6,25 +6,54 @@
 <PageTitle>Mi cuenta · Simber Designs</PageTitle>
 
 <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-    <p class="text-xs uppercase tracking-[0.28em] text-gold">Cuenta</p>
+    <p class="text-xs uppercase tracking-[0.28em] text-gold">Mi cuenta</p>
     <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
     <p class="mt-1 text-sm text-cream/80">@Email</p>
 
-    <div class="mt-8 grid gap-4 sm:grid-cols-2">
-        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <p class="text-xs uppercase tracking-wider text-cream/45">Créditos CDR</p>
-            <p class="mt-2 font-serif text-4xl text-gold">@Credits.ToString("0")</p>
-        </article>
-        <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
-            <p class="mt-2 text-sm text-cream/80">Descarga y activa el mes en Programas.</p>
-            <a href="/programas#activar" class="mt-4 inline-flex rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-ink hover:bg-emerald-400">Ir a Programas</a>
-        </article>
-    </div>
+    <section class="mt-10">
+        <h2 class="font-serif text-2xl text-white">Tus servicios</h2>
+        <p class="mt-1 text-sm text-cream/70">Solo aparece lo que tienes activo. Los créditos son solo para diseños del catálogo.</p>
+        <div class="mt-5 space-y-3">
+            <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs uppercase tracking-wider text-cream/45">Catálogo CDR</p>
+                        <p class="mt-1 text-white">Créditos para descargar vectores</p>
+                    </div>
+                    <p class="font-serif text-3xl text-gold">@Credits.ToString("0")</p>
+                </div>
+            </article>
+
+            @if (Licenses.Count == 0)
+            {
+                <article class="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4">
+                    <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
+                    <p class="mt-1 text-sm text-cream/60">Sin mes de Corel ni Illustrator. Si lo necesitas, actívalo en Programas.</p>
+                </article>
+            }
+            else
+            {
+                @foreach (var lic in Licenses)
+                {
+                    <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs uppercase tracking-wider text-cream/45">Programa</p>
+                                <p class="mt-1 text-white">@lic.Edition</p>
+                            </div>
+                            <span class="text-sm @(lic.IsActive ? "text-emerald-300" : "text-cream/50")">
+                                @(lic.IsActive ? $"activo · {lic.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "vencido")
+                            </span>
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+    </section>
 
     <section id="creditos" class="mt-10 scroll-mt-24">
         <h2 class="font-serif text-2xl text-white">Recarga créditos</h2>
-        <p class="mt-1 text-sm text-cream/70">Solo para descargar vectores del catálogo.</p>
+        <p class="mt-1 text-sm text-cream/70">Solo para comprar / canjear diseños del catálogo.</p>
         @if (Packages.Count == 0)
         {
             <p class="mt-4 text-sm text-cream/50">No hay paquetes cargados aún.</p>
@@ -45,37 +74,78 @@
                 }
             </div>
         }
-        @if (!string.IsNullOrWhiteSpace(Error))
+        @if (!string.IsNullOrWhiteSpace(PayError))
         {
-            <p class="mt-4 text-sm text-rose-400" role="alert">@Error</p>
+            <p class="mt-4 text-sm text-rose-400" role="alert">@PayError</p>
         }
     </section>
 
-    @if (Licenses.Count > 0)
-    {
-        <section class="mt-10">
-            <h2 class="font-serif text-xl text-white">Tus activaciones</h2>
-            <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                @foreach (var lic in Licenses)
+    <section class="mt-10">
+        <h2 class="font-serif text-2xl text-white">Diseños desbloqueados</h2>
+        <p class="mt-1 text-sm text-cream/70">Si ya lo pagaste o canjeaste, puedes volver a descargarlo.</p>
+        @if (Unlocked.Count == 0)
+        {
+            <p class="mt-4 text-sm text-cream/50">Aún no tienes diseños desbloqueados.</p>
+        }
+        else
+        {
+            <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                @foreach (var d in Unlocked)
                 {
-                    <li class="px-4 py-3 text-sm">
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-white">@lic.Edition</span>
-                            <span class="@(lic.IsActive ? "text-emerald-300" : "text-cream/50")">
-                                @(lic.IsActive ? $"activo · {lic.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "vencido")
-                            </span>
+                    <li class="flex items-center gap-3 px-4 py-3">
+                        <img src="@d.PreviewUrl" alt="" class="h-12 w-10 shrink-0 rounded object-cover" />
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm text-white">@d.Title</p>
+                            <p class="text-xs text-cream/45">@(d.UnlockedViaSubscription ? "Por membresía" : "Canjeado / pagado")</p>
                         </div>
-                        @if (!string.IsNullOrWhiteSpace(lic.ActivationCode))
-                        {
-                            <p class="mt-1 font-mono text-xs text-cyan">@lic.ActivationCode</p>
-                        }
+                        <button type="button" disabled="@Busy" @onclick="() => Redownload(d)"
+                                class="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-xs font-semibold text-gold hover:bg-gold/10 disabled:opacity-50">
+                            Descargar
+                        </button>
                     </li>
                 }
             </ul>
-        </section>
-    }
+        }
+        @if (!string.IsNullOrWhiteSpace(DownloadMsg))
+        {
+            <p class="mt-3 text-sm @(DownloadOk ? "text-emerald-300" : "text-rose-400")">@DownloadMsg</p>
+        }
+    </section>
 
-    @if (CreditLogs.Count > 0 || Transactions.Count > 0)
+    <section class="mt-10">
+        <h2 class="font-serif text-2xl text-white">Datos de la cuenta</h2>
+        <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><span class="text-cream/50">Nombre</span><span class="text-white">@Name</span></div>
+            <div class="flex justify-between gap-4"><span class="text-cream/50">Correo</span><span class="text-white">@Email</span></div>
+            <div class="flex justify-between gap-4"><span class="text-cream/50">Créditos</span><span class="text-gold">@Credits.ToString("0")</span></div>
+        </div>
+
+        <h3 class="mt-8 font-serif text-xl text-white">Cambiar contraseña</h3>
+        <div class="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <label class="block text-sm">
+                <span class="text-cream/70">Contraseña actual</span>
+                <input type="password" @bind="_currentPassword" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
+            </label>
+            <label class="block text-sm">
+                <span class="text-cream/70">Nueva contraseña</span>
+                <input type="password" @bind="_newPassword" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
+            </label>
+            <label class="block text-sm">
+                <span class="text-cream/70">Repetir nueva</span>
+                <input type="password" @bind="_newPassword2" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
+            </label>
+            <button type="button" disabled="@Busy" @onclick="ChangePassword"
+                    class="rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                Guardar contraseña
+            </button>
+            @if (!string.IsNullOrWhiteSpace(PasswordMsg))
+            {
+                <p class="text-sm @(PasswordOk ? "text-emerald-300" : "text-rose-400")">@PasswordMsg</p>
+            }
+        </div>
+    </section>
+
+    @if (CreditLogs.Count > 0 || CreditPayments.Count > 0 || ProgramPayments.Count > 0)
     {
         <div class="mt-10 grid gap-6 lg:grid-cols-2">
             @if (CreditLogs.Count > 0)
@@ -93,12 +163,12 @@
                     </ul>
                 </section>
             }
-            @if (Transactions.Count > 0)
+            @if (CreditPayments.Count > 0 || ProgramPayments.Count > 0)
             {
                 <section>
                     <h2 class="font-serif text-xl text-white">Pagos</h2>
                     <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                        @foreach (var tx in Transactions)
+                        @foreach (var tx in CreditPayments.Concat(ProgramPayments).OrderByDescending(t => t.CreatedAt))
                         {
                             <li class="flex items-center justify-between px-4 py-3 text-sm">
                                 <span class="text-cream/70">@tx.DetailName<span class="ml-2 text-xs text-cream/35">@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
@@ -118,10 +188,19 @@
     private decimal Credits;
     private List<PluginLicenseDto> Licenses = [];
     private List<CreditLogDto> CreditLogs = [];
-    private List<TransactionDto> Transactions = [];
-    private bool Busy;
-    private string? Error;
+    private List<TransactionDto> CreditPayments = [];
+    private List<TransactionDto> ProgramPayments = [];
+    private List<UnlockedDesignDto> Unlocked = [];
     private List<CreditPackageDto> Packages = [];
+    private bool Busy;
+    private string? PayError;
+    private string? DownloadMsg;
+    private bool DownloadOk;
+    private string? PasswordMsg;
+    private bool PasswordOk;
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _newPassword2 = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,24 +211,38 @@
             Email = dash.Email;
             Credits = dash.CreditsBalance;
             CreditLogs = dash.CreditLogs ?? [];
-            Transactions = dash.Transactions ?? [];
+            Unlocked = dash.UnlockedDesigns ?? [];
+            var txs = dash.Transactions ?? [];
+            CreditPayments = txs.Where(t => IsCreditPayment(t)).ToList();
+            ProgramPayments = txs.Where(t => IsProgramPayment(t)).ToList();
         }
 
-        Licenses = await Api.GetPluginLicensesAsync() ?? [];
+        try { Licenses = await Api.GetPluginLicensesAsync() ?? []; }
+        catch { Licenses = []; }
+
         var store = await Api.GetStorefrontAsync();
         Packages = store?.Packages ?? [];
     }
 
+    private static bool IsCreditPayment(TransactionDto t)
+        => t.DetailName.Contains("crédito", StringComparison.OrdinalIgnoreCase)
+           || t.DetailName.Contains("Paquete", StringComparison.OrdinalIgnoreCase)
+           || (t.Notes?.StartsWith("credits:", StringComparison.OrdinalIgnoreCase) == true);
+
+    private static bool IsProgramPayment(TransactionDto t)
+        => t.DetailName.Contains("Activación", StringComparison.OrdinalIgnoreCase)
+           || (t.Notes?.StartsWith("plugin:", StringComparison.OrdinalIgnoreCase) == true);
+
     private async Task PayCredits(CreditPackageDto pack)
     {
-        Error = null;
+        PayError = null;
         Busy = true;
         try
         {
             var checkout = await Api.CheckoutAsync("credits", pack.Id, null);
             if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
             {
-                Error = "No se pudo abrir Mercado Pago.";
+                PayError = "No se pudo abrir Mercado Pago.";
                 return;
             }
 
@@ -157,7 +250,65 @@
         }
         catch (Exception ex)
         {
-            Error = CleanError(ex.Message);
+            PayError = CleanError(ex.Message);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private async Task Redownload(UnlockedDesignDto design)
+    {
+        DownloadMsg = null;
+        Busy = true;
+        try
+        {
+            var dl = await Api.DownloadAsync(design.Id);
+            if (string.IsNullOrWhiteSpace(dl?.DownloadUrl))
+            {
+                DownloadOk = false;
+                DownloadMsg = "No se pudo obtener el archivo.";
+                return;
+            }
+
+            Nav.NavigateTo(dl.DownloadUrl, forceLoad: true);
+            DownloadOk = true;
+            DownloadMsg = "Descarga iniciada.";
+        }
+        catch (Exception ex)
+        {
+            DownloadOk = false;
+            DownloadMsg = CleanError(ex.Message);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        PasswordMsg = null;
+        if (_newPassword != _newPassword2)
+        {
+            PasswordOk = false;
+            PasswordMsg = "Las contraseñas nuevas no coinciden.";
+            return;
+        }
+
+        Busy = true;
+        try
+        {
+            await Api.ChangePasswordAsync(_currentPassword, _newPassword);
+            PasswordOk = true;
+            PasswordMsg = "Contraseña actualizada.";
+            _currentPassword = _newPassword = _newPassword2 = "";
+        }
+        catch (Exception ex)
+        {
+            PasswordOk = false;
+            PasswordMsg = CleanError(ex.Message);
         }
         finally
         {
@@ -170,7 +321,7 @@
         var t = raw.Trim();
         if (t.Length >= 2 && t[0] == '"' && t[^1] == '"')
             t = t[1..^1];
-        return string.IsNullOrWhiteSpace(t) ? "No se pudo iniciar el pago." : t;
+        return string.IsNullOrWhiteSpace(t) ? "Error." : t;
     }
 
     private static string StatusText(string s) => s switch

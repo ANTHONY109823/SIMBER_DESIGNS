@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SimberDesigns.Server.Contracts;
@@ -10,7 +11,7 @@ namespace SimberDesigns.Server.Controllers;
 [ApiController]
 [Route("api/account")]
 [Authorize]
-public sealed class AccountController(AppDbContext db) : ControllerBase
+public sealed class AccountController(AppDbContext db, PasswordHasher<User> passwordHasher) : ControllerBase
 {
     [HttpGet("dashboard")]
     public async Task<ActionResult<AccountDashboardDto>> Dashboard(CancellationToken cancellationToken)
@@ -85,9 +86,7 @@ public sealed class AccountController(AppDbContext db) : ControllerBase
 
         var txDtos = transactions.Select(t => new TransactionDto(
             t.Id,
-            t.CreditPackage?.Name is string pack ? $"Paquete {pack}"
-                : t.Subscription?.Tier is string tier ? $"Membresía {tier}"
-                : t.Design?.Title ?? t.Notes ?? "Transacción",
+            FriendlyTxName(t),
             t.Amount,
             t.Currency,
             t.Gateway,
@@ -108,6 +107,7 @@ public sealed class AccountController(AppDbContext db) : ControllerBase
                 c.TxType == CreditTxTypes.PurchaseDesign && c.Design != null
                     ? $"Canje de diseño: {c.Design.Title}"
                     : c.TxType == CreditTxTypes.Recharge ? "Recarga de créditos"
+                    : c.TxType == CreditTxTypes.Refund ? "Ajuste de créditos"
                     : c.TxType,
                 c.CreditsChanged,
                 c.CreatedAt))
@@ -126,5 +126,65 @@ public sealed class AccountController(AppDbContext db) : ControllerBase
             unlockedDesigns,
             txDtos,
             creditLogs));
+    }
+
+    [HttpPost("password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword)
+            || string.IsNullOrWhiteSpace(request.NewPassword)
+            || request.NewPassword.Length < 6)
+        {
+            return BadRequest("La nueva contraseña debe tener al menos 6 caracteres.");
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var check = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
+        if (check == PasswordVerificationResult.Failed)
+        {
+            return BadRequest("La contraseña actual no es correcta.");
+        }
+
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { message = "Contraseña actualizada." });
+    }
+
+    private static string FriendlyTxName(Transaction t)
+    {
+        if (t.CreditPackage?.Name is string pack)
+            return $"Paquete {pack} créditos";
+        if (t.Subscription?.Tier is string tier)
+            return $"Membresía {tier}";
+        if (t.Design?.Title is string title)
+            return title;
+
+        var notes = t.Notes ?? "";
+        if (notes.StartsWith("plugin:", StringComparison.OrdinalIgnoreCase))
+        {
+            if (notes.Contains("Corel", StringComparison.OrdinalIgnoreCase))
+                return "Activación CorelDRAW · 30 días";
+            if (notes.Contains("Illustrator", StringComparison.OrdinalIgnoreCase)
+                || notes.Contains("Ilus", StringComparison.OrdinalIgnoreCase))
+                return "Activación Illustrator · 30 días";
+            return "Activación de programa · 30 días";
+        }
+
+        if (notes.StartsWith("credits:", StringComparison.OrdinalIgnoreCase))
+            return "Recarga de créditos";
+
+        return string.IsNullOrWhiteSpace(notes) ? "Pago" : notes.Split('|')[0];
     }
 }

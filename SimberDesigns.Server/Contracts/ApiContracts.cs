@@ -2,6 +2,7 @@ namespace SimberDesigns.Server.Contracts;
 
 public sealed record RegisterRequest(string Email, string Password, string FullName);
 public sealed record LoginRequest(string Email, string Password);
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public sealed record AuthResponse(
     string Token,

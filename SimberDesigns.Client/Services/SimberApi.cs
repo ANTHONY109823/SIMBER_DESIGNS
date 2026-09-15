@@ -249,6 +249,19 @@ public sealed class SimberApi(HttpClient http)
     public Task<AccountDashboardDto?> GetDashboardAsync()
         => http.GetFromJsonAsync<AccountDashboardDto>("api/account/dashboard");
 
+    public async Task ChangePasswordAsync(string currentPassword, string newPassword)
+    {
+        var response = await http.PostAsJsonAsync("api/account/password", new { currentPassword, newPassword });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "No se pudo cambiar la contraseña." : msg);
+        }
+    }
+
     public Task<StorefrontDto?> GetStorefrontAsync()
         => http.GetFromJsonAsync<StorefrontDto>("api/payments/storefront");
 
