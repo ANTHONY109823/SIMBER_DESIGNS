@@ -1,7 +1,58 @@
 ﻿@page "/"
+@inject SimberApi Api
 
 <PageTitle>Simber Designs</PageTitle>
 <HeroBanner />
+
+<section class="border-y border-white/10 bg-white/[0.03]">
+    <div class="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">
+        <div>
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">Suscripción</p>
+            <h2 class="mt-2 font-serif text-3xl text-white">S/@(PricePen.ToString("0"))/mes · ≈ US$15</h2>
+            <p class="mt-2 max-w-xl text-sm text-cream/70">Lectura de listas con IA ilimitada. CorelDRAW e Illustrator. 1 PC. Cancela cuando quieras.</p>
+        </div>
+        <a href="/recargar" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink hover:bg-orange-400">Pagar el mes</a>
+    </div>
+</section>
+
+<section class="mx-auto max-w-6xl px-6 py-16">
+    <p class="text-xs uppercase tracking-[0.28em] text-cyan">Cómo funciona</p>
+    <h2 class="mt-2 font-serif text-3xl text-white">De la lista al corte, en cuatro pasos</h2>
+    <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        @foreach (var step in Steps)
+        {
+            <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+                <p class="text-xs uppercase tracking-[0.2em] text-gold">@step.Num</p>
+                <h3 class="mt-3 font-serif text-xl text-white">@step.Title</h3>
+                <p class="mt-2 text-sm text-cream/65">@step.Text</p>
+            </article>
+        }
+    </div>
+</section>
+
+@if (Preview.Count > 0)
+{
+    <section class="mx-auto max-w-6xl px-6 pb-8">
+        <div class="flex items-end justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase tracking-[0.28em] text-gold">Catálogo</p>
+                <h2 class="mt-2 font-serif text-3xl text-white">Vectores listos para sublimar</h2>
+            </div>
+            <a href="/catalog" class="text-sm text-gold hover:underline">Ver todo</a>
+        </div>
+        <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            @foreach (var d in Preview)
+            {
+                <a href="/catalog" class="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+                    <div class="aspect-[4/5] overflow-hidden bg-ink">
+                        <img src="@d.PreviewUrl" alt="@d.Title" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                    </div>
+                    <p class="truncate px-3 py-2 text-xs text-cream/70">@d.Title</p>
+                </a>
+            }
+        </div>
+    </section>
+}
 
 <section class="mx-auto max-w-6xl px-6 py-16">
     <div class="grid gap-6 md:grid-cols-2">
@@ -11,9 +62,47 @@
             <p class="mt-3 text-sm text-cream/70">Fútbol y vóley en CorelDRAW e Illustrator. Precio visible; paga y descarga.</p>
         </a>
         <a href="/programas" class="rounded-3xl border border-white/10 bg-white/5 p-8 hover:border-gold/40">
-            <p class="text-xs uppercase tracking-[0.2em] text-gold">02 · Programas</p>
-            <h2 class="mt-3 font-serif text-2xl">Plugin Simber Designs</h2>
-            <p class="mt-3 text-sm text-cream/70">Herramienta para CorelDRAW e Illustrator. Descárgala, paga el mes y se activa sola en tu PC.</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-gold">02 · El programa</p>
+            <h2 class="mt-3 font-serif text-2xl">Arma en Corel e Illustrator</h2>
+            <p class="mt-3 text-sm text-cream/70">Descárgalo gratis, paga el mes y se activa solo en tu PC. IA incluida.</p>
         </a>
     </div>
+
+    <div class="mt-10 grid gap-6 rounded-3xl border border-white/10 bg-white/[0.03] p-8 sm:grid-cols-3">
+        <div>
+            <p class="font-serif text-2xl text-white">Hecho en Perú</p>
+            <p class="mt-2 text-sm text-cream/60">Para talleres de sublimación que trabajan uniformes deportivos.</p>
+        </div>
+        <div>
+            <p class="font-serif text-2xl text-white">Activación al instante</p>
+            <p class="mt-2 text-sm text-cream/60">Pagas con Mercado Pago y el código aparece en tu cuenta.</p>
+        </div>
+        <div>
+            <p class="font-serif text-2xl text-white">IA ilimitada</p>
+            <p class="mt-2 text-sm text-cream/60">Con el mes activo, leer listas no gasta créditos. Los créditos son solo para descargar CDR.</p>
+        </div>
+    </div>
 </section>
+
+@code {
+    private decimal PricePen = 56;
+    private List<DesignDto> Preview = [];
+
+    private static readonly (string Num, string Title, string Text)[] Steps =
+    [
+        ("01", "Descarga el programa", "Un .exe para Windows. Trabaja dentro de CorelDRAW o Illustrator, sin instalar extra."),
+        ("02", "Paga el mes", "S/56 ≈ US$15 por 1 PC. Incluye lectura de listas con IA ilimitada."),
+        ("03", "Actívalo en tu PC", "El código aparece en Mi cuenta. Lo pegas una vez; el programa valida el mes por internet."),
+        ("04", "Arma con IA", "Lees la lista (foto o Excel), tomas los moldes y el programa acomoda nombres y dorsales.")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var store = await Api.GetStorefrontAsync();
+        if (store is not null && store.PluginMonthPricePen > 0)
+            PricePen = store.PluginMonthPricePen;
+
+        var designs = await Api.GetDesignsAsync() ?? [];
+        Preview = designs.Take(6).ToList();
+    }
+}

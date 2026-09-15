@@ -4,7 +4,7 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
 
-<PageTitle>Recargar · Simber Designs</PageTitle>
+<PageTitle>Precios · Simber Designs</PageTitle>
 
 <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6">
     <p class="text-xs uppercase tracking-[0.28em] text-gold">Suscripción · Mercado Pago</p>
@@ -55,6 +55,29 @@
         </div>
     </div>
 
+    <section class="mt-14 max-w-2xl">
+        <h2 class="font-serif text-2xl text-white">Preguntas frecuentes</h2>
+        <dl class="mt-6 space-y-5 text-sm">
+            <div>
+                <dt class="font-semibold text-white">¿La IA gasta créditos?</dt>
+                <dd class="mt-1 text-cream/65">No. Con el mes activo la lectura de listas es ilimitada. Los créditos son solo para descargar diseños del catálogo.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-white">¿Cuánto sale el mes?</dt>
+                <dd class="mt-1 text-cream/65">S/ @PluginPrice.ToString("0") al mes (≈ US$15), 1 PC. Activación al instante en tu cuenta.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-white">¿Puedo cancelar?</dt>
+                <dd class="mt-1 text-cream/65">Sí. El mes corre hasta la fecha de vencimiento; si no renovas, el programa deja de activarse.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-white">¿El programa es gratis para bajar?</dt>
+                <dd class="mt-1 text-cream/65">Sí. Lo descargas desde Programas; el cobro es al activar el mes.</dd>
+            </div>
+        </dl>
+        <p class="mt-6 text-xs text-cream/50">Activación al instante · Yape o tarjeta · Cancela cuando quieras.</p>
+    </section>
+
     @if (!string.IsNullOrWhiteSpace(Error))
     {
         <p class="mt-6 text-sm text-rose-400">@Error</p>
@@ -63,7 +86,7 @@
 
 @code {
     private List<CreditPackageDto> Packages { get; set; } = [];
-    private decimal PluginPrice { get; set; } = 149;
+    private decimal PluginPrice { get; set; } = 56;
     private string PluginName { get; set; } = "Plugin Premium · 1 PC · 30 días";
     private bool Busy;
     private string? Error;

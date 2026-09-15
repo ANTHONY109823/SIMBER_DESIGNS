@@ -145,7 +145,6 @@
 </div>
 
 @code {
-    private const string WhatsAppNumber = "51987654321";
     private ElementReference dropZoneElement;
     private bool isDragging;
     private bool isAnalyzing;
@@ -185,12 +184,6 @@
         {
             await JS.InvokeVoidAsync("initializeClipboardPaste", DotNetObjectReference.Create(this));
         }
-    }
-
-    private static string WhatsAppUrl(DesignItem design)
-    {
-        var text = Uri.EscapeDataString($"Hola, quiero el diseño {design.Title} (CDR {design.CdrVersion}) a ${design.PriceUsd:0.00}");
-        return $"https://wa.me/{WhatsAppNumber}?text={text}";
     }
 
     private void SelectCategory(string category)

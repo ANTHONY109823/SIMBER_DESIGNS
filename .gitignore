@@ -3,8 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
-.env
+# Icono fuente (se copia a wwwroot/favicon.png)
+/fiveicon.png
+
 
 # Archives and heavy binaries must never enter Git (they live in Cloudflare R2)
 *.zip
