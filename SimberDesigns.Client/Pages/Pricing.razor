@@ -24,18 +24,18 @@
                 <li>IA ilimitada mientras el mes esté activo</li>
                 <li>Clave de este mes en Mi cuenta al pagar o renovar</li>
             </ul>
-            @if (HasCorel)
-            {
-                <a href="/api/plugin/download/corel" class="mt-5 inline-block text-sm text-emerald-300 hover:underline">Descargar CorelDRAW</a>
-            }
-            else
-            {
-                <p class="mt-5 text-sm text-cream/55">El .exe se publica cuando el admin lo sube.</p>
-            }
+            <a href="/api/plugin/download/corel" data-enhance-nav="false"
+               class="mt-5 block w-full rounded-full bg-emerald-500 py-3 text-center text-sm font-semibold text-ink hover:bg-emerald-400">
+                Descargar CorelDRAW
+            </a>
             <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-corel", null, null)'
-                    class="mt-4 block w-full rounded-full bg-emerald-500 py-3 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                Activar el mes de Corel
+                    class="mt-3 block w-full text-sm text-emerald-300 hover:underline disabled:opacity-60">
+                Activar 30 días · S/ @PluginPrice.ToString("0")
             </button>
+            @if (!HasCorel)
+            {
+                <p class="mt-2 text-xs text-cream/45">Si la descarga falla, el admin aún no subió este .exe.</p>
+            }
         </article>
         <article class="rounded-3xl border border-cyan/30 bg-cyan/5 p-6 sm:p-8">
             <p class="text-xs uppercase tracking-[0.2em] text-cyan">Illustrator · 1 PC</p>
@@ -46,18 +46,18 @@
                 <li>IA ilimitada mientras el mes esté activo</li>
                 <li>Clave de este mes en Mi cuenta al pagar o renovar</li>
             </ul>
-            @if (HasIllustrator)
-            {
-                <a href="/api/plugin/download/illustrator" class="mt-5 inline-block text-sm text-cyan hover:underline">Descargar Illustrator</a>
-            }
-            else
-            {
-                <p class="mt-5 text-sm text-cream/55">El .exe se publica cuando el admin lo sube.</p>
-            }
+            <a href="/api/plugin/download/illustrator" data-enhance-nav="false"
+               class="mt-5 block w-full rounded-full bg-gold py-3 text-center text-sm font-semibold text-ink hover:bg-orange-400">
+                Descargar Illustrator
+            </a>
             <button type="button" disabled="@Busy" @onclick='() => StartCheckout("plugin-illustrator", null, null)'
-                    class="mt-4 block w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
-                Activar el mes de Illustrator
+                    class="mt-3 block w-full text-sm text-cyan hover:underline disabled:opacity-60">
+                Activar 30 días · S/ @PluginPrice.ToString("0")
             </button>
+            @if (!HasIllustrator)
+            {
+                <p class="mt-2 text-xs text-cream/45">Si la descarga falla, el admin aún no subió este .exe.</p>
+            }
         </article>
     </div>
 
