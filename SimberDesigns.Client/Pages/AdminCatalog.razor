@@ -30,8 +30,12 @@
                 <InputNumber @bind-Value="Price" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" />
             </label>
             <label class="block text-sm">
-                <span class="text-cream/70">Versión CDR</span>
+                <span class="text-cream/80">Versión CDR</span>
                 <InputText @bind-Value="CdrVersion" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" placeholder="X8 / 2021 / 24" />
+            </label>
+            <label class="flex items-center gap-3 text-sm text-cream/80 sm:col-span-2">
+                <InputCheckbox @bind-Value="IsFreeDaily" class="h-4 w-4 rounded border-white/20" />
+                Marcar como gratis del día (no gasta créditos)
             </label>
         </div>
 
@@ -93,6 +97,7 @@
     private string Category { get; set; } = "Fútbol";
     private decimal Price { get; set; } = 2;
     private string CdrVersion { get; set; } = "";
+    private bool IsFreeDaily { get; set; }
     private string? PreviewDataUrl;
     private string? FileName;
     private string? Message;
@@ -167,7 +172,8 @@
                 PreviewFile.ContentType,
                 file,
                 DownloadFile.Name,
-                DownloadFile.ContentType);
+                DownloadFile.ContentType,
+                IsFreeDaily);
             Title = "";
             CdrVersion = "";
             PreviewFile = null;
@@ -175,6 +181,7 @@
             PreviewBytes = null;
             PreviewDataUrl = null;
             FileName = null;
+            IsFreeDaily = false;
             Message = "Listo. El diseño ya está en el catálogo.";
             await Reload();
         }

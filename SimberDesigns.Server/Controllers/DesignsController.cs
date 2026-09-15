@@ -42,7 +42,7 @@ public sealed class DesignsController(
 
         var items = await query
             .OrderByDescending(d => d.CreatedAt)
-            .Select(d => new DesignDto(d.Id, d.Title, d.Slug, d.Description, d.Category, d.PriceUsd, d.CreditsCost, d.PreviewUrl, d.CreatedAt, null))
+            .Select(d => new DesignDto(d.Id, d.Title, d.Slug, d.Description, d.Category, d.PriceUsd, d.CreditsCost, d.PreviewUrl, d.CreatedAt, d.IsFreeDaily, null))
             .ToListAsync(cancellationToken);
 
         return Ok(items);
@@ -79,7 +79,8 @@ public sealed class DesignsController(
         IFormFile? photo,
         IFormFile? file,
         IFormFile? download,
-        CancellationToken cancellationToken)
+        [FromForm] bool isFreeDaily = false,
+        CancellationToken cancellationToken = default)
     {
         var image = preview ?? photo;
         var pack = file ?? download;
@@ -147,7 +148,7 @@ public sealed class DesignsController(
             CreditsCost = price,
             R2Key = r2Key,
             PreviewUrl = previewUrl,
-            IsFreeDaily = false,
+            IsFreeDaily = isFreeDaily,
             Embedding = new Vector(embedding),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -156,7 +157,7 @@ public sealed class DesignsController(
         await db.SaveChangesAsync(cancellationToken);
 
         _ = localPath;
-        return Ok(new DesignDto(design.Id, design.Title, design.Slug, design.Description, design.Category, design.PriceUsd, design.CreditsCost, design.PreviewUrl, design.CreatedAt, null));
+        return Ok(new DesignDto(design.Id, design.Title, design.Slug, design.Description, design.Category, design.PriceUsd, design.CreditsCost, design.PreviewUrl, design.CreatedAt, design.IsFreeDaily, null));
     }
 
     [Authorize(Roles = Roles.Admin)]
@@ -216,7 +217,7 @@ public sealed class DesignsController(
 
         const string sql = """
             SELECT id, title, slug, description, category, price_usd AS PriceUsd, credits_cost AS CreditsCost,
-                   preview_url AS PreviewUrl, created_at AS CreatedAt,
+                   preview_url AS PreviewUrl, created_at AS CreatedAt, is_free_daily AS IsFreeDaily,
                    (1 - (embedding <=> @Embedding))::real AS Similarity
             FROM designs
             WHERE embedding IS NOT NULL
@@ -257,6 +258,11 @@ public sealed class DesignsController(
         if (alreadyOwned)
         {
             return Ok(new { message = "Este diseño ya está desbloqueado." });
+        }
+
+        if (design.IsFreeDaily)
+        {
+            return Ok(new { message = "Gratis del día: no consume créditos.", creditsBalance = user.CreditsBalance });
         }
 
         if (user.CreditsBalance < design.CreditsCost)
@@ -310,7 +316,7 @@ public sealed class DesignsController(
             t => t.UserId == userId && t.DesignId == id && t.Status == TransactionStatuses.Completed,
             cancellationToken);
 
-        var hasAccess = purchased || bought;
+        var hasAccess = purchased || bought || design.IsFreeDaily;
         var remaining = 0;
         if (evaluation.Subscription is not null)
         {

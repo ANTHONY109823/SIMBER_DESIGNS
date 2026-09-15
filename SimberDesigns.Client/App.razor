@@ -15,7 +15,14 @@
         <NotFound>
             <PageTitle>No encontrado</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <p class="px-6 py-24 text-center" role="alert">No hay nada en esta dirección.</p>
+                <div class="mx-auto max-w-lg px-6 py-24 text-center">
+                    <h1 class="font-serif text-4xl text-white">No hay nada aquí</h1>
+                    <p class="mt-3 text-sm text-cream/80">Esa dirección no existe. Vuelve al inicio o al catálogo.</p>
+                    <div class="mt-8 flex flex-wrap justify-center gap-3">
+                        <a href="/" class="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Inicio</a>
+                        <a href="/catalog" class="rounded-full border border-white/20 px-6 py-3 text-sm text-cream hover:border-gold/50">Catálogo</a>
+                    </div>
+                </div>
             </LayoutView>
         </NotFound>
     </Router>

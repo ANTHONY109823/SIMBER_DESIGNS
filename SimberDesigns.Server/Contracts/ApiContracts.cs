@@ -23,6 +23,7 @@ public sealed record DesignDto(
     decimal CreditsCost,
     string PreviewUrl,
     DateTime CreatedAt,
+    bool IsFreeDaily,
     float? Similarity);
 
 public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, int RemainingToday);

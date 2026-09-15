@@ -15,10 +15,27 @@
             <h1 class="mt-3 font-serif text-4xl tracking-tight text-white sm:text-6xl">
                 Fútbol y <span class="text-gold">Vóley</span>
             </h1>
-            <p class="mx-auto mt-4 max-w-lg text-sm text-cream/65 sm:text-base">
+            <p class="mx-auto mt-4 max-w-lg text-sm text-cream/80 sm:text-base">
                 Foto, nombre, versión CorelDRAW y precio. Paga y descarga.
             </p>
         </div>
+
+        @if (FreeDaily.Count > 0)
+        {
+            <div class="mt-10 overflow-hidden rounded-3xl border border-gold/40 bg-gold/10 p-5 sm:p-6">
+                <p class="text-xs uppercase tracking-[0.2em] text-gold">Gratis del día</p>
+                <p class="mt-1 text-sm text-cream/85">Hoy no gasta créditos. Entra y descárgalo.</p>
+                <div class="mt-4 flex gap-4 overflow-x-auto pb-1">
+                    @foreach (var design in FreeDaily)
+                    {
+                        <article class="w-40 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-ink">
+                            <img src="@design.PreviewUrl" alt="@design.Title" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                            <p class="truncate px-3 py-2 text-xs text-white">@design.Title</p>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
 
         <div @ref="dropZoneElement"
              @onpointerenter="OnDragEnter"
@@ -29,13 +46,13 @@
                 <InputFile OnChange="HandleFileSelected" accept=".jpg,.jpeg,.png,.webp,image/*" class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
                 <div class="pointer-events-none flex flex-col items-center text-center">
                     <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-ink text-gold">
-                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
                     <p class="mt-4 text-lg font-semibold text-white">Busca por foto</p>
-                    <p class="mt-1 text-sm text-cream/55">Arrastra, elige o pega con <kbd class="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-cream/80">Ctrl+V</kbd></p>
+                    <p class="mt-1 text-sm text-cream/75">Arrastra, elige o pega con <kbd class="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-cream">Ctrl+V</kbd></p>
                 </div>
 
                 @if (isAnalyzing)
@@ -50,7 +67,7 @@
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
-            <p class="mt-4 text-center text-sm text-rose-400">@errorMessage</p>
+            <p class="mt-4 text-center text-sm text-rose-400" role="alert">@errorMessage</p>
         }
 
         @if (activeVisualSearchImage != null)
@@ -58,23 +75,44 @@
             <div class="mt-6 flex justify-center">
                 <div class="inline-flex items-center gap-3 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm">
                     <img src="@activeVisualSearchImage" alt="" class="h-8 w-8 rounded-lg object-cover" />
-                    <span class="text-cream/80">Búsqueda por imagen</span>
-                    <button type="button" @onclick="ClearVisualSearch" class="text-cream/50 hover:text-white">×</button>
+                    <span class="text-cream">Búsqueda por imagen</span>
+                    <button type="button" @onclick="ClearVisualSearch" class="min-h-11 min-w-11 text-cream/80 hover:text-white" aria-label="Quitar búsqueda por imagen">×</button>
                 </div>
             </div>
         }
 
-        <div class="mt-12 flex flex-wrap items-center justify-between gap-4">
+        <div class="mt-12 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <label class="block min-w-0 flex-1 text-sm">
+                <span class="sr-only">Buscar por nombre</span>
+                <input type="search"
+                       value="@searchText"
+                       @oninput="OnSearchInput"
+                       placeholder="Buscar por nombre…"
+                       class="w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-white placeholder:text-cream/55 outline-none focus:border-gold/60" />
+            </label>
+            <label class="block text-sm lg:w-56">
+                <span class="sr-only">Ordenar</span>
+                <select @bind="sortBy" @bind:after="ApplyFilters"
+                        disabled="@HasVisualSearch"
+                        class="w-full rounded-2xl border border-white/12 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60 disabled:opacity-50">
+                    <option value="nuevos">Más nuevos</option>
+                    <option value="creditos-asc">Menos créditos</option>
+                    <option value="creditos-desc">Más créditos</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex flex-wrap gap-2">
                 @foreach (var cat in categories)
                 {
                     <button type="button" @onclick="() => SelectCategory(cat)"
-                            class="rounded-full px-4 py-2 text-sm transition @(selectedCategory == cat ? "bg-gold font-semibold text-ink" : "border border-white/12 text-cream/70 hover:border-white/30")">
-                        @cat <span class="opacity-60">@GetCountForCategory(cat)</span>
+                            class="min-h-11 rounded-full px-4 py-2 text-sm transition @(selectedCategory == cat ? "bg-gold font-semibold text-ink" : "border border-white/12 text-cream/80 hover:border-white/30")">
+                        @cat <span class="opacity-70">@GetCountForCategory(cat)</span>
                     </button>
                 }
             </div>
-            <p class="text-sm text-cream/40">@filteredDesigns.Count diseños</p>
+            <p class="text-sm text-cream/75">@filteredDesigns.Count diseños</p>
         </div>
 
         <div class="mt-8">
@@ -98,8 +136,8 @@
             {
                 <div class="rounded-3xl border border-dashed border-white/12 px-6 py-20 text-center">
                     <h3 class="font-serif text-2xl text-white">Sin diseños en esta vista</h3>
-                    <p class="mx-auto mt-2 max-w-sm text-sm text-cream/50">Cambia de deporte o limpia la búsqueda por foto.</p>
-                    <button type="button" @onclick="ResetFilters" class="mt-5 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-gold/50">
+                    <p class="mx-auto mt-2 max-w-sm text-sm text-cream/80">Prueba otro nombre, cambia de deporte o limpia la búsqueda.</p>
+                    <button type="button" @onclick="ResetFilters" class="mt-5 min-h-11 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-gold/50">
                         Ver todo
                     </button>
                 </div>
@@ -107,12 +145,16 @@
             else
             {
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach (var design in filteredDesigns)
+                    @foreach (var design in VisibleDesigns)
                     {
                         <article class="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] transition hover:border-gold/35">
                             <div class="relative aspect-[4/5] overflow-hidden bg-ink">
-                                <img src="@design.PreviewUrl" alt="@design.Title" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-                                <span class="absolute left-3 top-3 rounded-full bg-ink/80 px-3 py-1 text-xs text-cream/90">@design.Category</span>
+                                <img src="@design.PreviewUrl" alt="@design.Title" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
+                                <span class="absolute left-3 top-3 rounded-full bg-ink/80 px-3 py-1 text-xs text-cream">@design.Category</span>
+                                @if (design.IsFreeDaily)
+                                {
+                                    <span class="absolute left-3 bottom-3 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-ink">Gratis del día</span>
+                                }
                                 @if (design.Similarity is { } score)
                                 {
                                     <span class="absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-xs font-semibold text-ink">@((score * 100).ToString("0"))%</span>
@@ -120,18 +162,25 @@
                             </div>
                             <div class="flex flex-1 flex-col p-5">
                                 <h3 class="text-lg font-semibold text-white">@design.Title</h3>
-                                <p class="mt-1 text-sm text-cream/45">CDR @design.CdrVersion</p>
-                                <p class="mt-4 font-serif text-3xl text-gold">@design.CreditsCost.ToString("0") créditos</p>
+                                <p class="mt-1 text-sm text-cream/80">CDR @design.CdrVersion</p>
+                                @if (design.IsFreeDaily)
+                                {
+                                    <p class="mt-4 font-serif text-3xl text-gold">Gratis</p>
+                                }
+                                else
+                                {
+                                    <p class="mt-4 font-serif text-3xl text-gold">@design.CreditsCost.ToString("0") créditos</p>
+                                }
                                 @if (isAdmin || isAuthenticated)
                                 {
                                     <button type="button" @onclick="() => TriggerDownload(design)"
-                                            class="mt-5 w-full rounded-2xl bg-white/10 py-3 text-sm font-semibold text-white hover:bg-gold hover:text-ink">
+                                            class="mt-5 min-h-11 w-full rounded-2xl bg-white/10 py-3 text-sm font-semibold text-white hover:bg-gold hover:text-ink">
                                         Descargar CDR
                                     </button>
                                 }
                                 else
                                 {
-                                    <a href="/login" class="mt-5 block w-full rounded-2xl bg-gold py-3 text-center text-sm font-semibold text-ink hover:bg-orange-400">
+                                    <a href="/login" class="mt-5 block min-h-11 w-full rounded-2xl bg-gold py-3 text-center text-sm font-semibold leading-[2.5rem] text-ink hover:bg-orange-400">
                                         Entrar para descargar
                                     </a>
                                 }
@@ -139,12 +188,21 @@
                         </article>
                     }
                 </div>
+                @if (visibleCount < filteredDesigns.Count)
+                {
+                    <div class="mt-10 text-center">
+                        <button type="button" @onclick="LoadMore" class="min-h-11 rounded-full border border-white/20 px-6 py-3 text-sm hover:border-gold/50">
+                            Cargar más (@(filteredDesigns.Count - visibleCount) restantes)
+                        </button>
+                    </div>
+                }
             }
         </div>
     </div>
 </div>
 
 @code {
+    private const int PageSize = 12;
     private ElementReference dropZoneElement;
     private bool isDragging;
     private bool isAnalyzing;
@@ -153,10 +211,16 @@
     private bool isAuthenticated;
     private string? activeVisualSearchImage;
     private string selectedCategory = "Todos";
+    private string searchText = "";
+    private string sortBy = "nuevos";
+    private int visibleCount = PageSize;
     private List<string> categories = new() { "Todos", "Fútbol", "Vóley" };
     private List<DesignItem> allDesigns = new();
     private List<DesignItem> filteredDesigns = new();
     private string? errorMessage;
+    private bool HasVisualSearch => activeVisualSearchImage != null;
+    private List<DesignItem> FreeDaily => allDesigns.Where(d => d.IsFreeDaily).ToList();
+    private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns.Take(visibleCount);
 
     protected override async Task OnInitializedAsync()
     {
@@ -192,23 +256,50 @@
         ApplyFilters();
     }
 
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? "";
+        ApplyFilters();
+    }
+
+    private void LoadMore() => visibleCount += PageSize;
+
     private int GetCountForCategory(string cat)
         => cat == "Todos" ? allDesigns.Count : allDesigns.Count(d => d.Category == cat);
 
     private void ApplyFilters()
     {
-        var query = allDesigns.AsEnumerable();
-        if (selectedCategory != "Todos")
+        visibleCount = PageSize;
+        if (HasVisualSearch)
         {
-            query = query.Where(d => d.Category == selectedCategory);
+            filteredDesigns = allDesigns
+                .Where(d => d.Similarity.HasValue && MatchesCategory(d) && MatchesSearch(d))
+                .OrderByDescending(d => d.Similarity)
+                .ToList();
+            return;
         }
 
-        filteredDesigns = query.OrderByDescending(d => d.CreatedAt).ToList();
+        var query = allDesigns.Where(MatchesCategory).Where(MatchesSearch);
+        filteredDesigns = sortBy switch
+        {
+            "creditos-asc" => query.OrderBy(d => d.IsFreeDaily ? 0 : d.CreditsCost).ThenByDescending(d => d.CreatedAt).ToList(),
+            "creditos-desc" => query.OrderByDescending(d => d.IsFreeDaily ? 0 : d.CreditsCost).ThenByDescending(d => d.CreatedAt).ToList(),
+            _ => query.OrderByDescending(d => d.CreatedAt).ToList()
+        };
     }
+
+    private bool MatchesCategory(DesignItem d)
+        => selectedCategory == "Todos" || d.Category == selectedCategory;
+
+    private bool MatchesSearch(DesignItem d)
+        => string.IsNullOrWhiteSpace(searchText)
+           || d.Title.Contains(searchText.Trim(), StringComparison.OrdinalIgnoreCase);
 
     private void ResetFilters()
     {
         selectedCategory = "Todos";
+        searchText = "";
+        sortBy = "nuevos";
         activeVisualSearchImage = null;
         foreach (var d in allDesigns)
         {
@@ -270,6 +361,7 @@
                 if (match is not null)
                 {
                     match.Similarity = result.Similarity;
+                    match.IsFreeDaily = result.IsFreeDaily;
                 }
                 else
                 {
@@ -281,10 +373,7 @@
                 }
             }
 
-            filteredDesigns = allDesigns
-                .Where(d => d.Similarity.HasValue && d.Category is "Fútbol" or "Vóley")
-                .OrderByDescending(d => d.Similarity)
-                .ToList();
+            ApplyFilters();
         }
         catch (Exception ex)
         {
@@ -313,7 +402,7 @@
         errorMessage = null;
         try
         {
-            if (!isAdmin)
+            if (!isAdmin && !design.IsFreeDaily)
             {
                 try
                 {
@@ -350,7 +439,8 @@
         (double)dto.PriceUsd,
         (double)dto.CreditsCost,
         dto.CreatedAt,
-        FormatCdrVersion(dto.Description))
+        FormatCdrVersion(dto.Description),
+        dto.IsFreeDaily)
     {
         Similarity = dto.Similarity
     };
@@ -401,9 +491,10 @@
         public double CreditsCost { get; set; }
         public DateTime CreatedAt { get; set; }
         public string CdrVersion { get; set; } = "—";
+        public bool IsFreeDaily { get; set; }
         public double? Similarity { get; set; }
 
-        public DesignItem(Guid id, string title, string slug, string previewUrl, string category, double priceUsd, double creditsCost, DateTime createdAt, string cdrVersion)
+        public DesignItem(Guid id, string title, string slug, string previewUrl, string category, double priceUsd, double creditsCost, DateTime createdAt, string cdrVersion, bool isFreeDaily)
         {
             Id = id;
             Title = title;
@@ -414,6 +505,7 @@
             CreditsCost = creditsCost;
             CreatedAt = createdAt;
             CdrVersion = cdrVersion;
+            IsFreeDaily = isFreeDaily;
         }
     }
 }

@@ -7,44 +7,73 @@
 <PageTitle>Admin · Simber Designs</PageTitle>
 
 <section class="flex min-h-screen w-full items-center justify-center px-4">
-<section class="w-full max-w-sm">
-    <h1 class="text-center font-serif text-3xl text-white">Simber <span class="text-orange-400">Admin</span></h1>
-    <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
-        <InputText autocomplete="off" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Usuario" @bind-Value="Email" />
-        <InputText type="password" autocomplete="new-password" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" placeholder="Contraseña" @bind-Value="Password" />
-        <button class="w-full rounded-full bg-orange-600 py-3 text-sm font-semibold text-white hover:bg-orange-500" type="submit">Ingresar</button>
-    </EditForm>
-    @if (!string.IsNullOrWhiteSpace(Error))
-    {
-        <p class="mt-4 text-center text-sm text-rose-400">@Error</p>
-    }
-    <p class="mt-8 text-center text-sm">
-        <a href="/" class="text-slate-400 hover:text-white">Ir a la web</a>
-    </p>
-</section>
+    <div class="w-full max-w-sm">
+        <a href="/" class="mb-8 flex items-center justify-center gap-2 font-serif text-2xl uppercase tracking-wide">
+            <img src="/favicon.png?v=4" alt="" class="h-8 w-8 rounded-md object-cover" />
+            Simber <span class="text-gold">Admin</span>
+        </a>
+        <h1 class="text-center font-serif text-3xl text-white">Panel</h1>
+        <p class="mt-2 text-center text-sm text-cream/80">Solo administradores.</p>
+        <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
+            <label class="block text-sm">
+                <span class="text-cream/85">Usuario</span>
+                <InputText autocomplete="username" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" @bind-Value="Email" />
+            </label>
+            <label class="block text-sm">
+                <span class="text-cream/85">Contraseña</span>
+                <div class="relative mt-2">
+                    <InputText type="@(ShowPassword ? "text" : "password")" autocomplete="current-password" class="w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 pr-24 text-white outline-none focus:border-gold/60" @bind-Value="Password" />
+                    <button type="button" class="absolute right-3 top-1/2 min-h-11 -translate-y-1/2 text-xs text-cream/80 hover:text-white" @onclick="() => ShowPassword = !ShowPassword">
+                        @(ShowPassword ? "Ocultar" : "Mostrar")
+                    </button>
+                </div>
+            </label>
+            <button class="min-h-11 w-full rounded-full bg-gold py-3 text-sm font-semibold text-ink disabled:opacity-60" type="submit" disabled="@Busy">
+                @(Busy ? "Entrando…" : "Ingresar")
+            </button>
+        </EditForm>
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <p class="mt-4 text-center text-sm text-rose-400" role="alert">@Error</p>
+        }
+        <p class="mt-8 text-center text-sm">
+            <a href="/" class="text-cream/75 hover:text-white">Ir a la web</a>
+        </p>
+    </div>
 </section>
 
 @code {
     private string Email { get; set; } = "";
     private string Password { get; set; } = "";
+    private bool ShowPassword;
+    private bool Busy;
     private string? Error;
 
     private async Task Submit()
     {
-        var result = await Api.LoginAsync(Email, Password);
-        if (result is null)
+        Error = null;
+        Busy = true;
+        try
         {
-            Error = "Credenciales inválidas.";
-            return;
-        }
+            var result = await Api.LoginAsync(Email, Password);
+            if (result is null)
+            {
+                Error = "Credenciales inválidas.";
+                return;
+            }
 
-        if (!string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                Error = "Esta ruta es solo para administradores.";
+                return;
+            }
+
+            await Auth.SignInAsync(result.Token);
+            Nav.NavigateTo("/admin/payments");
+        }
+        finally
         {
-            Error = "Esta ruta es solo para administradores.";
-            return;
+            Busy = false;
         }
-
-        await Auth.SignInAsync(result.Token);
-        Nav.NavigateTo("/admin/payments");
     }
 }

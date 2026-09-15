@@ -22,6 +22,7 @@ public sealed record DesignDto(
     decimal CreditsCost,
     string PreviewUrl,
     DateTime CreatedAt,
+    bool IsFreeDaily,
     float? Similarity);
 
 public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, int RemainingToday);
@@ -288,13 +289,15 @@ public sealed class SimberApi(HttpClient http)
         string previewType,
         Stream file,
         string fileName,
-        string fileType)
+        string fileType,
+        bool isFreeDaily = false)
     {
         using var content = new MultipartFormDataContent();
         content.Add(new StringContent(title), "title");
         content.Add(new StringContent(category), "category");
         content.Add(new StringContent(price.ToString(System.Globalization.CultureInfo.InvariantCulture)), "price");
         content.Add(new StringContent(cdrVersion), "cdrVersion");
+        content.Add(new StringContent(isFreeDaily ? "true" : "false"), "isFreeDaily");
 
         var previewContent = new StreamContent(preview);
         previewContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
