@@ -3,8 +3,8 @@
 @inject JwtAuthStateProvider Auth
 @inject NavigationManager Nav
 
-<div class="@(IsHome ? "flex h-screen flex-col overflow-hidden bg-ink text-cream" : "flex min-h-screen flex-col bg-ink text-cream")">
-    <header class="shrink-0 border-b border-white/10 bg-ink/90 backdrop-blur">
+<div class="min-h-screen bg-ink text-cream">
+    <header class="border-b border-white/10 bg-ink/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <a href="/" class="flex items-center gap-2 font-serif text-2xl tracking-wide uppercase">
                 <img src="/favicon.png?v=4" alt="" class="h-8 w-8 rounded-md object-cover" />
@@ -80,15 +80,12 @@
         </nav>
     </header>
 
-    <main class="relative flex min-h-0 flex-1 flex-col">
+    <main>
         @Body
     </main>
 </div>
 
 @code {
-    private bool IsHome =>
-        string.IsNullOrEmpty(Nav.ToBaseRelativePath(Nav.Uri).Trim('/'));
-
     private async Task Logout()
     {
         await Auth.SignOutAsync();
