@@ -1,5 +1,4 @@
 @inject SimberApi Api
-@implements IDisposable
 
 @* Altura al viewport menos header. Carrusel vertical solo desktop. *@
 <section class="hero-stage relative isolate overflow-hidden bg-ink text-cream"
@@ -58,7 +57,6 @@
                 .Where(d => !string.IsNullOrWhiteSpace(d.PreviewUrl))
                 .Take(10)
                 .ToList();
-            // Duplicado para el loop infinito CSS
             PreviewLoop = Preview.Count > 0 ? Preview.Concat(Preview).ToList() : [];
         }
         catch
@@ -67,6 +65,4 @@
             PreviewLoop = [];
         }
     }
-
-    public void Dispose() { }
 }
