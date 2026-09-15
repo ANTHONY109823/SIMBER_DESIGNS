@@ -31,7 +31,8 @@ public sealed class JwtAuthStateProvider(IJSRuntime js) : AuthenticationStatePro
     public async Task SignOutAsync()
     {
         await js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        // Sin Notify: evita el flash de "Acceso restringido" en la página protegida.
+        // El caller debe navegar con forceLoad:true.
     }
 
     public static IEnumerable<Claim> ParseClaims(string jwt)

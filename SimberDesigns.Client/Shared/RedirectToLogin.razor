@@ -1,0 +1,21 @@
+@inject NavigationManager Nav
+
+@* Redirige al login correcto sin mostrar "Acceso restringido". *@
+@code {
+    protected override void OnInitialized()
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri).TrimStart('/');
+        if (path.StartsWith("login", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("entrar", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("register", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("admin/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var target = path.StartsWith("admin", StringComparison.OrdinalIgnoreCase)
+            ? "/admin/login"
+            : "/login";
+        Nav.NavigateTo(target, forceLoad: true);
+    }
+}
