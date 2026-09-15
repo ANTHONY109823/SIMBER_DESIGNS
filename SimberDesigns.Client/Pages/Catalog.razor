@@ -21,23 +21,6 @@
             }
         </div>
 
-        @if (FreeDaily.Count > 0)
-        {
-            <div class="mt-10 overflow-hidden rounded-3xl border border-gold/40 bg-gold/10 p-5 sm:p-6">
-                <p class="text-xs uppercase tracking-[0.2em] text-gold">Gratis del día</p>
-                <p class="mt-1 text-sm text-cream/85">Hoy no gasta créditos. Entra y descárgalo.</p>
-                <div class="mt-4 flex gap-4 overflow-x-auto pb-1">
-                    @foreach (var design in FreeDaily)
-                    {
-                        <article class="w-40 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-ink">
-                            <img src="@design.PreviewUrl" alt="@design.Title" class="aspect-[4/5] w-full object-cover" loading="lazy" />
-                            <p class="truncate px-3 py-2 text-xs text-white">@design.Title</p>
-                        </article>
-                    }
-                </div>
-            </div>
-        }
-
         <div @ref="dropZoneElement"
              @onpointerenter="OnDragEnter"
              @onpointerleave="OnDragLeave"
@@ -82,7 +65,25 @@
             </div>
         }
 
-        <div class="mt-12 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        @if (!isLoading && FreeDaily.Count > 0)
+        {
+            <div class="mt-10 overflow-hidden rounded-3xl border border-gold/40 bg-gold/10 p-5 sm:p-6">
+                <p class="text-xs uppercase tracking-[0.2em] text-gold">Gratis del día</p>
+                <p class="mt-1 text-sm text-cream/85">Hoy no gasta créditos. Regístrate para descargar.</p>
+                <div class="mt-4 flex gap-4 overflow-x-auto pb-1">
+                    @foreach (var design in FreeDaily)
+                    {
+                        <a href="@(isAuthenticated || isAdmin ? "#catalogo" : RegisterHref)"
+                           class="w-40 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-ink transition hover:border-gold/40">
+                            <img src="@design.PreviewUrl" alt="@design.Title" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                            <p class="truncate px-3 py-2 text-xs text-white">@design.Title</p>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        <div id="catalogo" class="mt-12 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <label class="block min-w-0 flex-1 text-sm">
                 <span class="sr-only">Buscar por nombre</span>
                 <input type="search"
@@ -181,8 +182,8 @@
                                 }
                                 else
                                 {
-                                    <a href="/login" class="mt-5 block min-h-11 w-full rounded-2xl bg-gold py-3 text-center text-sm font-semibold leading-[2.5rem] text-ink hover:bg-orange-400">
-                                        Ingresar para descargar
+                                    <a href="@RegisterHref" class="mt-5 block min-h-11 w-full rounded-2xl bg-gold py-3 text-center text-sm font-semibold leading-[2.5rem] text-ink hover:bg-orange-400">
+                                        Regístrate para descargar
                                     </a>
                                 }
                             </div>
@@ -223,6 +224,21 @@
     private bool HasVisualSearch => activeVisualSearchImage != null;
     private List<DesignItem> FreeDaily => allDesigns.Where(d => d.IsFreeDaily).ToList();
     private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns.Take(visibleCount);
+    private string RegisterHref => "/register?returnUrl=/catalog";
+
+    private void RebuildCategories()
+    {
+        var preferred = new[] { "Fútbol", "Vóley" };
+        var found = allDesigns
+            .Select(d => d.Category)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        categories = new List<string> { "Todos" }
+            .Concat(preferred.Where(p => found.Any(f => f.Equals(p, StringComparison.OrdinalIgnoreCase))))
+            .Concat(found.Where(f => !preferred.Any(p => p.Equals(f, StringComparison.OrdinalIgnoreCase))).OrderBy(f => f))
+            .ToList();
+    }
 
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
@@ -250,7 +266,8 @@
         try
         {
             var items = await Api.GetDesignsAsync() ?? [];
-            allDesigns = items.Select(ToItem).Where(d => d.Category is "Fútbol" or "Vóley").ToList();
+            allDesigns = items.Select(ToItem).ToList();
+            RebuildCategories();
         }
         catch (Exception ex)
         {
@@ -385,10 +402,8 @@
                 else
                 {
                     var extra = ToItem(result);
-                    if (extra.Category is "Fútbol" or "Vóley")
-                    {
-                        allDesigns.Add(extra);
-                    }
+                    allDesigns.Add(extra);
+                    RebuildCategories();
                 }
             }
 

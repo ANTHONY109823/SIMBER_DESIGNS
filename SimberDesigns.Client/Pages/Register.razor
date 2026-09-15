@@ -73,7 +73,12 @@
             }
 
             await Auth.SignInAsync(result.Token);
-            Nav.NavigateTo("/cuenta");
+            var uri = Nav.ToAbsoluteUri(Nav.Uri);
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+            var returnUrl = query.TryGetValue("returnUrl", out var r) ? r.ToString() : null;
+            if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith('/'))
+                returnUrl = "/cuenta";
+            Nav.NavigateTo(returnUrl);
         }
         finally
         {
