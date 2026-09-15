@@ -27,9 +27,29 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
         int salesThisMonth = await completed.CountAsync(t => t.CreatedAt >= monthStart, ct);
         decimal revenueThisMonth = await completed.Where(t => t.CreatedAt >= monthStart).SumAsync(t => (decimal?)t.Amount, ct) ?? 0m;
         decimal totalRevenue = await completed.SumAsync(t => (decimal?)t.Amount, ct) ?? 0m;
-        int pending = await db.Transactions.CountAsync(t => t.Status == TransactionStatuses.Pending, ct);
+        // Solo pagos hechos (Completed). Los Pending/Rejected de intentos fallidos no cuentan.
+        int paidTotal = await completed.CountAsync(ct);
 
-        return Ok(new AdminMetricsDto(totalUsers, activeLicenses, expiredLicenses, salesThisMonth, revenueThisMonth, totalRevenue, pending));
+        // Cierra intentos de checkout abandonados para que no ensucien el panel.
+        var staleCutoff = now.AddHours(-1);
+        var abandoned = await db.Transactions
+            .Where(t => t.Status == TransactionStatuses.Pending && t.CreatedAt < staleCutoff)
+            .ToListAsync(ct);
+        if (abandoned.Count > 0)
+        {
+            foreach (var tx in abandoned)
+            {
+                tx.Status = TransactionStatuses.Failed;
+                tx.UpdatedAt = now;
+                tx.Notes = string.IsNullOrWhiteSpace(tx.Notes)
+                    ? "abandoned_checkout"
+                    : $"{tx.Notes}|abandoned_checkout";
+            }
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new AdminMetricsDto(totalUsers, activeLicenses, expiredLicenses, salesThisMonth, revenueThisMonth, totalRevenue, paidTotal));
     }
 
     /// <summary>Historial de licencias del plugin: a quién se vendió, plan, estado, PC y vencimiento.

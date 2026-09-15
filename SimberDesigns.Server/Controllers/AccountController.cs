@@ -79,7 +79,7 @@ public sealed class AccountController(AppDbContext db, PasswordHasher<User> pass
             .Include(t => t.CreditPackage)
             .Include(t => t.Subscription)
             .Include(t => t.Design)
-            .Where(t => t.UserId == user.Id)
+            .Where(t => t.UserId == user.Id && t.Status == TransactionStatuses.Completed)
             .OrderByDescending(t => t.CreatedAt)
             .Take(50)
             .ToListAsync(cancellationToken);

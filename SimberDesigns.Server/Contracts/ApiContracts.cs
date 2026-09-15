@@ -67,7 +67,7 @@ public sealed record AdminMetricsDto(
     int SalesThisMonth,
     decimal RevenueThisMonth,
     decimal TotalRevenue,
-    int PendingPayments);
+    int PaidPayments);
 
 public sealed record AdminLicenseDto(
     string CustomerEmail,
