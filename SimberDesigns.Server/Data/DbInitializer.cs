@@ -179,7 +179,7 @@ public static class DbInitializer
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
-            logger.LogInformation("Usuarios de desarrollo: admin@simber.designs / Admin123! y demo@simber.designs / Demo123!");
+            logger.LogInformation("Usuario administrador sembrado (credenciales solo por configuración / entrega privada).");
         }
 
         if (!await db.Designs.AnyAsync())
