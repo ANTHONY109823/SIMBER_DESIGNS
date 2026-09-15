@@ -32,7 +32,7 @@ public sealed class PaymentsController(
             .ToListAsync(cancellationToken);
         return Ok(new StorefrontDto(
             items,
-            mercadoPagoOptions.Value.PluginMonthPricePen,
+            mercadoPagoOptions.Value.ResolvePluginMonthPricePen(),
             "Activación 30 días · US$15 por programa",
             installers.Exists(LicenseProgram.Corel),
             installers.Exists(LicenseProgram.Illustrator)));
@@ -60,17 +60,18 @@ public sealed class PaymentsController(
         string title;
         string notes;
         string currency = "PEN";
+        var pluginPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
 
         if (kind is "plugin-corel" or "corel")
         {
-            amount = mercadoPagoOptions.Value.PluginMonthPricePen;
-            title = "Activación 30 días · CorelDRAW";
+            amount = pluginPen;
+            title = "Activación 30 días · CorelDRAW · US$15";
             notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Corel}";
         }
         else if (kind is "plugin-illustrator" or "plugin-ilus" or "illustrator" or "ilus")
         {
-            amount = mercadoPagoOptions.Value.PluginMonthPricePen;
-            title = "Activación 30 días · Illustrator";
+            amount = pluginPen;
+            title = "Activación 30 días · Illustrator · US$15";
             notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Illustrator}";
         }
         else if (kind is "plugin" or "month-1pc" or PluginPlans.Month1Pc)
