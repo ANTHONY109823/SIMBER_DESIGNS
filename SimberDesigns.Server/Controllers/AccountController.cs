@@ -10,7 +10,7 @@ namespace SimberDesigns.Server.Controllers;
 
 [ApiController]
 [Route("api/account")]
-[Authorize]
+[Authorize(Roles = Roles.Customer)]
 public sealed class AccountController(AppDbContext db, PasswordHasher<User> passwordHasher) : ControllerBase
 {
     [HttpGet("dashboard")]

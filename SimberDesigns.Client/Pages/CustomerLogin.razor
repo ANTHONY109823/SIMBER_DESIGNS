@@ -14,6 +14,7 @@
                 Simber <span class="text-gold">Designs</span>
             </a>
             <h1 class="font-serif text-3xl text-white">Entrar</h1>
+            <p class="mt-1 text-sm text-cream/70">Acceso de clientes.</p>
             <EditForm Model="this" OnValidSubmit="Submit" class="mt-8 space-y-4">
                 <label class="block text-sm">
                     <span class="text-cream/85">Correo</span>
@@ -64,19 +65,14 @@
         Busy = true;
         try
         {
-            var result = await Api.LoginAsync(Email, Password);
+            var (result, err) = await Api.LoginWithMessageAsync(Email, Password, admin: false);
             if (result is null)
             {
-                Error = "Correo o contraseña incorrectos.";
+                Error = err ?? "Correo o contraseña incorrectos.";
                 return;
             }
 
             await Auth.SignInAsync(result.Token);
-            if (string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase))
-            {
-                Nav.NavigateTo("/admin");
-                return;
-            }
 
             var returnUrl = "/cuenta";
             var q = Nav.ToAbsoluteUri(Nav.Uri).Query;
@@ -85,7 +81,8 @@
             if (idx >= 0)
             {
                 var raw = Uri.UnescapeDataString(q[(idx + key.Length)..].Split('&')[0]);
-                if (raw.StartsWith('/') && !raw.StartsWith("//", StringComparison.Ordinal))
+                if (raw.StartsWith('/') && !raw.StartsWith("//", StringComparison.Ordinal)
+                    && !raw.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
                     returnUrl = raw;
             }
 

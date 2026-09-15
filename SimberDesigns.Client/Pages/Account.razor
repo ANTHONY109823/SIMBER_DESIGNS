@@ -1,5 +1,5 @@
 @page "/cuenta"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Customer")]
 @inject SimberApi Api
 @inject NavigationManager Nav
 

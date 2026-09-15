@@ -222,6 +222,22 @@ public sealed class SimberApi(HttpClient http)
         return await response.Content.ReadFromJsonAsync<AuthResponse>();
     }
 
+    public async Task<(AuthResponse? Auth, string? Error)> LoginWithMessageAsync(string email, string password, bool admin)
+    {
+        var url = admin ? "api/auth/admin-login" : "api/auth/login";
+        var response = await http.PostAsJsonAsync(url, new { email, password });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            return (null, string.IsNullOrWhiteSpace(msg) ? "Credenciales inválidas." : msg);
+        }
+
+        return (await response.Content.ReadFromJsonAsync<AuthResponse>(), null);
+    }
+
     public async Task<AuthResponse?> RegisterAsync(string email, string password, string fullName)
     {
         var response = await http.PostAsJsonAsync("api/auth/register", new { email, password, fullName });

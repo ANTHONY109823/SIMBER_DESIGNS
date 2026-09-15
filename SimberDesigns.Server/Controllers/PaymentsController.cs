@@ -38,7 +38,7 @@ public sealed class PaymentsController(
             installers.Exists(LicenseProgram.Illustrator)));
     }
 
-    [Authorize]
+    [Authorize(Roles = Roles.Customer)]
     [HttpPost("checkout")]
     public async Task<ActionResult<CheckoutResponse>> Checkout(CheckoutRequest request, CancellationToken cancellationToken)
     {
@@ -163,7 +163,7 @@ public sealed class PaymentsController(
         return "No se pudo abrir Mercado Pago. Revisa Access Token y que MercadoPago__PublicBaseUrl sea https://… (" + detail + ")";
     }
 
-    [Authorize]
+    [Authorize(Roles = Roles.Customer)]
     [HttpPost("confirm")]
     public async Task<IActionResult> Confirm(ConfirmPaymentRequest request, CancellationToken cancellationToken)
     {

@@ -53,17 +53,33 @@ public sealed class AuthController(
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-        var user = await db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+        var (user, error) = await AuthenticateAsync(request, cancellationToken);
         if (user is null)
         {
-            return Unauthorized("Credenciales inválidas.");
+            return Unauthorized(error);
         }
 
-        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-        if (result == PasswordVerificationResult.Failed)
+        if (string.Equals(user.Role, Roles.Admin, StringComparison.OrdinalIgnoreCase))
         {
-            return Unauthorized("Credenciales inválidas.");
+            return Unauthorized("Usa el acceso de administrador.");
+        }
+
+        return Ok(await ToResponseAsync(user, cancellationToken));
+    }
+
+    [HttpPost("admin-login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> AdminLogin(LoginRequest request, CancellationToken cancellationToken)
+    {
+        var (user, error) = await AuthenticateAsync(request, cancellationToken);
+        if (user is null)
+        {
+            return Unauthorized(error);
+        }
+
+        if (!string.Equals(user.Role, Roles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return Unauthorized("Esta ruta es solo para administradores.");
         }
 
         return Ok(await ToResponseAsync(user, cancellationToken));
@@ -81,6 +97,24 @@ public sealed class AuthController(
 
         var user = await db.Users.FindAsync([userId.Value], cancellationToken);
         return user is null ? Unauthorized() : Ok(await ToResponseAsync(user, cancellationToken));
+    }
+
+    private async Task<(User? User, string Error)> AuthenticateAsync(LoginRequest request, CancellationToken cancellationToken)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(x => x.Email == email, cancellationToken);
+        if (user is null)
+        {
+            return (null, "Credenciales inválidas.");
+        }
+
+        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        if (result == PasswordVerificationResult.Failed)
+        {
+            return (null, "Credenciales inválidas.");
+        }
+
+        return (user, "");
     }
 
     private async Task<AuthResponse> ToResponseAsync(User user, CancellationToken cancellationToken)

@@ -55,16 +55,10 @@
         Busy = true;
         try
         {
-            var result = await Api.LoginAsync(Email, Password);
+            var (result, err) = await Api.LoginWithMessageAsync(Email, Password, admin: true);
             if (result is null)
             {
-                Error = "Credenciales inválidas.";
-                return;
-            }
-
-            if (!string.Equals(result.Role, "Admin", StringComparison.OrdinalIgnoreCase))
-            {
-                Error = "Esta ruta es solo para administradores.";
+                Error = err ?? "Credenciales inválidas.";
                 return;
             }
 

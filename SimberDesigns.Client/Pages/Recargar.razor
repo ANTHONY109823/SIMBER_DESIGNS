@@ -1,6 +1,6 @@
 @page "/recargar"
 @page "/pricing"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Customer")]
 @inject SimberApi Api
 @inject NavigationManager Nav
 
