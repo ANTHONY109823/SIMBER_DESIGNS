@@ -1,0 +1,108 @@
+@page "/recargar"
+@page "/pricing"
+@attribute [Authorize]
+@inject SimberApi Api
+@inject NavigationManager Nav
+
+<PageTitle>Recarga créditos · Simber Designs</PageTitle>
+
+<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+    <p class="text-xs uppercase tracking-[0.28em] text-gold">Catálogo</p>
+    <h1 class="mt-2 font-serif text-4xl text-white">Recarga créditos</h1>
+    <p class="mt-2 text-sm text-cream/80">Solo para comprar diseños del catálogo. El mes de Corel/Illustrator se paga en Programas.</p>
+    <p class="mt-1 text-sm text-cream/60">Saldo actual: <span class="font-semibold text-gold">@Credits.ToString("0")</span> créditos · <a href="/cuenta" class="text-cream/80 underline hover:text-gold">Mi cuenta</a></p>
+
+    @if (Packages.Count == 0)
+    {
+        <p class="mt-10 text-sm text-cream/50">No hay paquetes cargados aún.</p>
+    }
+    else
+    {
+        <div class="mt-10 grid gap-4 sm:grid-cols-3">
+            @foreach (var pack in Packages)
+            {
+                <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                    <p class="font-serif text-3xl text-gold">S/ @pack.PriceUsd.ToString("0")</p>
+                    <p class="mt-1 text-sm text-cream/70">@(pack.CreditsAmount + pack.BonusAmount) créditos</p>
+                    <button type="button" disabled="@Busy" @onclick="() => Pay(pack)"
+                            class="mt-4 w-full rounded-full bg-gold py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                        Comprar
+                    </button>
+                </article>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="mt-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300" role="alert">
+            @Error
+        </div>
+    }
+</div>
+
+@code {
+    private decimal Credits;
+    private List<CreditPackageDto> Packages = [];
+    private bool Busy;
+    private string? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dash = await Api.GetDashboardAsync();
+        if (dash is not null)
+            Credits = dash.CreditsBalance;
+
+        var store = await Api.GetStorefrontAsync();
+        Packages = store?.Packages ?? [];
+    }
+
+    private async Task Pay(CreditPackageDto pack)
+    {
+        Error = null;
+        Busy = true;
+        try
+        {
+            var checkout = await Api.CheckoutAsync("credits", pack.Id, null);
+            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
+            {
+                Error = "No se pudo abrir Mercado Pago.";
+                return;
+            }
+
+            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Error = FriendlyPayError(ex.Message);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private static string FriendlyPayError(string raw)
+    {
+        var t = raw.Trim();
+        if (t.Length >= 2 && t[0] == '"' && t[^1] == '"')
+            t = t[1..^1];
+
+        if (t.Contains("PA_UNAUTHORIZED", StringComparison.OrdinalIgnoreCase)
+            || t.Contains("PolicyAgent", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Mercado Pago bloqueó la cuenta o las claves de API (política de seguridad). "
+                + "Entra a developers.mercadopago.com.pe, verifica la identidad del vendedor, "
+                + "genera un Access Token nuevo (producción o prueba) y actualízalo en Railway "
+                + "(MercadoPago__AccessToken). Si sigue igual, contacta soporte de Mercado Pago.";
+        }
+
+        if (t.Contains("https://", StringComparison.OrdinalIgnoreCase)
+            && t.Contains("PublicBaseUrl", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Falta configurar MercadoPago__PublicBaseUrl en Railway con tu URL https://…";
+        }
+
+        return string.IsNullOrWhiteSpace(t) ? "No se pudo iniciar el pago." : t;
+    }
+}

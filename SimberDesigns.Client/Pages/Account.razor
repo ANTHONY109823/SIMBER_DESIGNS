@@ -10,9 +10,15 @@
     <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
     <p class="mt-1 text-sm text-cream/80">@Email</p>
 
+    <div class="mt-6">
+        <a href="/recargar" class="inline-flex rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">
+            Recargar créditos
+        </a>
+    </div>
+
     <section class="mt-10">
         <h2 class="font-serif text-2xl text-white">Tus servicios</h2>
-        <p class="mt-1 text-sm text-cream/70">Solo aparece lo que tienes activo. Los créditos son solo para diseños del catálogo.</p>
+        <p class="mt-1 text-sm text-cream/70">Solo lo que tienes. Los créditos son para diseños; el mes de programa es aparte.</p>
         <div class="mt-5 space-y-3">
             <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -28,7 +34,7 @@
             {
                 <article class="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4">
                     <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
-                    <p class="mt-1 text-sm text-cream/60">Sin mes de Corel ni Illustrator. Si lo necesitas, actívalo en Programas.</p>
+                    <p class="mt-1 text-sm text-cream/60">Sin mes activo de Corel ni Illustrator.</p>
                 </article>
             }
             else
@@ -49,35 +55,6 @@
                 }
             }
         </div>
-    </section>
-
-    <section id="creditos" class="mt-10 scroll-mt-24">
-        <h2 class="font-serif text-2xl text-white">Recarga créditos</h2>
-        <p class="mt-1 text-sm text-cream/70">Solo para comprar / canjear diseños del catálogo.</p>
-        @if (Packages.Count == 0)
-        {
-            <p class="mt-4 text-sm text-cream/50">No hay paquetes cargados aún.</p>
-        }
-        else
-        {
-            <div class="mt-6 grid gap-4 sm:grid-cols-3">
-                @foreach (var pack in Packages)
-                {
-                    <article class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                        <p class="font-serif text-3xl text-gold">S/ @pack.PriceUsd.ToString("0")</p>
-                        <p class="mt-1 text-sm text-cream/70">@(pack.CreditsAmount + pack.BonusAmount) créditos</p>
-                        <button type="button" disabled="@Busy" @onclick="() => PayCredits(pack)"
-                                class="mt-4 w-full rounded-full bg-gold py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
-                            Comprar
-                        </button>
-                    </article>
-                }
-            </div>
-        }
-        @if (!string.IsNullOrWhiteSpace(PayError))
-        {
-            <p class="mt-4 text-sm text-rose-400" role="alert">@PayError</p>
-        }
     </section>
 
     <section class="mt-10">
@@ -114,7 +91,7 @@
 
     <section class="mt-10">
         <h2 class="font-serif text-2xl text-white">Datos de la cuenta</h2>
-        <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3 text-sm">
+        <div class="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm">
             <div class="flex justify-between gap-4"><span class="text-cream/50">Nombre</span><span class="text-white">@Name</span></div>
             <div class="flex justify-between gap-4"><span class="text-cream/50">Correo</span><span class="text-white">@Email</span></div>
             <div class="flex justify-between gap-4"><span class="text-cream/50">Créditos</span><span class="text-gold">@Credits.ToString("0")</span></div>
@@ -145,7 +122,7 @@
         </div>
     </section>
 
-    @if (CreditLogs.Count > 0 || CreditPayments.Count > 0 || ProgramPayments.Count > 0)
+    @if (CreditLogs.Count > 0 || Transactions.Count > 0)
     {
         <div class="mt-10 grid gap-6 lg:grid-cols-2">
             @if (CreditLogs.Count > 0)
@@ -163,12 +140,12 @@
                     </ul>
                 </section>
             }
-            @if (CreditPayments.Count > 0 || ProgramPayments.Count > 0)
+            @if (Transactions.Count > 0)
             {
                 <section>
-                    <h2 class="font-serif text-xl text-white">Pagos</h2>
+                    <h2 class="font-serif text-xl text-white">Historial de pagos</h2>
                     <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                        @foreach (var tx in CreditPayments.Concat(ProgramPayments).OrderByDescending(t => t.CreatedAt))
+                        @foreach (var tx in Transactions)
                         {
                             <li class="flex items-center justify-between px-4 py-3 text-sm">
                                 <span class="text-cream/70">@tx.DetailName<span class="ml-2 text-xs text-cream/35">@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
@@ -188,12 +165,9 @@
     private decimal Credits;
     private List<PluginLicenseDto> Licenses = [];
     private List<CreditLogDto> CreditLogs = [];
-    private List<TransactionDto> CreditPayments = [];
-    private List<TransactionDto> ProgramPayments = [];
+    private List<TransactionDto> Transactions = [];
     private List<UnlockedDesignDto> Unlocked = [];
-    private List<CreditPackageDto> Packages = [];
     private bool Busy;
-    private string? PayError;
     private string? DownloadMsg;
     private bool DownloadOk;
     private string? PasswordMsg;
@@ -212,50 +186,11 @@
             Credits = dash.CreditsBalance;
             CreditLogs = dash.CreditLogs ?? [];
             Unlocked = dash.UnlockedDesigns ?? [];
-            var txs = dash.Transactions ?? [];
-            CreditPayments = txs.Where(t => IsCreditPayment(t)).ToList();
-            ProgramPayments = txs.Where(t => IsProgramPayment(t)).ToList();
+            Transactions = dash.Transactions ?? [];
         }
 
         try { Licenses = await Api.GetPluginLicensesAsync() ?? []; }
         catch { Licenses = []; }
-
-        var store = await Api.GetStorefrontAsync();
-        Packages = store?.Packages ?? [];
-    }
-
-    private static bool IsCreditPayment(TransactionDto t)
-        => t.DetailName.Contains("crédito", StringComparison.OrdinalIgnoreCase)
-           || t.DetailName.Contains("Paquete", StringComparison.OrdinalIgnoreCase)
-           || (t.Notes?.StartsWith("credits:", StringComparison.OrdinalIgnoreCase) == true);
-
-    private static bool IsProgramPayment(TransactionDto t)
-        => t.DetailName.Contains("Activación", StringComparison.OrdinalIgnoreCase)
-           || (t.Notes?.StartsWith("plugin:", StringComparison.OrdinalIgnoreCase) == true);
-
-    private async Task PayCredits(CreditPackageDto pack)
-    {
-        PayError = null;
-        Busy = true;
-        try
-        {
-            var checkout = await Api.CheckoutAsync("credits", pack.Id, null);
-            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
-            {
-                PayError = "No se pudo abrir Mercado Pago.";
-                return;
-            }
-
-            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
-        }
-        catch (Exception ex)
-        {
-            PayError = CleanError(ex.Message);
-        }
-        finally
-        {
-            Busy = false;
-        }
     }
 
     private async Task Redownload(UnlockedDesignDto design)

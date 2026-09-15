@@ -34,7 +34,7 @@ Usa doble guion bajo `__` para las secciones anidadas:
 | `Jwt__Issuer` | `SimberDesigns` | no |
 | `Jwt__Audience` | `SimberDesigns.Client` | no |
 | `Plugin__DownloadUrl` | URL del `.exe` V2 (ver paso 5) | no |
-| `MercadoPago__AccessToken` | tu Access Token real de Mercado Pago | 🔴 sí |
+| `MercadoPago__AccessToken` | Access Token real (`APP_USR-…`). Si ves `PA_UNAUTHORIZED_RESULT_FROM_POLICIES`, la cuenta/claves están bloqueadas: verifica identidad en MP, regenera token y cámbialo aquí. | 🔴 sí |
 | `MercadoPago__PublicKey` | tu Public Key de Mercado Pago | no (es publicable) |
 | `MercadoPago__WebhookSecret` | el secreto del webhook | 🔴 sí |
 | `MercadoPago__PublicBaseUrl` | la URL pública **https://…** de Railway (obligatoria; sin esto el checkout falla y el pago queda “en proceso”) | no |

@@ -160,8 +160,21 @@ public sealed class PaymentsController(
             tx.Notes = $"{notes}|checkout_error:{ex.Message}";
             tx.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
-            return BadRequest($"No se pudo abrir Mercado Pago. Revisa Access Token y que MercadoPago__PublicBaseUrl sea https://… ({ex.Message})");
+            return BadRequest(CheckoutErrorMessage(ex.Message));
         }
+    }
+
+    private static string CheckoutErrorMessage(string detail)
+    {
+        if (detail.Contains("PA_UNAUTHORIZED", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("PolicyAgent", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Mercado Pago bloqueó las claves de esta cuenta (PA_UNAUTHORIZED). "
+                + "Verifica la identidad del vendedor en Mercado Pago, regenera el Access Token "
+                + "y actualiza MercadoPago__AccessToken en Railway. Detalle: " + detail;
+        }
+
+        return "No se pudo abrir Mercado Pago. Revisa Access Token y que MercadoPago__PublicBaseUrl sea https://… (" + detail + ")";
     }
 
     [Authorize]
