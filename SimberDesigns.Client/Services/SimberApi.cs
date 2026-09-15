@@ -84,19 +84,6 @@ public sealed record TransactionDto(
 
 public sealed record CreditLogDto(Guid Id, string Description, decimal CreditsChanged, DateTime CreatedAt);
 
-public sealed record AdminTransactionDto(
-    Guid Id,
-    Guid UserId,
-    string UserName,
-    string UserEmail,
-    decimal Amount,
-    decimal CreditsToReceive,
-    string PackageName,
-    string? PaymentReceiptUrl,
-    string Status,
-    string? Notes,
-    DateTime CreatedAt);
-
 public sealed record AdminMetricsDto(
     int TotalUsers,
     int ActiveLicenses,
@@ -302,12 +289,6 @@ public sealed class SimberApi(HttpClient http)
         return await response.Content.ReadFromJsonAsync<List<PluginLicenseDto>>() ?? [];
     }
 
-    public async Task<PluginLicenseDto?> GetPluginLicenseAsync()
-    {
-        var all = await GetPluginLicensesAsync();
-        return all?.FirstOrDefault();
-    }
-
     public Task<List<PluginInstallerStatusDto>?> GetInstallersAsync()
         => http.GetFromJsonAsync<List<PluginInstallerStatusDto>>("api/plugin/installers");
 
@@ -323,33 +304,6 @@ public sealed class SimberApi(HttpClient http)
         {
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo subir el ejecutable." : body);
         }
-    }
-
-    public async Task SubmitManualPaymentAsync(Stream proof, string fileName, string itemKey)
-    {
-        using var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(proof), "receipt", fileName);
-        content.Add(new StringContent(itemKey), "itemKey");
-        var response = await http.PostAsync("api/payments/manual-recharge", content);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public Task<List<AdminTransactionDto>?> GetAdminPaymentsAsync(string? status = null)
-    {
-        var suffix = string.IsNullOrWhiteSpace(status) ? "" : $"?status={Uri.EscapeDataString(status)}";
-        return http.GetFromJsonAsync<List<AdminTransactionDto>>($"api/payments/admin{suffix}");
-    }
-
-    public async Task ApproveAsync(Guid id)
-    {
-        var response = await http.PostAsync($"api/payments/{id}/approve", null);
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task RejectAsync(Guid id, string notes)
-    {
-        var response = await http.PostAsJsonAsync($"api/payments/{id}/reject", new { notes });
-        response.EnsureSuccessStatusCode();
     }
 
     public async Task<DesignDto?> CreateDesignAsync(

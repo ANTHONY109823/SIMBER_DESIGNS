@@ -124,17 +124,3 @@ public sealed record TransactionDto(
 
 public sealed record CreditLogDto(Guid Id, string Description, decimal CreditsChanged, DateTime CreatedAt);
 
-public sealed record AdminTransactionDto(
-    Guid Id,
-    Guid UserId,
-    string UserName,
-    string UserEmail,
-    decimal Amount,
-    decimal CreditsToReceive,
-    string PackageName,
-    string? PaymentReceiptUrl,
-    string Status,
-    string? Notes,
-    DateTime CreatedAt);
-
-public sealed record ReviewPaymentRequest(string? Notes);
