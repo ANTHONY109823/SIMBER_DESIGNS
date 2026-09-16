@@ -227,6 +227,10 @@ code {
     will-change: transform;
 }
 
+.hero-v-track--snap {
+    transition: none !important;
+}
+
 .hero-v-card img {
     transition: transform 0.7s ease;
 }
