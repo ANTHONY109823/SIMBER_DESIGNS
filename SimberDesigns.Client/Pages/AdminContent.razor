@@ -105,6 +105,28 @@
         new("catalog", "catalog.desc", "Subtítulo", true),
         new("programas", "programas.badge", "Etiqueta superior", false),
         new("programas", "programas.desc", "Descripción principal", true),
+        new("programas", "programas.flow.title", "Título sección flujo", false),
+        new("programas", "programas.flow.desc", "Texto sección flujo", true),
+        new("programas", "programas.armado.title", "Título imagen armado", false),
+        new("programas", "programas.armado.desc", "Texto imagen armado", true),
+        new("programas", "programas.video.caption", "Pie del video", false),
+        new("programas", "programas.step1.caption", "Paso 1 · texto", false),
+        new("programas", "programas.step2.caption", "Paso 2 · texto", false),
+        new("programas", "programas.step3.caption", "Paso 3 · texto", false),
+        new("programas", "programas.step4.caption", "Paso 4 · texto", false),
+        new("programas", "programas.features.title", "Título Funciones", false),
+        new("programas", "programas.feature1.title", "Función 1 · título", false),
+        new("programas", "programas.feature1.desc", "Función 1 · texto", true),
+        new("programas", "programas.feature2.title", "Función 2 · título", false),
+        new("programas", "programas.feature2.desc", "Función 2 · texto", true),
+        new("programas", "programas.feature3.title", "Función 3 · título", false),
+        new("programas", "programas.feature3.desc", "Función 3 · texto", true),
+        new("programas", "programas.feature4.title", "Función 4 · título", false),
+        new("programas", "programas.feature4.desc", "Función 4 · texto", true),
+        new("programas", "programas.feature5.title", "Función 5 · título", false),
+        new("programas", "programas.feature5.desc", "Función 5 · texto", true),
+        new("programas", "programas.feature6.title", "Función 6 · título", false),
+        new("programas", "programas.feature6.desc", "Función 6 · texto", true),
         new("encarganos", "encarganos.eyebrow", "Etiqueta", false),
         new("encarganos", "encarganos.title", "Título", false),
         new("encarganos", "encarganos.gallery.title", "Título galería trabajos", false)
@@ -124,17 +146,55 @@
 
     protected override async Task OnInitializedAsync()
     {
-        foreach (var f in TextFields) _texts[f.Key] = "";
+        foreach (var f in TextFields) _texts[f.Key] = Defaults.TryGetValue(f.Key, out var d) ? d : "";
         try
         {
             var c = await Api.GetContentAsync();
             foreach (var f in TextFields)
             {
-                if (c.TryGetValue(f.Key, out var v)) _texts[f.Key] = v;
+                if (c.TryGetValue(f.Key, out var v) && !string.IsNullOrWhiteSpace(v))
+                    _texts[f.Key] = v;
             }
         }
         catch { }
     }
+
+    private static readonly Dictionary<string, string> Defaults = new()
+    {
+        ["home.hero.eyebrow"] = "Vectores · Sublimación · Wireframe",
+        ["home.hero.title"] = "Del patrón a la camiseta en menos de tres clics.",
+        ["home.hero.desc"] = "Catálogo CDR y programas para CorelDRAW e Illustrator.",
+        ["home.steps.title"] = "De la lista al corte, en cuatro pasos",
+        ["catalog.eyebrow"] = "Catálogo CDR",
+        ["catalog.title"] = "Fútbol|Vóley",
+        ["programas.badge"] = "Herramienta · CorelDRAW e Illustrator",
+        ["programas.desc"] = "Arma mockups, nombres y dorsales en CorelDRAW e Illustrator.",
+        ["programas.flow.title"] = "Cómo se ve trabajando",
+        ["programas.flow.desc"] = "El flujo real: lees la lista, tomas los moldes y el programa arma y acomoda solo en CorelDRAW o Illustrator, con nombres y dorsales.",
+        ["programas.armado.title"] = "Armado automático en CorelDRAW / Illustrator",
+        ["programas.armado.desc"] = "Duplica el molde por jugador, pone nombre y dorsal y acomoda en bloques.",
+        ["programas.video.caption"] = "Video del flujo (si está subido en Programas).",
+        ["programas.step1.caption"] = "1 · Pegas o subes la lista (o foto con IA)",
+        ["programas.step2.caption"] = "2 · Tomas el molde por género y talla",
+        ["programas.step3.caption"] = "3 · Arma con nombres y dorsales, en bloques",
+        ["programas.step4.caption"] = "4 · Listo para exportar e imprimir",
+        ["programas.features.title"] = "Funciones",
+        ["programas.feature1.title"] = "Armado automático",
+        ["programas.feature1.desc"] = "Duplica el molde por jugador y acomoda las piezas en bloques, listo para producir.",
+        ["programas.feature2.title"] = "Nombres y dorsales",
+        ["programas.feature2.desc"] = "Toma la lista y rellena nombre y número conservando la tipografía del molde.",
+        ["programas.feature3.title"] = "Corel e Illustrator",
+        ["programas.feature3.desc"] = "Trabaja dentro de tu programa; tú solo exportas e imprimes como siempre.",
+        ["programas.feature4.title"] = "Lectura con IA",
+        ["programas.feature4.desc"] = "Lee la lista de jugadores desde una foto o un archivo, sin teclear.",
+        ["programas.feature5.title"] = "Aprovecha la tela",
+        ["programas.feature5.desc"] = "Acomoda las piezas al ancho de tu rollo y en bloques para desperdiciar menos.",
+        ["programas.feature6.title"] = "Login + pago",
+        ["programas.feature6.desc"] = "Descargas gratis; al abrir el programa inicias sesión y pagas el mes en dólares (al tipo de cambio).",
+        ["encarganos.eyebrow"] = "Cotización",
+        ["encarganos.title"] = "Encárganos a nosotros",
+        ["encarganos.gallery.title"] = "Así queda en cancha"
+    };
 
     private async Task GuardarTextos()
     {

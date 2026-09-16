@@ -64,17 +64,17 @@
 
 <section class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
     <div class="mb-8">
-        <h2 class="font-serif text-3xl text-white">Cómo se ve trabajando</h2>
-        <p class="mt-2 text-sm text-cream/80">El flujo real: lees la lista, tomas los moldes y el programa arma y acomoda solo en CorelDRAW o Illustrator, con nombres y dorsales.</p>
+        <h2 class="font-serif text-3xl text-white">@T("programas.flow.title", "Cómo se ve trabajando")</h2>
+        <p class="mt-2 text-sm text-cream/80">@T("programas.flow.desc", "El flujo real: lees la lista, tomas los moldes y el programa arma y acomoda solo en CorelDRAW o Illustrator, con nombres y dorsales.")</p>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-5">
         <figure class="relative lg:col-span-3 aspect-video overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-orange-600/25 via-ink to-ink">
-            <img src="/api/content/asset/prog-armado" alt="Armado automático" onerror="this.style.display='none'"
+            <img src="/api/content/asset/prog-armado" alt="@(T("programas.armado.title", "Armado automático"))" onerror="this.style.display='none'"
                  class="absolute inset-0 h-full w-full object-cover" />
             <figcaption class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/90 to-transparent px-5 py-4">
-                <p class="text-base font-bold text-white">Armado automático en CorelDRAW / Illustrator</p>
-                <p class="text-xs text-cream/80">Duplica el molde por jugador, pone nombre y dorsal y acomoda en bloques.</p>
+                <p class="text-base font-bold text-white">@T("programas.armado.title", "Armado automático en CorelDRAW / Illustrator")</p>
+                <p class="text-xs text-cream/80">@T("programas.armado.desc", "Duplica el molde por jugador, pone nombre y dorsal y acomoda en bloques.")</p>
             </figcaption>
         </figure>
 
@@ -82,7 +82,7 @@
             <video class="aspect-video w-full bg-black object-cover" controls poster="programas/demo-poster.jpg">
                 <source src="@DemoVideoSrc" type="video/mp4" />
             </video>
-            <p class="px-4 py-3 text-xs text-cream/75">Video del flujo (si está subido en Programas).</p>
+            <p class="px-4 py-3 text-xs text-cream/75">@T("programas.video.caption", "Video del flujo (si está subido en Programas).")</p>
         </div>
     </div>
 
@@ -100,7 +100,7 @@
 
 <section id="funciones" class="border-y border-white/10 bg-white/[0.03]">
     <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <h2 class="font-serif text-3xl text-white">Funciones</h2>
+        <h2 class="font-serif text-3xl text-white">@T("programas.features.title", "Funciones")</h2>
         <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach (var feature in Features)
             {
@@ -131,22 +131,28 @@
         HasIllustrator = store?.HasIllustratorDownload == true;
     }
 
-    private static readonly FeatureItem[] Features =
+    private IEnumerable<FeatureItem> Features =>
     [
-        new("Armado automático", "Duplica el molde por jugador y acomoda las piezas en bloques, listo para producir."),
-        new("Nombres y dorsales", "Toma la lista y rellena nombre y número conservando la tipografía del molde."),
-        new("Corel e Illustrator", "Trabaja dentro de tu programa; tú solo exportas e imprimes como siempre."),
-        new("Lectura con IA", "Lee la lista de jugadores desde una foto o un archivo, sin teclear."),
-        new("Aprovecha la tela", "Acomoda las piezas al ancho de tu rollo y en bloques para desperdiciar menos."),
-        new("Login + pago", "Descargas gratis; al abrir el programa inicias sesión y pagas el mes en dólares (al tipo de cambio).")
+        new(T("programas.feature1.title", "Armado automático"),
+            T("programas.feature1.desc", "Duplica el molde por jugador y acomoda las piezas en bloques, listo para producir.")),
+        new(T("programas.feature2.title", "Nombres y dorsales"),
+            T("programas.feature2.desc", "Toma la lista y rellena nombre y número conservando la tipografía del molde.")),
+        new(T("programas.feature3.title", "Corel e Illustrator"),
+            T("programas.feature3.desc", "Trabaja dentro de tu programa; tú solo exportas e imprimes como siempre.")),
+        new(T("programas.feature4.title", "Lectura con IA"),
+            T("programas.feature4.desc", "Lee la lista de jugadores desde una foto o un archivo, sin teclear.")),
+        new(T("programas.feature5.title", "Aprovecha la tela"),
+            T("programas.feature5.desc", "Acomoda las piezas al ancho de tu rollo y en bloques para desperdiciar menos.")),
+        new(T("programas.feature6.title", "Login + pago"),
+            T("programas.feature6.desc", "Descargas gratis; al abrir el programa inicias sesión y pagas el mes en dólares (al tipo de cambio)."))
     ];
 
-    private static readonly GalleryShot[] Gallery =
+    private IEnumerable<GalleryShot> Gallery =>
     [
-        new("/api/content/asset/prog-1", "Lectura de la lista", "1 · Pegas o subes la lista (o foto con IA)"),
-        new("/api/content/asset/prog-2", "Tomar molde", "2 · Tomas el molde por género y talla"),
-        new("/api/content/asset/prog-3", "Armado automático", "3 · Arma con nombres y dorsales, en bloques"),
-        new("/api/content/asset/prog-4", "Resultado", "4 · Listo para exportar e imprimir")
+        new("/api/content/asset/prog-1", "Paso 1", T("programas.step1.caption", "1 · Pegas o subes la lista (o foto con IA)")),
+        new("/api/content/asset/prog-2", "Paso 2", T("programas.step2.caption", "2 · Tomas el molde por género y talla")),
+        new("/api/content/asset/prog-3", "Paso 3", T("programas.step3.caption", "3 · Arma con nombres y dorsales, en bloques")),
+        new("/api/content/asset/prog-4", "Paso 4", T("programas.step4.caption", "4 · Listo para exportar e imprimir"))
     ];
 
     private sealed record FeatureItem(string Title, string Detail);
