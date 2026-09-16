@@ -176,6 +176,27 @@ code {
     opacity: 1;
 }
 
+/* Anclado a la columna del logo (max-w-6xl = 72rem) */
+.hero-v-carousel {
+    top: 1.25rem;
+    bottom: 1.25rem;
+    width: 16.5rem;
+    left: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+}
+
+@media (min-width: 640px) {
+    .hero-v-carousel {
+        left: max(1.5rem, calc((100% - 72rem) / 2 + 1.5rem));
+        width: 17.5rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .hero-v-carousel {
+        width: 18.5rem;
+    }
+}
+
 .hero-v-glow {
     background: linear-gradient(
         180deg,
