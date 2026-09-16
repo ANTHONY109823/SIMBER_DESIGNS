@@ -27,37 +27,54 @@ public sealed class IaController(
     private const string AnthropicVersion = "2023-06-01";
 
     private const string Prompt = """
-        Eres un lector experto de listas de pedidos de uniformes deportivos, casi siempre escritas A MANO.
-        Devuelve SOLO un arreglo JSON (sin texto adicional, sin ```), UNA entrada por JUGADOR, con esta forma exacta:
+        Eres un lector experto de listas de pedidos de ropa deportiva y uniformes (polos, camisetas),
+        casi siempre escritas A MANO o en tablas impresas. Devuelve SOLO un arreglo JSON (sin texto
+        adicional, sin ```), UNA entrada por PERSONA/PRENDA, con esta forma exacta:
         [{"nombre":"","numero":"","talla":"","genero":"Hombre"}]
 
-        Cómo leer:
-        - Lee de ARRIBA hacia ABAJO, respetando el orden de la lista.
-        - Si la hoja tiene DOS COLUMNAS o secciones (izquierda y derecha, o MAMÁS | PAPÁS), léelas COMPLETAS:
-          primero toda la columna izquierda de arriba a abajo, luego toda la derecha. No mezcles sus renglones.
-        - Cada renglón trae NOMBRE + NÚMERO (dorsal) + TALLA. El número suele ir pegado al nombre o en su
-          propia columna alineada por fila.
+        QUÉ NOMBRE USAR (lo más importante):
+        - Si una fila trae un nombre CORTO destacado (columna "NOMBRE", resaltada o de color: un apodo o
+          primer nombre) ADEMÁS del nombre largo ("APELLIDOS Y NOMBRE"), usa SIEMPRE el nombre CORTO
+          destacado: ese es el que va impreso en la prenda y con el que se entrega. NUNCA uses los
+          apellidos completos si existe ese nombre corto.
+        - Si solo hay un nombre, usa ese. Respeta nombres compuestos o con inicial ("THIAGO A.",
+          "MAIA C.", "R. BALBOA", "MARTIN.J", "David y Bianca"). No unas dos personas ni partas un nombre.
 
-        Qué poner en cada campo:
-        - "nombre": nombre/apellido completo del jugador. Respeta compuestos ("R. BALBOA", "PAPA DE YUS",
-          "MISS LAURA"). NO unas dos personas en una, ni partas un nombre en dos.
-        - "numero": el dorsal. Si no hay => "".
-        - "talla": letra (S, M, L, XL, XXL) o número (6, 8, 10, 12, 14, 16). Si hay rango, el más probable.
-          Si no hay => "".
-        - "genero": "Hombre" o "Mujer". MAMÁS/DAMAS/NIÑAS/MUJERES => Mujer; PAPÁS/CABALLEROS/NIÑOS/VARONES/
-          HOMBRES => Hombre. Si no se indica => "Hombre".
+        VARIAS PERSONAS POR FILA O SECCIÓN (léelas TODAS):
+        - Una misma fila puede pedir VARIAS prendas: el alumno y además su MADRE (columna N.MADRE/MAMÁ) y
+          su PADRE (columna N.PADRE/PAPÁ), cada quien con SU talla y SU número en sus propias columnas.
+          Crea UNA entrada por cada persona que tenga un nombre real Y (talla o número).
+        - Si un nombre trae "*", "-", "—", vacío o guion => esa persona NO pidió: OMÍTELA.
+        - Si la hoja tiene SECCIONES o dos columnas (MAMÁS | PAPÁS, NIÑAS y luego NIÑOS, DAMAS/VARONES),
+          léelas COMPLETAS y en orden: primero una sección/columna entera de arriba a abajo, luego la otra.
+        - INCLUYE a personas con etiqueta especial (PROFESORA, PROFESOR, TÍA, ENTRENADOR, DELEGADO): si
+          tienen talla o número, son un pedido más. No las descartes por el título.
 
-        IGNORA (no son jugadores):
-        - Encabezados de columna (Nombre, Número/N°, Talla, Género).
-        - Títulos del diseño o del club (CUELLO REDONDO, CAMISETA, nombre del equipo arriba).
-        - Notas y extras (REGALO, MUESTRA, SHORT, TOTAL, PEDIDO, fechas, teléfonos, precios, sumas).
-        - Los números de fila del margen (1, 2, 3, …) que solo enumeran renglones.
-        - Texto vertical suelto o palabras aisladas que no sean un nombre.
+        CADA CAMPO:
+        - "nombre": el nombre corto de la prenda (ver arriba). Si no hay un nombre real, no crees la entrada.
+        - "numero": el dorsal de ESA persona (de SU columna de número). Si no hay => "".
+        - "talla": de la columna de talla de ESA persona. Letra (S, M, L, XL, XXL) o número (2, 4, 6, 8,
+          10, 12, 14, 16). Si hay un rango, el más probable. Si no hay => "".
+        - "genero": "Hombre" o "Mujer".
+           • Columna de género con una sola letra: V o H => Hombre; M, D o F => Mujer. OJO: en la columna
+             de TALLA las letras S/M/L son TAMAÑOS, no género; usa la columna correcta.
+           • Por sección o etiqueta: MAMÁS/DAMAS/NIÑAS/MUJERES/MADRE => Mujer; PAPÁS/CABALLEROS/NIÑOS/
+             VARONES/HOMBRES/PADRE => Hombre.
+           • Si de plano no se indica => "Hombre".
 
-        Reglas finales:
-        - NO inventes jugadores ni datos. Si una fila está tachada o ilegible, omítela.
-        - Si dudas de un dato, déjalo en "" en vez de adivinar.
-        Devuelve únicamente el arreglo JSON.
+        IGNORA (no son personas ni pedidos):
+        - Encabezados de columna (N°, Nombre, Apellidos y Nombre, Número/N°, Talla, Género).
+        - Títulos del diseño, club o corte (LISTA DE ALUMNOS, CORTE PRINCESA, CUELLO REDONDO, CAMISETA,
+          el nombre del equipo).
+        - Notas y totales (REGALO, MUESTRA, TOTAL, PEDIDO, fechas, teléfonos, precios, sumas).
+        - La numeración de filas del margen (1, 2, 3, …) que solo cuenta renglones: NO es el dorsal.
+        - Texto suelto, marcas de cuaderno o de agua ("Standford") y líneas sueltas.
+
+        REGLAS FINALES:
+        - NO inventes personas ni datos. Si una fila está tachada o ilegible, omítela.
+        - Si dudas de un dato puntual (un número, una talla), déjalo en "" en vez de adivinar; pero NO
+          omitas a la persona si su nombre se lee.
+        - Devuelve únicamente el arreglo JSON.
         """;
 
     public sealed record LeerListaRequest(string? image_base64, string? media_type);
