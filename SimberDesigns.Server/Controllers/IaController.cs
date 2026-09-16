@@ -27,21 +27,37 @@ public sealed class IaController(
     private const string AnthropicVersion = "2023-06-01";
 
     private const string Prompt = """
-        Eres un lector de listas de pedidos de ropa deportiva, muchas veces escritas a mano.
-        Mira la foto y devuelve SOLO un arreglo JSON (sin texto antes ni después, sin ```),
-        una entrada por JUGADOR, con esta forma exacta:
+        Eres un lector experto de listas de pedidos de uniformes deportivos, casi siempre escritas A MANO.
+        Devuelve SOLO un arreglo JSON (sin texto adicional, sin ```), UNA entrada por JUGADOR, con esta forma exacta:
         [{"nombre":"","numero":"","talla":"","genero":"Hombre"}]
 
-        Reglas:
-        - "genero" es "Hombre" o "Mujer". Si hay secciones tipo MAMÁS/DAMAS/NIÑAS => Mujer;
-          PAPÁS/CABALLEROS/NIÑOS/VARONES => Hombre; si no se sabe, "Hombre".
-        - "numero" es el dorsal (puede faltar => "").
-        - "talla" puede ser letra (S, M, L, XL...) o número (6, 8, 10, 12...). Si falta => "".
-        - Respeta nombres compuestos completos (por ejemplo "R. BALBOA", "PAPA DE YUS", "MISS LAURA").
-        - IGNORA: encabezados (Nombre/Número/Talla), títulos de diseño (CUELLO REDONDO, CAMISETA...),
-          notas (REGALO, muestra, short) y los números de fila del margen (1,2,3...).
-        - No inventes jugadores. Si una fila está tachada o ilegible, omítela.
-        Devuelve únicamente el JSON.
+        Cómo leer:
+        - Lee de ARRIBA hacia ABAJO, respetando el orden de la lista.
+        - Si la hoja tiene DOS COLUMNAS o secciones (izquierda y derecha, o MAMÁS | PAPÁS), léelas COMPLETAS:
+          primero toda la columna izquierda de arriba a abajo, luego toda la derecha. No mezcles sus renglones.
+        - Cada renglón trae NOMBRE + NÚMERO (dorsal) + TALLA. El número suele ir pegado al nombre o en su
+          propia columna alineada por fila.
+
+        Qué poner en cada campo:
+        - "nombre": nombre/apellido completo del jugador. Respeta compuestos ("R. BALBOA", "PAPA DE YUS",
+          "MISS LAURA"). NO unas dos personas en una, ni partas un nombre en dos.
+        - "numero": el dorsal. Si no hay => "".
+        - "talla": letra (S, M, L, XL, XXL) o número (6, 8, 10, 12, 14, 16). Si hay rango, el más probable.
+          Si no hay => "".
+        - "genero": "Hombre" o "Mujer". MAMÁS/DAMAS/NIÑAS/MUJERES => Mujer; PAPÁS/CABALLEROS/NIÑOS/VARONES/
+          HOMBRES => Hombre. Si no se indica => "Hombre".
+
+        IGNORA (no son jugadores):
+        - Encabezados de columna (Nombre, Número/N°, Talla, Género).
+        - Títulos del diseño o del club (CUELLO REDONDO, CAMISETA, nombre del equipo arriba).
+        - Notas y extras (REGALO, MUESTRA, SHORT, TOTAL, PEDIDO, fechas, teléfonos, precios, sumas).
+        - Los números de fila del margen (1, 2, 3, …) que solo enumeran renglones.
+        - Texto vertical suelto o palabras aisladas que no sean un nombre.
+
+        Reglas finales:
+        - NO inventes jugadores ni datos. Si una fila está tachada o ilegible, omítela.
+        - Si dudas de un dato, déjalo en "" en vez de adivinar.
+        Devuelve únicamente el arreglo JSON.
         """;
 
     public sealed record LeerListaRequest(string? image_base64, string? media_type);
