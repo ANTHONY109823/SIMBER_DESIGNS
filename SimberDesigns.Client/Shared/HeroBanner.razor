@@ -12,11 +12,11 @@
 
     @* Columna izquierda: carrusel más chico y centrado en esa zona. *@
     <div class="relative z-10 flex h-full items-center gap-5 py-8 sm:gap-7 lg:gap-10 lg:py-12">
-        <div class="hidden h-full w-[min(32vw,16rem)] shrink-0 items-center justify-center md:flex xl:w-72">
-            <aside class="hero-v-carousel relative w-36 overflow-hidden rounded-2xl border border-gold/40 bg-ink/75 shadow-[0_0_24px_rgba(255,106,26,0.2)] xl:w-40"
+        <div class="hidden h-full w-[min(36vw,18rem)] shrink-0 items-center justify-center md:flex xl:w-80">
+            <aside class="hero-v-carousel relative w-44 overflow-hidden rounded-2xl border border-gold/40 bg-ink/75 shadow-[0_0_28px_rgba(255,106,26,0.22)] xl:w-52"
                    aria-label="Diseños del catálogo">
                 <div class="hero-v-glow pointer-events-none absolute inset-0 z-[1]" aria-hidden="true"></div>
-                <div class="hero-v-track relative z-0 flex flex-col gap-2.5 p-1.5">
+                <div class="hero-v-track relative z-0 flex flex-col gap-3 p-2">
                     @foreach (var url in PreviewLoop)
                     {
                         <a href="/catalog" class="hero-v-card block overflow-hidden rounded-xl border border-white/15 bg-ink">
