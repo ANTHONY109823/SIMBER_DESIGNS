@@ -12,47 +12,32 @@
     <div class="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(ellipse_at_top,_rgba(255,106,26,0.16),_transparent_58%)]"></div>
 
     <div class="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-        <div class="mx-auto max-w-2xl text-center">
-            <p class="text-xs uppercase tracking-[0.28em] text-gold">@T("catalog.eyebrow", "Catálogo CDR")</p>
-            <h1 class="mt-3 font-serif text-4xl tracking-tight text-white sm:text-6xl">
-                @((MarkupString)CatalogTitleHtml)
-            </h1>
-            @if (!string.IsNullOrWhiteSpace(T("catalog.desc", "")))
-            {
-                <p class="mt-3 text-sm text-cream/80">@T("catalog.desc", "")</p>
-            }
-        </div>
-
-        <form class="mx-auto mt-10 flex max-w-2xl gap-2" @onsubmit="SubmitSearch" @onsubmit:preventDefault>
-            <label class="min-w-0 flex-1">
-                <span class="sr-only">Buscar por nombre</span>
-                <input type="search"
-                       @bind="searchDraft"
-                       @bind:event="oninput"
-                       placeholder="Ej. zorro, Panamá, Argentina…"
-                       class="min-h-12 w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-white placeholder:text-cream/55 outline-none focus:border-gold/60" />
-            </label>
-            <button type="submit"
-                    class="min-h-12 shrink-0 rounded-2xl bg-gold px-5 text-sm font-semibold text-ink hover:bg-orange-400">
-                Buscar
-            </button>
-        </form>
-        @if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            <p class="mt-3 text-center text-sm text-cream/70">
-                Resultados para “@searchText”
-                <button type="button" class="ml-2 text-gold underline hover:no-underline" @onclick="ClearSearch">Limpiar</button>
-            </p>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <p class="mt-4 text-center text-sm text-rose-400" role="alert">@errorMessage</p>
-        }
-
         @if (isLoading)
         {
-            <div class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="mx-auto max-w-2xl animate-pulse text-center">
+                <div class="mx-auto h-3 w-28 rounded bg-white/10"></div>
+                <div class="mx-auto mt-4 h-10 w-64 rounded bg-white/10 sm:h-14 sm:w-80"></div>
+                <div class="mx-auto mt-10 flex max-w-2xl gap-2">
+                    <div class="min-h-12 flex-1 rounded-2xl bg-white/5"></div>
+                    <div class="min-h-12 w-24 rounded-2xl bg-white/10"></div>
+                </div>
+            </div>
+            <div class="mt-10 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+                <div class="h-3 w-32 animate-pulse rounded bg-white/10"></div>
+                <div class="mt-4 flex gap-4">
+                    @for (int i = 0; i < 3; i++)
+                    {
+                        <div class="h-52 w-40 shrink-0 animate-pulse rounded-2xl bg-white/5"></div>
+                    }
+                </div>
+            </div>
+            <div class="mt-10 flex gap-2">
+                @for (int i = 0; i < 4; i++)
+                {
+                    <div class="h-11 w-24 animate-pulse rounded-full bg-white/5"></div>
+                }
+            </div>
+            <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @for (int i = 0; i < 6; i++)
                 {
                     <div class="animate-pulse overflow-hidden rounded-3xl border border-white/8 bg-white/[0.03]">
@@ -67,6 +52,44 @@
         }
         else
         {
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-xs uppercase tracking-[0.28em] text-gold">@T("catalog.eyebrow", "Catálogo CDR")</p>
+                <h1 class="mt-3 font-serif text-4xl tracking-tight text-white sm:text-6xl">
+                    @((MarkupString)CatalogTitleHtml)
+                </h1>
+                @if (!string.IsNullOrWhiteSpace(T("catalog.desc", "")))
+                {
+                    <p class="mt-3 text-sm text-cream/80">@T("catalog.desc", "")</p>
+                }
+            </div>
+
+            <form class="mx-auto mt-10 flex max-w-2xl gap-2" @onsubmit="SubmitSearch" @onsubmit:preventDefault>
+                <label class="min-w-0 flex-1">
+                    <span class="sr-only">Buscar por nombre</span>
+                    <input type="search"
+                           @bind="searchDraft"
+                           @bind:event="oninput"
+                           placeholder="Ej. zorro, Panamá, Argentina…"
+                           class="min-h-12 w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-white placeholder:text-cream/55 outline-none focus:border-gold/60" />
+                </label>
+                <button type="submit"
+                        class="min-h-12 shrink-0 rounded-2xl bg-gold px-5 text-sm font-semibold text-ink hover:bg-orange-400">
+                    Buscar
+                </button>
+            </form>
+            @if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                <p class="mt-3 text-center text-sm text-cream/70">
+                    Resultados para “@searchText”
+                    <button type="button" class="ml-2 text-gold underline hover:no-underline" @onclick="ClearSearch">Limpiar</button>
+                </p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <p class="mt-4 text-center text-sm text-rose-400" role="alert">@errorMessage</p>
+            }
+
             @if (FreeDaily.Count > 0 && selectedFilter is "Todos" or "Gratis" && string.IsNullOrWhiteSpace(searchText))
             {
                 <div class="mt-10 overflow-hidden rounded-3xl border border-gold/40 bg-gold/10 p-5 sm:p-6">
@@ -221,20 +244,35 @@
         isAuthenticated = auth.User.Identity?.IsAuthenticated == true;
         isAdmin = auth.User.IsInRole("Admin");
 
-        try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+        var contentTask = SafeContentAsync();
+        var designsTask = SafeDesignsAsync();
+        await Task.WhenAll(contentTask, designsTask);
 
+        _c = await contentTask;
+        allDesigns = await designsTask;
+
+        ApplyFilters();
+        isLoading = false;
+    }
+
+    private async Task<Dictionary<string, string>> SafeContentAsync()
+    {
+        try { return await Api.GetContentAsync() ?? new(); }
+        catch { return new(); }
+    }
+
+    private async Task<List<DesignItem>> SafeDesignsAsync()
+    {
         try
         {
             var items = await Api.GetDesignsAsync() ?? [];
-            allDesigns = items.Select(ToItem).ToList();
+            return items.Select(ToItem).ToList();
         }
         catch (Exception ex)
         {
             errorMessage = ex.Message;
+            return new();
         }
-
-        ApplyFilters();
-        isLoading = false;
     }
 
     private void SubmitSearch()
