@@ -126,34 +126,47 @@ code {
 
 /* ——— Hero inicio: vida + carrusel vertical (desktop) ——— */
 .hero-bg {
-    transform-origin: 70% 45%;
-    animation: hero-bg-breathe 12s ease-in-out infinite;
+    transform-origin: 72% 42%;
+    animation: hero-bg-breathe 10s ease-in-out infinite;
 }
 
 .hero-light-sweep {
     background: linear-gradient(
-        115deg,
-        transparent 35%,
-        rgba(46, 230, 255, 0.0) 42%,
-        rgba(46, 230, 255, 0.18) 48%,
-        rgba(255, 106, 26, 0.22) 52%,
-        rgba(255, 106, 26, 0.0) 58%,
-        transparent 65%
+        118deg,
+        transparent 30%,
+        rgba(46, 230, 255, 0) 40%,
+        rgba(46, 230, 255, 0.28) 48%,
+        rgba(255, 106, 26, 0.32) 52%,
+        rgba(255, 106, 26, 0) 60%,
+        transparent 70%
     );
-    background-size: 220% 220%;
+    background-size: 240% 240%;
     mix-blend-mode: screen;
-    animation: hero-light-run 5.5s ease-in-out infinite;
-    opacity: 0.85;
+    animation: hero-light-run 4.8s ease-in-out infinite;
+    opacity: 1;
 }
 
 .hero-v-carousel {
-    height: min(68vh, 32rem);
-    mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
+    height: min(72vh, 34rem);
+    mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
+}
+
+.hero-v-glow {
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(255, 106, 26, 0.12) 45%,
+        rgba(46, 230, 255, 0.14) 55%,
+        transparent 100%
+    );
+    background-size: 100% 200%;
+    animation: hero-v-glow-run 3.2s ease-in-out infinite;
+    mix-blend-mode: screen;
 }
 
 .hero-v-track {
-    animation: hero-v-scroll 28s linear infinite;
+    animation: hero-v-scroll 22s linear infinite;
     will-change: transform;
 }
 
@@ -161,15 +174,33 @@ code {
     animation-play-state: paused;
 }
 
+.hero-v-card img {
+    transition: transform 0.7s ease;
+    animation: hero-v-card-zoom 7s ease-in-out infinite;
+}
+
+.hero-v-card:nth-child(2n) img {
+    animation-delay: -2.2s;
+}
+
+.hero-v-card:nth-child(3n) img {
+    animation-delay: -4.4s;
+}
+
+.hero-v-card:hover img {
+    transform: scale(1.08);
+    animation-play-state: paused;
+}
+
 @keyframes hero-bg-breathe {
     0%, 100% { transform: scale(1) translate3d(0, 0, 0); }
-    50% { transform: scale(1.045) translate3d(-1.2%, -0.6%, 0); }
+    50% { transform: scale(1.06) translate3d(-1.4%, -0.8%, 0); }
 }
 
 @keyframes hero-light-run {
-    0% { background-position: 120% 40%; opacity: 0.35; }
-    40% { opacity: 0.9; }
-    100% { background-position: -40% 60%; opacity: 0.35; }
+    0% { background-position: 130% 35%; opacity: 0.45; }
+    45% { opacity: 1; }
+    100% { background-position: -50% 65%; opacity: 0.45; }
 }
 
 @keyframes hero-v-scroll {
@@ -177,15 +208,27 @@ code {
     to { transform: translate3d(0, -50%, 0); }
 }
 
+@keyframes hero-v-glow-run {
+    0%, 100% { background-position: 0 0; opacity: 0.55; }
+    50% { background-position: 0 100%; opacity: 1; }
+}
+
+@keyframes hero-v-card-zoom {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.07); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .hero-bg,
     .hero-light-sweep,
-    .hero-v-track {
+    .hero-v-track,
+    .hero-v-glow,
+    .hero-v-card img {
         animation: none !important;
     }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
     .hero-stage {
         min-height: 22rem;
         height: calc(100vh - 7.25rem) !important;

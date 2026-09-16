@@ -1,6 +1,5 @@
 @inject SimberApi Api
 
-@* Altura al viewport menos header. Carrusel vertical solo desktop. *@
 <section class="hero-stage relative isolate overflow-hidden bg-ink text-cream"
          style="height: calc(100vh - 4.5rem); min-height: 28rem;">
     <div class="hero-bg absolute inset-0">
@@ -9,24 +8,22 @@
              class="h-full w-full object-cover object-center" />
     </div>
     <div class="hero-light-sweep pointer-events-none absolute inset-0" aria-hidden="true"></div>
-    <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/75 to-transparent lg:via-ink/55"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/80 to-transparent md:via-ink/60"></div>
 
-    <div class="relative z-10 mx-auto flex h-full max-w-6xl items-stretch gap-6 px-6 py-12 lg:gap-10 lg:py-16">
-        @if (Preview.Count > 0)
-        {
-            <aside class="hero-v-carousel hidden w-[6.5rem] shrink-0 self-center overflow-hidden rounded-2xl border border-white/10 bg-ink/40 py-2 lg:block xl:w-28"
-                   aria-label="Diseños del catálogo">
-                <div class="hero-v-track flex flex-col gap-3 px-2">
-                    @foreach (var d in PreviewLoop)
-                    {
-                        <a href="/catalog" class="block overflow-hidden rounded-xl border border-white/10 transition hover:border-gold/50"
-                           title="@d.Title">
-                            <img src="@d.PreviewUrl" alt="" class="aspect-[3/4] w-full object-cover" loading="lazy" />
-                        </a>
-                    }
-                </div>
-            </aside>
-        }
+    <div class="relative z-10 mx-auto flex h-full max-w-6xl items-stretch gap-5 px-4 py-10 sm:px-6 lg:gap-10 lg:py-16">
+        @* Carrusel vertical: siempre visible en desktop (fallback si no hay catálogo). *@
+        <aside class="hero-v-carousel relative hidden w-[7.25rem] shrink-0 self-center overflow-hidden rounded-2xl border border-gold/35 bg-ink/70 shadow-[0_0_28px_rgba(255,106,26,0.22)] md:block xl:w-32"
+               aria-label="Diseños del catálogo">
+            <div class="hero-v-glow pointer-events-none absolute inset-0 z-[1]" aria-hidden="true"></div>
+            <div class="hero-v-track relative z-0 flex flex-col gap-3 px-2 py-2">
+                @foreach (var url in PreviewLoop)
+                {
+                    <a href="/catalog" class="hero-v-card block overflow-hidden rounded-xl border border-white/15 bg-ink">
+                        <img src="@url" alt="" class="aspect-[3/4] w-full object-cover" loading="lazy" />
+                    </a>
+                }
+            </div>
+        </aside>
 
         <div class="flex min-w-0 flex-1 flex-col justify-end sm:justify-center">
             <p class="text-xs uppercase tracking-[0.35em] text-gold">@T("home.hero.eyebrow", "Vectores · Sublimación · Wireframe")</p>
@@ -42,8 +39,17 @@
 
 @code {
     private Dictionary<string, string> _c = new();
-    private List<DesignDto> Preview = [];
-    private List<DesignDto> PreviewLoop = [];
+    private List<string> PreviewLoop = [];
+
+    private static readonly string[] FallbackUrls =
+    [
+        "/api/content/asset/prog-1",
+        "/api/content/asset/prog-2",
+        "/api/content/asset/prog-3",
+        "/api/content/asset/prog-4",
+        "/api/content/asset/prog-armado",
+        "/api/content/asset/encarganos-1"
+    ];
 
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
@@ -51,18 +57,22 @@
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+
+        List<string> urls = [];
         try
         {
-            Preview = (await Api.GetDesignsAsync() ?? [])
+            urls = (await Api.GetDesignsAsync() ?? [])
                 .Where(d => !string.IsNullOrWhiteSpace(d.PreviewUrl))
+                .Select(d => d.PreviewUrl)
                 .Take(10)
                 .ToList();
-            PreviewLoop = Preview.Count > 0 ? Preview.Concat(Preview).ToList() : [];
         }
-        catch
-        {
-            Preview = [];
-            PreviewLoop = [];
-        }
+        catch { }
+
+        if (urls.Count == 0)
+            urls = FallbackUrls.ToList();
+
+        // Duplicado para loop infinito CSS
+        PreviewLoop = urls.Concat(urls).ToList();
     }
 }
