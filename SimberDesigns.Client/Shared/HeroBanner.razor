@@ -1,7 +1,7 @@
 @inject SimberApi Api
 @implements IAsyncDisposable
 
-<section class="hero-stage relative isolate overflow-hidden bg-ink text-cream"
+<section class="hero-stage relative isolate overflow-x-visible overflow-y-hidden bg-ink text-cream"
          style="height: calc(100vh - 4.5rem); min-height: 28rem;">
     <div class="hero-bg absolute inset-0">
         <img src="images/simber_designs_hero_banner.png"
@@ -12,7 +12,7 @@
     <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/80 to-transparent md:via-ink/55"></div>
 
     @* Misma columna que el header: carrusel = recuadro rojo (lleno, pegado al SD). *@
-    <div class="relative z-10 mx-auto flex h-full max-w-6xl items-stretch px-4 py-3 sm:px-6 sm:py-4">
+    <div class="hero-shift relative z-10 mx-auto flex h-full max-w-6xl items-stretch px-4 py-3 sm:px-6 sm:py-4">
         <div class="hero-v-slot hidden shrink-0 md:block">
             <aside class="hero-v-carousel relative h-full w-full overflow-hidden rounded-2xl border border-gold/40 bg-ink/80 p-2 shadow-[0_0_28px_rgba(255,106,26,0.22)]"
                    aria-label="Carrusel de diseños del catálogo"

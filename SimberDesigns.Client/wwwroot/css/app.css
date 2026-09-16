@@ -176,9 +176,16 @@ code {
     opacity: 1;
 }
 
-/* Recuadro rojo: desde el SD hasta antes del texto; el carrusel LO LLENA (no centrado chico). */
+/* Bloque carrusel + letras: 5cm a la izquierda, misma distancia entre ambos */
+.hero-shift {
+    transform: translateX(-5cm);
+}
+
+/* Recorte 1cm arriba y 1cm abajo del carrusel */
 .hero-v-slot {
     width: min(34vw, 22rem);
+    margin-top: 1cm;
+    margin-bottom: 1cm;
 }
 
 .hero-v-carousel {
@@ -189,6 +196,12 @@ code {
 @media (min-width: 1280px) {
     .hero-v-slot {
         width: min(30vw, 24rem);
+    }
+}
+
+@media (max-width: 767px) {
+    .hero-shift {
+        transform: none;
     }
 }
 
