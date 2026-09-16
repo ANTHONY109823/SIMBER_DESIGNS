@@ -34,9 +34,24 @@ public interface IMercadoPagoService
 
 public sealed class MercadoPagoService(HttpClient http, IOptions<MercadoPagoOptions> options) : IMercadoPagoService
 {
-    public bool UseFakeCheckout => options.Value.UseFakeCheckout
-        || string.IsNullOrWhiteSpace(options.Value.AccessToken)
-        || options.Value.AccessToken.StartsWith("dev-", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// SEGURIDAD: con un token de PRODUCCIÓN real de Mercado Pago (empieza con "APP_USR-") NUNCA se usa
+    /// el checkout falso, aunque la config traiga el flag en true por descuido: así nadie puede acreditar
+    /// pagos falsos en producción (ni interceptando con Burp). El modo falso queda solo para desarrollo
+    /// (sin token, token "dev-", o flag explícito de pruebas con token de test).
+    /// </summary>
+    public bool UseFakeCheckout
+    {
+        get
+        {
+            var token = (options.Value.AccessToken ?? string.Empty).Trim();
+            if (token.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return options.Value.UseFakeCheckout
+                || string.IsNullOrWhiteSpace(token)
+                || token.StartsWith("dev-", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public async Task<MercadoPagoPreferenceResult> CreatePreferenceAsync(
         string title,
