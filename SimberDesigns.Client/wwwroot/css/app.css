@@ -176,24 +176,24 @@ code {
     opacity: 1;
 }
 
-/* Anclado a la columna del logo (max-w-6xl = 72rem) */
-.hero-v-carousel {
-    top: 1.25rem;
-    bottom: 1.25rem;
-    width: 16.5rem;
-    left: max(1rem, calc((100% - 72rem) / 2 + 1rem));
+/* Columna ≈ ancho logo SD+SIMBER DESIGNS; carrusel centrado en el hueco SIMBER|DESIGNS */
+.hero-v-slot {
+    width: 17.5rem;
 }
 
-@media (min-width: 640px) {
-    .hero-v-carousel {
-        left: max(1.5rem, calc((100% - 72rem) / 2 + 1.5rem));
-        width: 17.5rem;
-    }
+.hero-v-carousel {
+    width: 14.75rem;
+    height: min(70vh, 33rem);
 }
 
 @media (min-width: 1280px) {
-    .hero-v-carousel {
+    .hero-v-slot {
         width: 18.5rem;
+    }
+
+    .hero-v-carousel {
+        width: 15.75rem;
+        height: min(72vh, 35rem);
     }
 }
 
