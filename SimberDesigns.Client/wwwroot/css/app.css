@@ -177,7 +177,7 @@ code {
 }
 
 .hero-v-carousel {
-    height: min(52vh, 26rem);
+    height: min(64vh, 32rem);
     mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
     -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent);
 }
