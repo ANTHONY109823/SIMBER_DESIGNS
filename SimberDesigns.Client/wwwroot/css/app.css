@@ -177,19 +177,19 @@ code {
     opacity: 1;
 }
 
-/* Bloque carrusel + letras: ~5cm a la izquierda del centro, sin scroll horizontal */
+/* Bloque carrusel + letras: ~7cm a la izquierda del centro, sin scroll horizontal */
 .hero-shift {
     width: 100%;
     max-width: 72rem;
-    margin-left: max(1rem, calc((100% - min(100%, 72rem)) / 2 - 5cm));
+    margin-left: max(1rem, calc((100% - min(100%, 72rem)) / 2 - 7cm));
     margin-right: auto;
 }
 
-/* Recorte 1cm arriba y 1cm abajo del carrusel */
+/* Recorte 2cm arriba y 2cm abajo del carrusel */
 .hero-v-slot {
     width: min(34vw, 22rem);
-    margin-top: 1cm;
-    margin-bottom: 1cm;
+    margin-top: 2cm;
+    margin-bottom: 2cm;
 }
 
 .hero-v-carousel {

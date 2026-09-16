@@ -1,4 +1,33 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Simber Designs</PageTitle>
-<HeroBanner />
+
+@if (_ready && !_redirecting)
+{
+    <HeroBanner />
+}
+
+@code {
+    private bool _ready;
+    private bool _redirecting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            _redirecting = true;
+            if (user.IsInRole("Admin"))
+                Nav.NavigateTo("/admin", replace: true);
+            else
+                Nav.NavigateTo("/catalog", replace: true);
+            return;
+        }
+
+        _ready = true;
+    }
+}

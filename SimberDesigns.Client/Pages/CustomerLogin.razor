@@ -74,7 +74,7 @@
 
             await Auth.SignInAsync(result.Token);
 
-            var returnUrl = "/cuenta";
+            var returnUrl = "/catalog";
             var q = Nav.ToAbsoluteUri(Nav.Uri).Query;
             const string key = "returnUrl=";
             var idx = q.IndexOf(key, StringComparison.OrdinalIgnoreCase);
@@ -82,7 +82,8 @@
             {
                 var raw = Uri.UnescapeDataString(q[(idx + key.Length)..].Split('&')[0]);
                 if (raw.StartsWith('/') && !raw.StartsWith("//", StringComparison.Ordinal)
-                    && !raw.StartsWith("/admin", StringComparison.OrdinalIgnoreCase))
+                    && !raw.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
+                    && raw is not "/" and not "/entrar")
                     returnUrl = raw;
             }
 
