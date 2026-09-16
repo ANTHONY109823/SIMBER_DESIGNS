@@ -1,5 +1,6 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
 }
 
 /* ——— Nav: luz que recorre de lado a lado ——— */
@@ -176,9 +177,12 @@ code {
     opacity: 1;
 }
 
-/* Bloque carrusel + letras: 5cm a la izquierda, misma distancia entre ambos */
+/* Bloque carrusel + letras: ~5cm a la izquierda del centro, sin scroll horizontal */
 .hero-shift {
-    transform: translateX(-5cm);
+    width: 100%;
+    max-width: 72rem;
+    margin-left: max(1rem, calc((100% - min(100%, 72rem)) / 2 - 5cm));
+    margin-right: auto;
 }
 
 /* Recorte 1cm arriba y 1cm abajo del carrusel */
@@ -201,7 +205,7 @@ code {
 
 @media (max-width: 767px) {
     .hero-shift {
-        transform: none;
+        margin-left: auto;
     }
 }
 
