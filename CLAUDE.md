@@ -29,3 +29,8 @@ Este repo es la **web/API** (Railway). El panel y los `.exe` viven en:
 
 Login al abrir, bloqueo sin pago/internet, activate HWID+Edition, renew.
 **No tocar** firma / HWID / FileClockGuard / KeyGen V1.
+
+### Marketplace diseñadores (especificación)
+
+Plan completo (reglas, créditos×8, retiros, seguridad, checklist):
+**`MARKETPLACE-DISENADORES-PLAN.md`**. Aún no implementado; retomar mañana / al avanzar frontend.
