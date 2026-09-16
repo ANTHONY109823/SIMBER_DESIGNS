@@ -176,12 +176,6 @@ code {
     opacity: 1;
 }
 
-.hero-v-carousel {
-    height: auto;
-    mask-image: linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent);
-}
-
 .hero-v-glow {
     background: linear-gradient(
         180deg,
@@ -196,30 +190,16 @@ code {
 }
 
 .hero-v-track {
-    animation: hero-v-scroll 18s linear infinite;
+    transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
-}
-
-.hero-v-carousel:hover .hero-v-track {
-    animation-play-state: paused;
 }
 
 .hero-v-card img {
     transition: transform 0.7s ease;
-    animation: hero-v-card-zoom 7s ease-in-out infinite;
-}
-
-.hero-v-card:nth-child(2n) img {
-    animation-delay: -2.2s;
-}
-
-.hero-v-card:nth-child(3n) img {
-    animation-delay: -4.4s;
 }
 
 .hero-v-card:hover img {
-    transform: scale(1.08);
-    animation-play-state: paused;
+    transform: scale(1.04);
 }
 
 @keyframes hero-bg-breathe {
@@ -233,28 +213,20 @@ code {
     100% { background-position: -50% 65%; opacity: 0.45; }
 }
 
-@keyframes hero-v-scroll {
-    from { transform: translate3d(0, 0, 0); }
-    to { transform: translate3d(0, -50%, 0); }
-}
-
 @keyframes hero-v-glow-run {
     0%, 100% { background-position: 0 0; opacity: 0.55; }
     50% { background-position: 0 100%; opacity: 1; }
 }
 
-@keyframes hero-v-card-zoom {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.07); }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .hero-bg,
     .hero-light-sweep,
-    .hero-v-track,
-    .hero-v-glow,
-    .hero-v-card img {
+    .hero-v-glow {
         animation: none !important;
+    }
+
+    .hero-v-track {
+        transition: none !important;
     }
 }
 
