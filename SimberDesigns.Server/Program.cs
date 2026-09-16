@@ -149,21 +149,54 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx =>
     {
         var path = ctx.Context.Request.Path.Value ?? "";
+
+        // index / boot: sin cache pegada (si no, el cliente no ve deploys)
+        if (path.Equals("/index.html", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("blazor.boot.json", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("blazor.webassembly.js", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+            ctx.Context.Response.Headers[HeaderNames.Pragma] = "no-cache";
+            return;
+        }
+
+        // DLL/WASM hasheados: cache largo
         if (path.StartsWith("/_framework/", StringComparison.OrdinalIgnoreCase)
-            || path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase)
-            || path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-            || path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase)
+            && (path.EndsWith(".wasm", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".dat", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".br", StringComparison.OrdinalIgnoreCase)))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public,max-age=31536000,immutable";
+            return;
+        }
+
+        // CSS/JS/imagenes sin hash: revalidar siempre
+        if (path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/js/", StringComparison.OrdinalIgnoreCase)
-            || path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".styles.css", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "no-cache, must-revalidate";
+            return;
+        }
+
+        if (path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/programas/", StringComparison.OrdinalIgnoreCase))
         {
-            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public,max-age=604800";
+            ctx.Context.Response.Headers[HeaderNames.CacheControl] = "public,max-age=86400,must-revalidate";
         }
     }
 });
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+        ctx.Context.Response.Headers[HeaderNames.Pragma] = "no-cache";
+    }
+});
 app.Run();
