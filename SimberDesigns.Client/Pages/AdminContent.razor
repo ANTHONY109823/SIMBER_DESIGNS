@@ -32,7 +32,34 @@
         }
     </div>
 
-    @if (_tab == "programas")
+    @if (_tab == "home")
+    {
+        <section class="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-bold text-white">Textos · Inicio (hero)</h2>
+            @foreach (var f in TextFields.Where(x => x.Section == "home"))
+            {
+                @Field(f.Key, f.Label, f.Multiline)
+            }
+        </section>
+        <section class="mt-6 space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-bold text-white">Foto de fondo del inicio</h2>
+            <p class="text-xs text-slate-400">Se ve detrás del texto y el carrusel. Si no subes nada, se usa la imagen por defecto del sitio.</p>
+            @ImageBlock("hero-banner", "Banner hero (fondo)")
+            <p class="text-xs text-slate-500">El carrusel vertical toma las previews del <a href="/admin/catalog" class="text-emerald-400 underline">Catálogo de diseños</a>.</p>
+        </section>
+    }
+    else if (_tab == "catalog")
+    {
+        <section class="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-bold text-white">Textos · Catálogo</h2>
+            @foreach (var f in TextFields.Where(x => x.Section == "catalog"))
+            {
+                @Field(f.Key, f.Label, f.Multiline)
+            }
+            <p class="pt-2 text-xs text-slate-500">Las fotos de cada diseño se cambian en <a href="/admin/catalog" class="text-emerald-400 underline">Catálogo</a> (preview al subir el CDR).</p>
+        </section>
+    }
+    else if (_tab == "programas")
     {
         <section class="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-6">
             <h2 class="font-bold text-white">Cabecera · Programas</h2>
@@ -50,6 +77,10 @@
                 @Field("programas.armado.title", "Título sobre la imagen", false)
                 @Field("programas.armado.desc", "Texto sobre la imagen", true)
                 @Field("programas.video.caption", "Pie del video (al lado en la web)", false)
+            </div>
+            <div class="pt-2">
+                <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">Poster del video</p>
+                @ImageBlock("prog-video-poster", "Poster del video demo")
             </div>
         </section>
 
@@ -98,16 +129,6 @@
             </div>
         </section>
     }
-    else
-    {
-        <section class="space-y-5 rounded-xl border border-slate-800 bg-slate-900 p-6">
-            <h2 class="font-bold text-white">Textos · @Tabs.First(t => t.Id == _tab).Label</h2>
-            @foreach (var f in TextFields.Where(x => x.Section == _tab))
-            {
-                @Field(f.Key, f.Label, f.Multiline)
-            }
-        </section>
-    }
 </div>
 
 @code {
@@ -135,7 +156,6 @@
         new("home", "home.hero.eyebrow", "Etiqueta del hero", false),
         new("home", "home.hero.title", "Título del hero", true),
         new("home", "home.hero.desc", "Texto del hero", true),
-        new("home", "home.steps.title", "Título de pasos", false),
         new("catalog", "catalog.eyebrow", "Etiqueta", false),
         new("catalog", "catalog.title", "Título (usa | para partir, ej. Fútbol|Vóley)", false),
         new("catalog", "catalog.desc", "Subtítulo", true),
@@ -170,7 +190,9 @@
 
     private static readonly ImageField[] ImageFields =
     [
+        new("home", "hero-banner", "Banner hero (fondo)"),
         new("programas", "prog-armado", "Imagen principal (armado)"),
+        new("programas", "prog-video-poster", "Poster del video"),
         new("programas", "prog-1", "Paso 1 · lista"),
         new("programas", "prog-2", "Paso 2 · molde"),
         new("programas", "prog-3", "Paso 3 · armado"),
@@ -247,7 +269,6 @@
         ["home.hero.eyebrow"] = "Vectores · Sublimación · Wireframe",
         ["home.hero.title"] = "Del patrón a la camiseta en menos de tres clics.",
         ["home.hero.desc"] = "Catálogo CDR y programas para CorelDRAW e Illustrator.",
-        ["home.steps.title"] = "De la lista al corte, en cuatro pasos",
         ["catalog.eyebrow"] = "Catálogo CDR",
         ["catalog.title"] = "Fútbol|Vóley",
         ["programas.badge"] = "Herramienta · CorelDRAW e Illustrator",

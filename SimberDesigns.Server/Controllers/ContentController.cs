@@ -91,8 +91,21 @@ public sealed class ContentController(AppDbContext db) : ControllerBase
             row.Data = bytes;
             row.UpdatedAt = now;
         }
+
+        // Bust público: la web pide ?v= para no quedar con cache vieja
+        var bustKey = "cms.bust";
+        var bustVal = now.Ticks.ToString();
+        var bustRow = await db.SiteContents.FirstOrDefaultAsync(c => c.Key == bustKey, ct);
+        if (bustRow is null)
+            db.SiteContents.Add(new SiteContent { Key = bustKey, Value = bustVal, UpdatedAt = now });
+        else
+        {
+            bustRow.Value = bustVal;
+            bustRow.UpdatedAt = now;
+        }
+
         await db.SaveChangesAsync(ct);
-        return Ok(new { url = $"/api/content/asset/{key}" });
+        return Ok(new { url = $"/api/content/asset/{key}", bust = bustVal });
     }
 
     [HttpDelete("asset/{key}")]

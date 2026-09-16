@@ -168,11 +168,17 @@
     private string MinDate => DateTime.Today.ToString("yyyy-MM-dd");
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+
+    private string CmsBust =>
+        _c.TryGetValue("cms.bust", out var b) && !string.IsNullOrWhiteSpace(b) ? b : "1";
+
+    private string Asset(string key) => $"/api/content/asset/{key}?v={CmsBust}";
+
     private string TrabajoPrincipal =>
-        Designs.Count > 0 ? Designs[0].PreviewUrl : "/api/content/asset/encarganos-1";
+        Designs.Count > 0 ? Designs[0].PreviewUrl : Asset("encarganos-1");
     private IEnumerable<string> Trabajos =>
         Designs.Skip(1).Take(4).Select(d => d.PreviewUrl)
-            .Concat(["/api/content/asset/encarganos-2", "/api/content/asset/encarganos-3"])
+            .Concat([Asset("encarganos-2"), Asset("encarganos-3")])
             .Take(4);
 
     protected override async Task OnInitializedAsync()
