@@ -4,8 +4,9 @@
 @inject NavigationManager Nav
 
 <div class="min-h-screen bg-ink text-cream">
-    <header class="border-b border-white/10 bg-ink/90 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <header class="site-header relative overflow-hidden border-b border-white/10 bg-ink/90 backdrop-blur">
+        <div class="site-nav-light pointer-events-none absolute inset-0 z-[1]" aria-hidden="true"></div>
+        <div class="relative z-[2] mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <a href="/" class="flex items-center gap-2 font-serif text-2xl tracking-wide uppercase">
                 <img src="/favicon.png?v=4" alt="" class="h-8 w-8 rounded-md object-cover" />
                 Simber <span class="text-gold">Designs</span>
@@ -46,7 +47,7 @@
                 </AuthorizeView>
             </div>
         </div>
-        <nav class="flex gap-4 overflow-x-auto border-t border-white/10 px-4 py-3 text-sm md:hidden">
+        <nav class="relative z-[2] flex gap-4 overflow-x-auto border-t border-white/10 px-4 py-3 text-sm md:hidden">
             <NavLink href="/catalog">Catálogo</NavLink>
             <NavLink href="/programas">Programas</NavLink>
             <AuthorizeView>

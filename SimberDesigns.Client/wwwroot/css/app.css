@@ -2,6 +2,36 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* ——— Nav: luz que recorre de lado a lado ——— */
+.site-nav-light {
+    background: linear-gradient(
+        100deg,
+        transparent 0%,
+        transparent 38%,
+        rgba(46, 230, 255, 0) 42%,
+        rgba(46, 230, 255, 0.2) 48%,
+        rgba(255, 106, 26, 0.28) 52%,
+        rgba(255, 106, 26, 0) 58%,
+        transparent 62%,
+        transparent 100%
+    );
+    background-size: 220% 100%;
+    mix-blend-mode: screen;
+    animation: site-nav-light-run 4.5s ease-in-out infinite;
+}
+
+@keyframes site-nav-light-run {
+    0% { background-position: 130% 50%; opacity: 0.4; }
+    45% { opacity: 1; }
+    100% { background-position: -40% 50%; opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-nav-light {
+        animation: none !important;
+    }
+}
+
 h1:focus-visible {
     outline: 2px solid #ff6a1a;
     outline-offset: 4px;
