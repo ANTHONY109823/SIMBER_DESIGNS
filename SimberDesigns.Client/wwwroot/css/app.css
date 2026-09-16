@@ -176,24 +176,19 @@ code {
     opacity: 1;
 }
 
-/* Columna ≈ ancho logo SD+SIMBER DESIGNS; carrusel centrado en el hueco SIMBER|DESIGNS */
+/* Recuadro rojo: desde el SD hasta antes del texto; el carrusel LO LLENA (no centrado chico). */
 .hero-v-slot {
-    width: 17.5rem;
+    width: min(34vw, 22rem);
 }
 
 .hero-v-carousel {
-    width: 14.75rem;
-    height: min(70vh, 33rem);
+    width: 100%;
+    height: 100%;
 }
 
 @media (min-width: 1280px) {
     .hero-v-slot {
-        width: 18.5rem;
-    }
-
-    .hero-v-carousel {
-        width: 15.75rem;
-        height: min(72vh, 35rem);
+        width: min(30vw, 24rem);
     }
 }
 
