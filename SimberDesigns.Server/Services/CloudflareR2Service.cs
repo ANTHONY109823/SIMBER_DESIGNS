@@ -110,8 +110,22 @@ public sealed class CloudflareR2Service : ICloudflareR2Service, IDisposable
             DisableDefaultChecksumValidation = true
         };
 
-        await _s3.PutObjectAsync(request, cancellationToken);
-        _logger.LogInformation("R2 subido: {Key}", objectKey);
+        try
+        {
+            await _s3.PutObjectAsync(request, cancellationToken);
+            _logger.LogInformation("R2 subido: {Key}", objectKey);
+        }
+        catch (Exception ex)
+        {
+            // Registra el motivo real y devuelve un mensaje claro (no un 500 críptico) a quien sube.
+            _logger.LogError(ex,
+                "R2 no pudo subir {Key} (bucket={Bucket}, serviceUrl={ServiceUrl}). "
+                + "Revisa CloudflareR2__AccessKeyId / SecretAccessKey / BucketName / ServiceUrl en Railway.",
+                objectKey, _options.BucketName, _options.ServiceUrl);
+            throw new InvalidOperationException(
+                "No se pudo subir a Cloudflare R2. Revisa la configuración de R2 en el servidor (Railway). "
+                + "Detalle: " + ex.Message, ex);
+        }
     }
 
     public async Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
@@ -153,6 +167,18 @@ public sealed class CloudflareR2Service : ICloudflareR2Service, IDisposable
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
+            // El objeto no existe (aún no se subió el instalador): NO es un error.
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // R2 mal configurado (credenciales/bucket/ServiceUrl equivocados) o caído. NUNCA tumbar a
+            // quien pregunta (p.ej. el storefront público): se trata como "no disponible" y se registra
+            // el MOTIVO REAL para poder arreglar la variable de Railway que corresponda.
+            _logger.LogError(ex,
+                "R2 no pudo verificar {Key} (bucket={Bucket}, serviceUrl={ServiceUrl}). "
+                + "Revisa CloudflareR2__AccessKeyId / SecretAccessKey / BucketName / ServiceUrl en Railway.",
+                objectKey, _options.BucketName, _options.ServiceUrl);
             return null;
         }
     }
