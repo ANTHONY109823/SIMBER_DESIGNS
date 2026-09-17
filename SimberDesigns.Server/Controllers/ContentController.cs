@@ -3,18 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SimberDesigns.Server.Data;
 using SimberDesigns.Server.Models;
+using SimberDesigns.Server.Services;
 
 namespace SimberDesigns.Server.Controllers;
 
 /// <summary>
-/// CMS: contenido editable de la web. Los textos y las imágenes viven en la BD (Postgres).
-/// Público: leer textos e imágenes. Admin: guardar/eliminar textos y subir imágenes.
+/// CMS: textos en Postgres. Imágenes en R2 (producción) o BYTEA (modo falso / legado).
 /// </summary>
 [ApiController]
 [Route("api/content")]
-public sealed class ContentController(AppDbContext db) : ControllerBase
+public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) : ControllerBase
 {
-    // ---- Textos ----
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<Dictionary<string, string>>> All(CancellationToken ct)
@@ -55,15 +54,33 @@ public sealed class ContentController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
-    // ---- Imágenes (guardadas en la BD) ----
     [HttpGet("asset/{key}")]
     [AllowAnonymous]
     public async Task<IActionResult> Asset(string key, CancellationToken ct)
     {
         var a = await db.SiteAssets.AsNoTracking().FirstOrDefaultAsync(x => x.Key == key, ct);
         if (a is null) return NotFound();
+
         Response.Headers.CacheControl = "public, max-age=60";
-        return File(a.Data, string.IsNullOrWhiteSpace(a.ContentType) ? "image/jpeg" : a.ContentType);
+
+        if (r2.IsEnabled && !string.IsNullOrWhiteSpace(a.R2Key))
+        {
+            var pub = r2.TryBuildPublicUrl(a.R2Key);
+            if (!string.IsNullOrWhiteSpace(pub))
+            {
+                return Redirect(pub);
+            }
+
+            var signed = await r2.GetPresignedDownloadUrlAsync(a.R2Key, ct, lifetime: r2.PreviewUrlLifetime);
+            return Redirect(signed);
+        }
+
+        if (a.Data is { Length: > 0 })
+        {
+            return File(a.Data, string.IsNullOrWhiteSpace(a.ContentType) ? "image/jpeg" : a.ContentType);
+        }
+
+        return NotFound();
     }
 
     [HttpPost("asset/{key}")]
@@ -74,25 +91,58 @@ public sealed class ContentController(AppDbContext db) : ControllerBase
         if (file is null || file.Length == 0) return BadRequest("Archivo vacío.");
         if (file.Length > 15_000_000) return BadRequest("Máximo 15 MB por imagen.");
 
-        using var ms = new MemoryStream();
-        await file.CopyToAsync(ms, ct);
-        var bytes = ms.ToArray();
         var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
         var now = DateTime.UtcNow;
-
-        var row = await db.SiteAssets.FirstOrDefaultAsync(x => x.Key == key, ct);
-        if (row is null)
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif"))
         {
-            db.SiteAssets.Add(new SiteAsset { Key = key.Trim(), ContentType = contentType, Data = bytes, UpdatedAt = now });
+            ext = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png"
+                : contentType.Contains("webp", StringComparison.OrdinalIgnoreCase) ? ".webp"
+                : ".jpg";
+        }
+
+        var safeKey = key.Trim();
+        var r2Key = $"cms/{safeKey}{ext}";
+        byte[] bytes = Array.Empty<byte>();
+
+        if (r2.IsEnabled)
+        {
+            await using var stream = file.OpenReadStream();
+            await r2.UploadAsync(r2Key, stream, contentType, ct);
         }
         else
         {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            bytes = ms.ToArray();
+            r2Key = "";
+        }
+
+        var row = await db.SiteAssets.FirstOrDefaultAsync(x => x.Key == safeKey, ct);
+        if (row is null)
+        {
+            db.SiteAssets.Add(new SiteAsset
+            {
+                Key = safeKey,
+                ContentType = contentType,
+                Data = bytes,
+                R2Key = r2Key,
+                UpdatedAt = now
+            });
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(row.R2Key) && row.R2Key != r2Key && r2.IsEnabled)
+            {
+                await r2.DeleteAsync(row.R2Key, ct);
+            }
+
             row.ContentType = contentType;
             row.Data = bytes;
+            row.R2Key = r2Key;
             row.UpdatedAt = now;
         }
 
-        // Bust público: la web pide ?v= para no quedar con cache vieja
         var bustKey = "cms.bust";
         var bustVal = now.Ticks.ToString();
         var bustRow = await db.SiteContents.FirstOrDefaultAsync(c => c.Key == bustKey, ct);
@@ -105,7 +155,7 @@ public sealed class ContentController(AppDbContext db) : ControllerBase
         }
 
         await db.SaveChangesAsync(ct);
-        return Ok(new { url = $"/api/content/asset/{key}", bust = bustVal });
+        return Ok(new { url = $"/api/content/asset/{safeKey}", bust = bustVal });
     }
 
     [HttpDelete("asset/{key}")]
@@ -113,7 +163,17 @@ public sealed class ContentController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> DeleteAsset(string key, CancellationToken ct)
     {
         var row = await db.SiteAssets.FirstOrDefaultAsync(x => x.Key == key, ct);
-        if (row is not null) { db.SiteAssets.Remove(row); await db.SaveChangesAsync(ct); }
+        if (row is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(row.R2Key))
+            {
+                await r2.DeleteAsync(row.R2Key, ct);
+            }
+
+            db.SiteAssets.Remove(row);
+            await db.SaveChangesAsync(ct);
+        }
+
         return NoContent();
     }
 }

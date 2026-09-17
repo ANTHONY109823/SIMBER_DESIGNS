@@ -52,6 +52,8 @@ public sealed class Design
     public decimal PriceUsd { get; set; }
     public decimal CreditsCost { get; set; }
     public string R2Key { get; set; } = string.Empty;
+    /// <summary>Clave del preview en R2 (ej. previews/abc.jpg). Vacío si solo hay archivo local.</summary>
+    public string PreviewR2Key { get; set; } = string.Empty;
     public string PreviewUrl { get; set; } = string.Empty;
     public bool IsFreeDaily { get; set; } = true;
     public Vector? Embedding { get; set; }
@@ -136,6 +138,9 @@ public sealed class SiteAsset
 {
     public string Key { get; set; } = string.Empty;   // ej. "programas.armado" (imagen)
     public string ContentType { get; set; } = "image/jpeg";
+    /// <summary>Legacy / fallback local. Con R2 suele quedar vacío.</summary>
     public byte[] Data { get; set; } = Array.Empty<byte>();
+    /// <summary>Clave en R2 (ej. cms/programas.armado.jpg). Vacío = solo BYTEA.</summary>
+    public string R2Key { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
 }

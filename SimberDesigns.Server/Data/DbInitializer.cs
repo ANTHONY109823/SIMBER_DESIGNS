@@ -120,6 +120,8 @@ public static class DbInitializer
                 data BYTEA NOT NULL,
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            ALTER TABLE site_assets ADD COLUMN IF NOT EXISTS r2_key VARCHAR(512) NOT NULL DEFAULT '';
+            ALTER TABLE designs ADD COLUMN IF NOT EXISTS preview_r2_key VARCHAR(512) NOT NULL DEFAULT '';
             """);
         logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) listas.");
     }

@@ -40,10 +40,15 @@ public sealed class DesignsController(
             query = query.Where(d => d.Title.Contains(term) || (d.Description != null && d.Description.Contains(term)));
         }
 
-        var items = await query
+        var rows = await query
             .OrderByDescending(d => d.CreatedAt)
-            .Select(d => new DesignDto(d.Id, d.Title, d.Slug, d.Description, d.Category, d.PriceUsd, d.CreditsCost, d.PreviewUrl, d.CreatedAt, d.IsFreeDaily, null))
             .ToListAsync(cancellationToken);
+
+        var items = new List<DesignDto>(rows.Count);
+        foreach (var d in rows)
+        {
+            items.Add(await ToDtoAsync(d, null, cancellationToken));
+        }
 
         return Ok(items);
     }
@@ -55,6 +60,11 @@ public sealed class DesignsController(
         [FromQuery] string contentType,
         CancellationToken cancellationToken)
     {
+        if (!r2.IsEnabled)
+        {
+            return BadRequest("R2 no está activo. Configura CloudflareR2 en el servidor (UseFakeClient=false).");
+        }
+
         if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(contentType))
         {
             return BadRequest("El nombre de archivo y Content-Type son obligatorios.");
@@ -116,25 +126,56 @@ public sealed class DesignsController(
         var id = Guid.NewGuid();
         var slug = await UniqueSlugAsync(title, cancellationToken);
         var version = string.IsNullOrWhiteSpace(cdrVersion) ? "CDR" : cdrVersion.Trim();
-        var previewUrl = await localFiles.SavePreviewAsync(id, image, cancellationToken);
-        var localPath = await localFiles.SaveDownloadAsync(id, pack, cancellationToken);
         var r2Key = $"designs/{id:N}{packExt}";
+        var previewR2Key = $"previews/{id:N}{previewExt}";
+        var previewContentType = string.IsNullOrWhiteSpace(image.ContentType) ? "image/jpeg" : image.ContentType;
+        var packContentType = string.IsNullOrWhiteSpace(pack.ContentType) ? "application/octet-stream" : pack.ContentType;
 
-        await using (var previewStream = image.OpenReadStream())
-        {
-            await r2.UploadAsync($"previews/{id:N}{previewExt}", previewStream, image.ContentType, cancellationToken);
-        }
-
-        await using (var packStream = pack.OpenReadStream())
-        {
-            await r2.UploadAsync(r2Key, packStream, pack.ContentType, cancellationToken);
-        }
-
+        string previewUrl;
         float[] embedding;
-        var previewPath = Path.Combine(localFiles.PreviewRoot, Path.GetFileName(previewUrl));
-        await using (var embedStream = System.IO.File.OpenRead(previewPath))
+
+        if (r2.IsEnabled)
         {
-            embedding = await embeddings.EmbedImageAsync(embedStream, cancellationToken);
+            await using (var previewStream = image.OpenReadStream())
+            {
+                await r2.UploadAsync(previewR2Key, previewStream, previewContentType, cancellationToken);
+            }
+
+            await using (var packStream = pack.OpenReadStream())
+            {
+                await r2.UploadAsync(r2Key, packStream, packContentType, cancellationToken);
+            }
+
+            await using (var embedStream = image.OpenReadStream())
+            {
+                embedding = await embeddings.EmbedImageAsync(embedStream, cancellationToken);
+            }
+
+            previewUrl = r2.TryBuildPublicUrl(previewR2Key)
+                         ?? $"/api/designs/{id}/preview";
+        }
+        else
+        {
+            previewUrl = await localFiles.SavePreviewAsync(id, image, cancellationToken);
+            await localFiles.SaveDownloadAsync(id, pack, cancellationToken);
+            // Intento R2 falso (no-op) para no romper el contrato
+            await using (var previewStream = image.OpenReadStream())
+            {
+                await r2.UploadAsync(previewR2Key, previewStream, previewContentType, cancellationToken);
+            }
+
+            await using (var packStream = pack.OpenReadStream())
+            {
+                await r2.UploadAsync(r2Key, packStream, packContentType, cancellationToken);
+            }
+
+            var previewPath = Path.Combine(localFiles.PreviewRoot, Path.GetFileName(previewUrl));
+            await using (var embedStream = System.IO.File.OpenRead(previewPath))
+            {
+                embedding = await embeddings.EmbedImageAsync(embedStream, cancellationToken);
+            }
+
+            previewR2Key = "";
         }
 
         var design = new Design
@@ -147,6 +188,7 @@ public sealed class DesignsController(
             PriceUsd = price,
             CreditsCost = price,
             R2Key = r2Key,
+            PreviewR2Key = previewR2Key,
             PreviewUrl = previewUrl,
             IsFreeDaily = isFreeDaily,
             Embedding = new Vector(embedding),
@@ -156,8 +198,7 @@ public sealed class DesignsController(
         db.Designs.Add(design);
         await db.SaveChangesAsync(cancellationToken);
 
-        _ = localPath;
-        return Ok(new DesignDto(design.Id, design.Title, design.Slug, design.Description, design.Category, design.PriceUsd, design.CreditsCost, design.PreviewUrl, design.CreatedAt, design.IsFreeDaily, null));
+        return Ok(await ToDtoAsync(design, null, cancellationToken));
     }
 
     [Authorize(Roles = Roles.Admin)]
@@ -170,16 +211,67 @@ public sealed class DesignsController(
             return NotFound();
         }
 
+        if (!string.IsNullOrWhiteSpace(design.R2Key))
+        {
+            await r2.DeleteAsync(design.R2Key, cancellationToken);
+        }
+
+        if (!string.IsNullOrWhiteSpace(design.PreviewR2Key))
+        {
+            await r2.DeleteAsync(design.PreviewR2Key, cancellationToken);
+        }
+
         localFiles.Delete(id, design.PreviewUrl);
         db.Designs.Remove(design);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
+    /// <summary>Preview público: 302 a R2 (sin pasar los bytes por Railway) o archivo local en modo falso.</summary>
+    [HttpGet("{id:guid}/preview")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Preview(Guid id, CancellationToken cancellationToken)
+    {
+        var design = await db.Designs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (design is null)
+        {
+            return NotFound();
+        }
+
+        if (r2.IsEnabled && !string.IsNullOrWhiteSpace(design.PreviewR2Key))
+        {
+            var publicUrl = r2.TryBuildPublicUrl(design.PreviewR2Key);
+            if (!string.IsNullOrWhiteSpace(publicUrl))
+            {
+                return Redirect(publicUrl);
+            }
+
+            var signed = await r2.GetPresignedDownloadUrlAsync(
+                design.PreviewR2Key,
+                cancellationToken,
+                lifetime: r2.PreviewUrlLifetime);
+            return Redirect(signed);
+        }
+
+        if (!string.IsNullOrWhiteSpace(design.PreviewUrl)
+            && design.PreviewUrl.StartsWith("/catalog-previews/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Redirect(design.PreviewUrl);
+        }
+
+        return NotFound("Preview no disponible.");
+    }
+
     [Authorize]
     [HttpGet("{id:guid}/file")]
-    public IActionResult DownloadFile(Guid id)
+    public async Task<IActionResult> DownloadFile(Guid id, CancellationToken cancellationToken)
     {
+        // Legacy: solo modo falso / disco local. Con R2 activo no se sirve por Railway.
+        if (r2.IsEnabled)
+        {
+            return BadRequest("Con R2 activo usa /api/designs/{id}/download (URL firmada).");
+        }
+
         var path = localFiles.FindDownloadPath(id);
         if (path is null)
         {
@@ -187,7 +279,7 @@ public sealed class DesignsController(
         }
 
         var name = Path.GetFileName(path);
-        return PhysicalFile(path, "application/octet-stream", name);
+        return await Task.FromResult(PhysicalFile(path, "application/octet-stream", name));
     }
 
     [HttpPost("visual-search")]
@@ -216,9 +308,7 @@ public sealed class DesignsController(
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
 
         const string sql = """
-            SELECT id, title, slug, description, category, price_usd AS PriceUsd, credits_cost AS CreditsCost,
-                   preview_url AS PreviewUrl, created_at AS CreatedAt, is_free_daily AS IsFreeDaily,
-                   (1 - (embedding <=> @Embedding))::real AS Similarity
+            SELECT id AS Id, (1 - (embedding <=> @Embedding))::real AS Similarity
             FROM designs
             WHERE embedding IS NOT NULL
               AND category IN ('Fútbol', 'Vóley', 'Jersey', 'Voleibol')
@@ -226,8 +316,29 @@ public sealed class DesignsController(
             LIMIT 8
             """;
 
-        var rows = await connection.QueryAsync<DesignDto>(sql, new { Embedding = vector });
-        return Ok(rows.AsList());
+        var hits = (await connection.QueryAsync<(Guid Id, float Similarity)>(sql, new { Embedding = vector })).AsList();
+        if (hits.Count == 0)
+        {
+            return Ok(Array.Empty<DesignDto>());
+        }
+
+        var ids = hits.Select(h => h.Id).ToList();
+        var designs = await db.Designs.AsNoTracking()
+            .Where(d => ids.Contains(d.Id))
+            .ToDictionaryAsync(d => d.Id, cancellationToken);
+
+        var items = new List<DesignDto>(hits.Count);
+        foreach (var hit in hits)
+        {
+            if (!designs.TryGetValue(hit.Id, out var design))
+            {
+                continue;
+            }
+
+            items.Add(await ToDtoAsync(design, hit.Similarity, cancellationToken));
+        }
+
+        return Ok(items);
     }
 
     [Authorize]
@@ -302,9 +413,7 @@ public sealed class DesignsController(
 
         if (User.IsInRole(Roles.Admin))
         {
-            var adminUrl = localFiles.FindDownloadPath(id) is not null
-                ? $"{Request.Scheme}://{Request.Host}/api/designs/{id}/file"
-                : await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken);
+            var adminUrl = await ResolvePackDownloadUrlAsync(design, cancellationToken);
             return Ok(new DownloadResponse(adminUrl, DateTime.UtcNow.Add(r2.UrlLifetime), 0));
         }
 
@@ -346,10 +455,62 @@ public sealed class DesignsController(
         });
         await db.SaveChangesAsync(cancellationToken);
 
-        var url = localFiles.FindDownloadPath(id) is not null
-            ? $"{Request.Scheme}://{Request.Host}/api/designs/{id}/file"
-            : await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken);
+        var url = await ResolvePackDownloadUrlAsync(design, cancellationToken);
         return Ok(new DownloadResponse(url, DateTime.UtcNow.Add(r2.UrlLifetime), remaining));
+    }
+
+    private async Task<string> ResolvePackDownloadUrlAsync(Design design, CancellationToken cancellationToken)
+    {
+        var fileName = $"{design.Slug}{Path.GetExtension(design.R2Key)}";
+        if (r2.IsEnabled && !string.IsNullOrWhiteSpace(design.R2Key))
+        {
+            return await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken, fileName);
+        }
+
+        if (localFiles.FindDownloadPath(design.Id) is not null)
+        {
+            return $"{Request.Scheme}://{Request.Host}/api/designs/{design.Id}/file";
+        }
+
+        if (!string.IsNullOrWhiteSpace(design.R2Key))
+        {
+            return await r2.GetPresignedDownloadUrlAsync(design.R2Key, cancellationToken, fileName);
+        }
+
+        throw new InvalidOperationException("No hay archivo descargable para este diseño.");
+    }
+
+    private async Task<DesignDto> ToDtoAsync(Design d, float? similarity, CancellationToken cancellationToken)
+    {
+        var preview = await ResolvePreviewUrlAsync(d, cancellationToken);
+        return new DesignDto(
+            d.Id, d.Title, d.Slug, d.Description, d.Category, d.PriceUsd, d.CreditsCost,
+            preview, d.CreatedAt, d.IsFreeDaily, similarity);
+    }
+
+    private async Task<string> ResolvePreviewUrlAsync(Design d, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(d.PreviewR2Key) && r2.IsEnabled)
+        {
+            var pub = r2.TryBuildPublicUrl(d.PreviewR2Key);
+            if (!string.IsNullOrWhiteSpace(pub))
+            {
+                return pub;
+            }
+
+            // URL firmada fresca para <img> (bucket privado)
+            return await r2.GetPresignedDownloadUrlAsync(
+                d.PreviewR2Key,
+                cancellationToken,
+                lifetime: r2.PreviewUrlLifetime);
+        }
+
+        if (!string.IsNullOrWhiteSpace(d.PreviewUrl))
+        {
+            return d.PreviewUrl;
+        }
+
+        return $"/api/designs/{d.Id}/preview";
     }
 
     private static string? NormalizeSport(string? category)

@@ -54,6 +54,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.PriceUsd).HasPrecision(10, 2);
             entity.Property(x => x.CreditsCost).HasPrecision(10, 2);
             entity.Property(x => x.R2Key).HasMaxLength(512).HasColumnName("r2_key");
+            entity.Property(x => x.PreviewR2Key).HasMaxLength(512).HasColumnName("preview_r2_key");
             entity.Property(x => x.PreviewUrl).HasMaxLength(512);
             entity.Property(x => x.Embedding).HasColumnType("vector(512)");
         });
@@ -110,6 +111,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasKey(x => x.Key);
             entity.Property(x => x.Key).HasMaxLength(120);
             entity.Property(x => x.ContentType).HasMaxLength(100);
+            entity.Property(x => x.R2Key).HasMaxLength(512).HasColumnName("r2_key");
         });
     }
 }

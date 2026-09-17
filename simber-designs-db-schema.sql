@@ -76,6 +76,7 @@ CREATE TABLE designs (
     price_usd DECIMAL(10, 2) DEFAULT 2.00 NOT NULL CHECK (price_usd >= 0.00),
     credits_cost DECIMAL(10, 2) DEFAULT 2.00 NOT NULL CHECK (credits_cost >= 0.00),
     r2_key VARCHAR(512) NOT NULL,
+    preview_r2_key VARCHAR(512) NOT NULL DEFAULT '',
     preview_url VARCHAR(512) NOT NULL,
     is_free_daily BOOLEAN DEFAULT TRUE NOT NULL,
     embedding vector(512),

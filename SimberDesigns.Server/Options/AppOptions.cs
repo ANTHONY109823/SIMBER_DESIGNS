@@ -12,13 +12,18 @@ public sealed class JwtOptions
 public sealed class CloudflareR2Options
 {
     public const string SectionName = "CloudflareR2";
+    /// <summary>true = disco local (dev). false = bucket R2 real (producción).</summary>
     public bool UseFakeClient { get; set; } = true;
     public string AccountId { get; set; } = "";
     public string AccessKeyId { get; set; } = "";
     public string SecretAccessKey { get; set; } = "";
     public string BucketName { get; set; } = "";
+    /// <summary>Ej. https://&lt;ACCOUNT_ID&gt;.r2.cloudflarestorage.com</summary>
     public string ServiceUrl { get; set; } = "";
+    /// <summary>Opcional. URL pública del bucket/custom domain solo para previews/CMS (nunca packs).</summary>
+    public string PublicBaseUrl { get; set; } = "";
     public int PresignedUrlExpiryMinutes { get; set; } = 10;
+    public int PreviewUrlExpiryMinutes { get; set; } = 60;
     public int UploadExpiryMinutes { get; set; } = 20;
 }
 

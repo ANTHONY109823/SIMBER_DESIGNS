@@ -24,6 +24,9 @@ Este repo es la **web/API** (Railway). El panel y los `.exe` viven en:
   día debajo de Buscar por foto (sin flash de filtros antes).
 - Login cliente ≠ admin. Salir sin “Acceso restringido”.
 - Home: hero fullscreen + carrusel vertical desktop.
+- **R2:** ZIP + previews + CMS + instaladores en Cloudflare R2 (prod).
+  Postgres solo metadatos. Activar: `CloudflareR2__UseFakeClient=false` + keys
+  (ver `DEPLOY-RAILWAY.md` §3). Dev local puede quedar en FakeClient.
 
 ### Pendiente solo en el .exe (cuando Anthony lo pida)
 

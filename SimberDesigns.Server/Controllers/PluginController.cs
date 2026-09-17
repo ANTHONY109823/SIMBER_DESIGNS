@@ -173,11 +173,17 @@ public sealed class PluginController(
 
     [HttpGet("download/{edition}")]
     [AllowAnonymous]
-    public IActionResult DownloadEdition(string edition)
+    public async Task<IActionResult> DownloadEdition(string edition, CancellationToken cancellationToken)
     {
         if (!PluginInstallerStorage.TryParseEdition(edition, out var program))
         {
             return BadRequest("El programa debe ser Corel o Illustrator.");
+        }
+
+        var r2Url = await installers.GetDownloadUrlAsync(program, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(r2Url))
+        {
+            return Redirect(r2Url);
         }
 
         if (installers.Exists(program))
@@ -198,8 +204,12 @@ public sealed class PluginController(
 
     [HttpGet("installers")]
     [Authorize(Roles = Roles.Admin)]
-    public ActionResult<IReadOnlyList<PluginInstallerStatusDto>> Installers()
-        => Ok(new[] { StatusDto(LicenseProgram.Corel), StatusDto(LicenseProgram.Illustrator) });
+    public async Task<ActionResult<IReadOnlyList<PluginInstallerStatusDto>>> Installers(CancellationToken cancellationToken)
+        => Ok(new[]
+        {
+            await StatusDtoAsync(LicenseProgram.Corel, cancellationToken),
+            await StatusDtoAsync(LicenseProgram.Illustrator, cancellationToken)
+        });
 
     [HttpPost("installers/{edition}")]
     [Authorize(Roles = Roles.Admin)]
@@ -224,18 +234,18 @@ public sealed class PluginController(
         }
 
         await installers.SaveAsync(program, file, cancellationToken);
-        return Ok(StatusDto(program));
+        return Ok(await StatusDtoAsync(program, cancellationToken));
     }
 
-    private PluginInstallerStatusDto StatusDto(string edition)
+    private async Task<PluginInstallerStatusDto> StatusDtoAsync(string edition, CancellationToken cancellationToken)
     {
-        var info = installers.Info(edition);
+        var info = await installers.InfoAsync(edition, cancellationToken);
         return new PluginInstallerStatusDto(
             edition,
             info is not null,
             info is null ? null : installers.DownloadName(edition),
             info?.Length ?? 0,
-            info?.LastWriteTimeUtc);
+            info?.LastWriteUtc);
     }
 
     private async Task<PluginLicense?> FindLicenseAsync(Guid userId, string hwid, string edition, CancellationToken cancellationToken)

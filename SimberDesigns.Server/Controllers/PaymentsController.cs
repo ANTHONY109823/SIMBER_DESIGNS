@@ -34,8 +34,8 @@ public sealed class PaymentsController(
             items,
             mercadoPagoOptions.Value.ResolvePluginMonthPricePen(),
             "Activación 30 días · US$15 por programa",
-            installers.Exists(LicenseProgram.Corel),
-            installers.Exists(LicenseProgram.Illustrator)));
+            await installers.ExistsAsync(LicenseProgram.Corel, cancellationToken),
+            await installers.ExistsAsync(LicenseProgram.Illustrator, cancellationToken)));
     }
 
     [Authorize(Roles = Roles.Customer)]
