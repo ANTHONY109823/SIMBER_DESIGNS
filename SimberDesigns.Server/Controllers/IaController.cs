@@ -1,19 +1,18 @@
 using System.Text;
 using System.Text.Json;
+using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using SimberDesigns.Licensing;                 // verificador compartido con el .exe (copia exacta)
+using Npgsql;
+using SimberDesigns.Licensing;
 using SimberDesigns.Server.Options;
 
 namespace SimberDesigns.Server.Controllers;
 
 /// <summary>
-/// Lectura de listas con IA (Claude visión) para la V2 (web). La IA es LIBRE mientras la suscripción
-/// de $15/mes esté activa: no consume créditos (los créditos son solo para descargar diseños). El plugin
-/// manda la FOTO + su LICENCIA FIRMADA PREMIUM + su HWID; el servidor verifica la firma con la llave
-/// pública (derivada de la privada) y, si la licencia es válida y vigente (la suscripción se renueva
-/// contra Postgres cada mes), llama a Claude con la clave del servidor. La clave NUNCA sale de Railway.
+/// Lectura de listas con IA (Claude visión) para la V2. IA incluida con el mes activo.
+/// Tope interno por PC/día (no se comunica al cliente). Clave Anthropic solo en Railway.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
@@ -21,10 +20,15 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class IaController(
     IHttpClientFactory httpFactory,
     IConfiguration configuration,
-    IOptions<AnthropicOptions> anthropicOptions) : ControllerBase
+    IOptions<AnthropicOptions> anthropicOptions,
+    NpgsqlDataSource dataSource) : ControllerBase
 {
     private const string AnthropicUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
+
+    /// <summary>Mensaje genérico: no revela el tope diario.</summary>
+    private const string ErrorLecturaGenerico =
+        "No se pudo completar la lectura. Intenta con otra foto más nítida o pega la lista.";
 
     private const string Prompt = """
         Eres un lector experto de listas de pedidos de ropa deportiva y uniformes (polos, camisetas),
@@ -82,7 +86,6 @@ public sealed class IaController(
     [HttpPost("leer-lista")]
     public async Task<IActionResult> LeerLista([FromBody] LeerListaRequest request, CancellationToken ct)
     {
-        // 1) Autenticación POR LICENCIA (el plugin manda su token firmado + HWID).
         string licencia = (Request.Headers["X-Simber-License"].ToString() ?? "").Trim();
         string hwid = (Request.Headers["X-Simber-Hwid"].ToString() ?? "").Trim();
         if (licencia.Length == 0 || hwid.Length == 0)
@@ -104,35 +107,36 @@ public sealed class IaController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "Configuración de licencias inválida.");
         }
 
-        // La licencia debe ser válida y vigente. Como el token se renueva contra Postgres solo mientras
-        // la suscripción de $15/mes está pagada, una licencia vigente ES una suscripción activa.
         var check = new LicenseVerifier(publicKey).Verify(licencia, hwid);
         if (check.Status != LicenseStatus.Valid)
             return StatusCode(StatusCodes.Status403Forbidden, "Tu mes no está activo en esta PC. Renueva en la web.");
 
-        // La IA es de la versión web (V2, PREMIUM). Las licencias V1 no la usan.
         if (check.Info?.IncluyeIa != true)
             return StatusCode(StatusCodes.Status403Forbidden, "La lectura con IA es de la versión web (V2).");
 
-        // 2) Validar la imagen.
+        var opt = anthropicOptions.Value;
+        var cupo = await TryConsumeDailyReadAsync(hwid, Math.Max(1, opt.DailyReadsPerPc), ct);
+        if (!cupo)
+            return StatusCode(StatusCodes.Status502BadGateway, ErrorLecturaGenerico);
+
         string b64 = (request?.image_base64 ?? "").Trim();
         string mediaType = string.IsNullOrWhiteSpace(request?.media_type) ? "image/jpeg" : request!.media_type!.Trim();
         if (b64.Length == 0)
             return BadRequest("Falta la imagen.");
 
-        // 3) Clave de Anthropic: SOLO del servidor (env de Railway). Nunca sale de aquí.
-        var opt = anthropicOptions.Value;
         string apiKey = !string.IsNullOrWhiteSpace(opt.ApiKey)
             ? opt.ApiKey
             : (Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") ?? "");
         if (string.IsNullOrWhiteSpace(apiKey))
             return StatusCode(StatusCodes.Status503ServiceUnavailable, "La IA no está configurada en el servidor.");
 
-        // 4) Llamar a Claude (Messages API) con la foto + el prompt. IA libre: sin cobro por consulta.
+        var model = string.IsNullOrWhiteSpace(opt.Model) ? "claude-haiku-4-5" : opt.Model.Trim();
+        var maxTokens = opt.MaxTokens <= 0 ? 2048 : opt.MaxTokens;
+
         var payload = new
         {
-            model = string.IsNullOrWhiteSpace(opt.Model) ? "claude-sonnet-5" : opt.Model,
-            max_tokens = opt.MaxTokens <= 0 ? 4096 : opt.MaxTokens,
+            model,
+            max_tokens = maxTokens,
             messages = new object[]
             {
                 new
@@ -158,15 +162,43 @@ public sealed class IaController(
 
         HttpResponseMessage resp;
         try { resp = await http.SendAsync(msg, ct); }
-        catch (Exception ex) { return StatusCode(StatusCodes.Status502BadGateway, "No se pudo contactar a la IA: " + ex.Message); }
+        catch
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, ErrorLecturaGenerico);
+        }
 
         string body = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
-            return StatusCode(StatusCodes.Status502BadGateway, $"La IA respondió {(int)resp.StatusCode}.");
+            return StatusCode(StatusCodes.Status502BadGateway, ErrorLecturaGenerico);
 
-        // 5) Devolver el texto (el arreglo JSON) tal cual lo dio Claude.
         string texto = ExtraerTexto(body);
         return Content(texto, "text/plain; charset=utf-8");
+    }
+
+    /// <summary>
+    /// Reserva 1 lectura del cupo diario (día Lima). Si ya está al tope, no incrementa y devuelve false.
+    /// El cliente solo ve un fallo genérico de lectura.
+    /// </summary>
+    private async Task<bool> TryConsumeDailyReadAsync(string hwid, int dailyLimit, CancellationToken ct)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        // INSERT … ON CONFLICT con WHERE: si ya llegó al tope, no actualiza y RETURNING queda vacío.
+        const string sql = """
+            INSERT INTO ia_lectura_diaria (hwid, dia, lecturas)
+            VALUES (
+                @hwid,
+                (CURRENT_TIMESTAMP AT TIME ZONE 'America/Lima')::date,
+                1
+            )
+            ON CONFLICT (hwid, dia) DO UPDATE
+            SET lecturas = ia_lectura_diaria.lecturas + 1
+            WHERE ia_lectura_diaria.lecturas < @limit
+            RETURNING lecturas;
+            """;
+
+        var row = await conn.QuerySingleOrDefaultAsync<int?>(
+            new CommandDefinition(sql, new { hwid, limit = dailyLimit }, cancellationToken: ct));
+        return row is not null;
     }
 
     private static string ExtraerTexto(string anthropicJson)

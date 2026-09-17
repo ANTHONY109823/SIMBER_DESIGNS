@@ -77,8 +77,9 @@ public sealed class AnthropicOptions
 {
     public const string SectionName = "Anthropic";
     public string ApiKey { get; set; } = "";
-    public string Model { get; set; } = "claude-sonnet-5";
-    public int MaxTokens { get; set; } = 4096;
-    // La IA es LIBRE con la suscripción activa (no consume créditos). Los créditos son solo para
-    // descargar diseños del catálogo.
+    /// <summary>Haiku: más barato; suficiente para listas tipográficas y muchas a mano.</summary>
+    public string Model { get; set; } = "claude-haiku-4-5";
+    public int MaxTokens { get; set; } = 2048;
+    /// <summary>Tope interno por PC/día (HWID). No se muestra al cliente.</summary>
+    public int DailyReadsPerPc { get; set; } = 15;
 }

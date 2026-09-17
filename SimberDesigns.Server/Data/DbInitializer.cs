@@ -122,6 +122,13 @@ public static class DbInitializer
             );
             ALTER TABLE site_assets ADD COLUMN IF NOT EXISTS r2_key VARCHAR(512) NOT NULL DEFAULT '';
             ALTER TABLE designs ADD COLUMN IF NOT EXISTS preview_r2_key VARCHAR(512) NOT NULL DEFAULT '';
+
+            CREATE TABLE IF NOT EXISTS ia_lectura_diaria (
+                hwid VARCHAR(200) NOT NULL,
+                dia DATE NOT NULL,
+                lecturas INT NOT NULL DEFAULT 0,
+                PRIMARY KEY (hwid, dia)
+            );
             """);
         logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) listas.");
     }
