@@ -11,6 +11,9 @@
     <p class="mt-3 max-w-xl text-sm text-cream/60">
         Solo foto del diseño, archivo CDR, nombre, versión y precio. Sin PDF.
     </p>
+    <p class="mt-2 max-w-xl rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+        <span class="font-bold">Canva · foto del diseño:</span> 1080 × 1350 px (4:5 vertical) · PNG o JPG · el jersey al centro.
+    </p>
 
     <form class="mt-10 space-y-6 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8" @onsubmit="Submit" @onsubmit:preventDefault>
         <div class="grid gap-5 sm:grid-cols-2">
@@ -42,6 +45,7 @@
         <div class="grid gap-5 sm:grid-cols-2">
             <label class="block text-sm">
                 <span class="text-cream/70">Foto del diseño</span>
+                <p class="mt-1 text-xs text-emerald-400/90">Canva: <strong>1080 × 1350 px</strong> · 4:5 vertical</p>
                 <InputFile OnChange="OnPreviewSelected" accept=".jpg,.jpeg,.png,.webp,image/*" class="mt-2 w-full rounded-2xl border border-dashed border-white/20 bg-ink px-4 py-3 text-sm text-cream/70" />
                 @if (!string.IsNullOrWhiteSpace(PreviewDataUrl))
                 {
