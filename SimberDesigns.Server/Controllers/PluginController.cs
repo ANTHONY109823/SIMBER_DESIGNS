@@ -15,7 +15,8 @@ namespace SimberDesigns.Server.Controllers;
 public sealed class PluginController(
     AppDbContext db,
     IConfiguration configuration,
-    PluginInstallerStorage installers) : ControllerBase
+    PluginInstallerStorage installers,
+    IPluginPeriodKeyService periodKeys) : ControllerBase
 {
     [HttpGet("me")]
     public async Task<ActionResult<IReadOnlyList<PluginLicenseDto>>> Mine(CancellationToken cancellationToken)
@@ -36,9 +37,87 @@ public sealed class PluginController(
         return Ok(licenses.Select(l => ToDto(l, now)).ToList());
     }
 
+    [HttpGet("keys")]
+    public async Task<ActionResult<IReadOnlyList<PluginPeriodKeyDto>>> MyKeys(CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var keys = await db.PluginPeriodKeys
+            .AsNoTracking()
+            .Where(k => k.UserId == userId)
+            .OrderByDescending(k => k.CreatedAt)
+            .Take(50)
+            .Select(k => new PluginPeriodKeyDto(
+                k.Id, k.Code, k.Edition, k.Days, k.Status, k.Source, k.Note, k.CreatedAt, k.RedeemedAt))
+            .ToListAsync(cancellationToken);
+        return Ok(keys);
+    }
+
     /// <summary>
-    /// El .exe manda su HWID (y opcionalmente Edition). Si el mes está pago, se ata a esa PC
-    /// y se firma el token. 402 = sin mes · 409 = otra PC.
+    /// Canjea serial SMK-… (pago MP o admin). Si mandas hardwareId, también ata la PC y firma el token.
+    /// </summary>
+    [HttpPost("redeem")]
+    public async Task<ActionResult<object>> Redeem(PluginRedeemRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var (license, key) = await periodKeys.RedeemAsync(userId.Value, request.Code, cancellationToken);
+            var hwid = request.HardwareId?.Trim();
+            if (!string.IsNullOrWhiteSpace(hwid))
+            {
+                var edition = LicenseProgram.Normalizar(request.Edition);
+                if (string.IsNullOrWhiteSpace(edition))
+                {
+                    edition = key.Edition;
+                }
+
+                var now = DateTime.UtcNow;
+                if (string.IsNullOrWhiteSpace(license.HardwareId))
+                {
+                    license.HardwareId = hwid;
+                    if (string.IsNullOrWhiteSpace(license.Edition) && !string.IsNullOrWhiteSpace(edition))
+                    {
+                        license.Edition = edition;
+                    }
+
+                    license.UpdatedAt = now;
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+                else if (!string.Equals(license.HardwareId.Trim(), hwid, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Conflict("Esta cuenta ya está activada en otra PC.");
+                }
+
+                return Ok(EmitirToken(license, hwid));
+            }
+
+            return Ok(new
+            {
+                message = $"Canjeado: +{key.Days} días de {key.Edition}.",
+                key = new PluginPeriodKeyDto(
+                    key.Id, key.Code, key.Edition, key.Days, key.Status, key.Source, key.Note, key.CreatedAt, key.RedeemedAt),
+                license = ToDto(license, DateTime.UtcNow)
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// El .exe manda su HWID (y opcionalmente Edition). Si el periodo está canjeado/activo, se ata a esa PC
+    /// y se firma el token. 402 = sin periodo · 409 = otra PC.
     /// </summary>
     [HttpPost("activate")]
     public async Task<ActionResult<PluginTokenDto>> Activate(PluginActivateRequest request, CancellationToken cancellationToken)
@@ -60,7 +139,7 @@ public sealed class PluginController(
         var now = DateTime.UtcNow;
         if (license is null || license.ExpiresAt <= now)
         {
-            return StatusCode(StatusCodes.Status402PaymentRequired, "No tienes el mes pagado. Renueva en la web.");
+            return StatusCode(StatusCodes.Status402PaymentRequired, "No tienes periodo activo. Canjea tu clave o renueva en la web.");
         }
 
         if (string.IsNullOrWhiteSpace(license.HardwareId))

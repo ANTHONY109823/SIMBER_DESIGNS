@@ -139,7 +139,8 @@ public sealed class AuthController(
             user.CreditsBalance,
             subscription?.Tier,
             limit,
-            downloadsToday);
+            downloadsToday,
+            user.MustChangePassword);
     }
 }
 

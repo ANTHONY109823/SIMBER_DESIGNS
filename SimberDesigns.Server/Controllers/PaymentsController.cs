@@ -30,12 +30,15 @@ public sealed class PaymentsController(
             .OrderBy(p => p.PriceUsd)
             .Select(p => new CreditPackageDto(p.Id, p.Name, p.CreditsAmount, p.BonusAmount, p.PriceUsd))
             .ToListAsync(cancellationToken);
+        var monthPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
+        var plans = PluginCheckoutPlans.Build(monthPen);
         return Ok(new StorefrontDto(
             items,
-            mercadoPagoOptions.Value.ResolvePluginMonthPricePen(),
-            "Activación 30 días · US$15 por programa",
+            monthPen,
+            "Activación por periodo · US$15/mes por programa",
             await installers.ExistsAsync(LicenseProgram.Corel, cancellationToken),
-            await installers.ExistsAsync(LicenseProgram.Illustrator, cancellationToken)));
+            await installers.ExistsAsync(LicenseProgram.Illustrator, cancellationToken),
+            plans));
     }
 
     [Authorize(Roles = Roles.Customer)]
@@ -62,21 +65,13 @@ public sealed class PaymentsController(
         string currency = "PEN";
         var pluginPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
 
-        if (kind is "plugin-corel" or "corel")
+        if (PluginCheckoutPlans.TryResolve(kind, request.Months, pluginPen, out var edition, out var days, out _, out amount, out title))
         {
-            amount = pluginPen;
-            title = "Activación 30 días · CorelDRAW · US$15";
-            notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Corel}";
-        }
-        else if (kind is "plugin-illustrator" or "plugin-ilus" or "illustrator" or "ilus")
-        {
-            amount = pluginPen;
-            title = "Activación 30 días · Illustrator · US$15";
-            notes = $"plugin:{PluginPlans.Month1Pc}:{LicenseProgram.Illustrator}";
+            notes = $"plugin:{days}:{edition}";
         }
         else if (kind is "plugin" or "month-1pc" or PluginPlans.Month1Pc)
         {
-            return BadRequest("Elige CorelDRAW o Illustrator. Cada programa se activa un mes por separado.");
+            return BadRequest("Elige CorelDRAW o Illustrator. Cada programa se activa por separado (1, 3, 6 o 12 meses).");
         }
         else
         {
@@ -95,7 +90,7 @@ public sealed class PaymentsController(
 
             if (package is null)
             {
-                return BadRequest("Elige un paquete de créditos o el mes del plugin.");
+                return BadRequest("Elige un paquete de créditos o un plan del plugin.");
             }
 
             amount = package.PriceUsd;

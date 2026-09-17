@@ -129,8 +129,26 @@ public static class DbInitializer
                 lecturas INT NOT NULL DEFAULT 0,
                 PRIMARY KEY (hwid, dia)
             );
+
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+
+            CREATE TABLE IF NOT EXISTS plugin_period_keys (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+                code VARCHAR(40) NOT NULL UNIQUE,
+                edition VARCHAR(40) NOT NULL DEFAULT '',
+                days INT NOT NULL DEFAULT 30,
+                status VARCHAR(40) NOT NULL DEFAULT 'Pending',
+                source VARCHAR(40) NOT NULL DEFAULT 'manual',
+                transaction_id UUID NULL,
+                note VARCHAR(300) NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                redeemed_at TIMESTAMP WITH TIME ZONE NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_plugin_period_keys_user_status
+                ON plugin_period_keys(user_id, status);
             """);
-        logger.LogInformation("Tablas plugin_licenses + CMS (site_content/site_assets) listas.");
+        logger.LogInformation("Tablas plugin_licenses + period_keys + CMS listas.");
     }
 
     private static string? FindSchemaPath(IWebHostEnvironment env)

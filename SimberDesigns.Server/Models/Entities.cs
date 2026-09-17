@@ -10,6 +10,8 @@ public sealed class User
     public string FullName { get; set; } = string.Empty;
     public string Role { get; set; } = Roles.Customer;
     public decimal CreditsBalance { get; set; }
+    /// <summary>true = cuenta creada por admin (sorteo); debe cambiar clave al primer acceso.</summary>
+    public bool MustChangePassword { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -126,10 +128,40 @@ public sealed class PluginLicense
     public DateTime UpdatedAt { get; set; }
 }
 
-// ---- CMS: contenido editable de la web (textos e imágenes guardados en la BD) ----
+/// <summary>Serial de periodo (tipo antivirus): se genera al pagar o en admin; el cliente lo canjea.</summary>
+public sealed class PluginPeriodKey
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+    public string Code { get; set; } = string.Empty;
+    public string Edition { get; set; } = string.Empty;
+    public int Days { get; set; } = 30;
+    public string Status { get; set; } = PeriodKeyStatuses.Pending;
+    public string Source { get; set; } = PeriodKeySources.Manual;
+    public Guid? TransactionId { get; set; }
+    public string? Note { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? RedeemedAt { get; set; }
+}
+
+public static class PeriodKeyStatuses
+{
+    public const string Pending = "Pending";
+    public const string Redeemed = "Redeemed";
+    public const string Revoked = "Revoked";
+}
+
+public static class PeriodKeySources
+{
+    public const string Manual = "manual";
+    public const string MercadoPago = "mercadopago";
+}
+
+/// <summary>Textos del CMS (clave → valor).</summary>
 public sealed class SiteContent
 {
-    public string Key { get; set; } = string.Empty;   // ej. "programas.hero.title"
+    public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
 }

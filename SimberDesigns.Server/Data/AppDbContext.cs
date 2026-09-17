@@ -13,6 +13,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<CreditTransaction> CreditTransactions => Set<CreditTransaction>();
     public DbSet<UserDownload> UserDownloads => Set<UserDownload>();
     public DbSet<PluginLicense> PluginLicenses => Set<PluginLicense>();
+    public DbSet<PluginPeriodKey> PluginPeriodKeys => Set<PluginPeriodKey>();
     public DbSet<SiteContent> SiteContents => Set<SiteContent>();
     public DbSet<SiteAsset> SiteAssets => Set<SiteAsset>();
 
@@ -95,6 +96,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.ActivationCode).HasMaxLength(40);
             entity.HasIndex(x => x.ActivationCode).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.Edition });
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<PluginPeriodKey>(entity =>
+        {
+            entity.ToTable("plugin_period_keys");
+            entity.Property(x => x.Code).IsRequired().HasMaxLength(40);
+            entity.Property(x => x.Edition).HasMaxLength(40);
+            entity.Property(x => x.Status).HasMaxLength(40);
+            entity.Property(x => x.Source).HasMaxLength(40);
+            entity.Property(x => x.Note).HasMaxLength(300);
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.Status });
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         });
 

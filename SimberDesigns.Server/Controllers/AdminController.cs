@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SimberDesigns.Licensing;
 using SimberDesigns.Server.Contracts;
 using SimberDesigns.Server.Data;
 using SimberDesigns.Server.Models;
+using SimberDesigns.Server.Services;
 
 namespace SimberDesigns.Server.Controllers;
 
@@ -11,7 +14,10 @@ namespace SimberDesigns.Server.Controllers;
 [ApiController]
 [Authorize(Roles = Roles.Admin)]
 [Route("api/admin")]
-public sealed class AdminController(AppDbContext db) : ControllerBase
+public sealed class AdminController(
+    AppDbContext db,
+    IPluginPeriodKeyService periodKeys,
+    PasswordHasher<User> passwordHasher) : ControllerBase
 {
     [HttpGet("metrics")]
     public async Task<ActionResult<AdminMetricsDto>> Metrics(CancellationToken ct)
@@ -150,4 +156,149 @@ public sealed class AdminController(AppDbContext db) : ControllerBase
 
         return Ok(new AdminCustomerDto(user.Id, user.Email, user.FullName, user.Role, user.CreditsBalance, active, user.CreatedAt));
     }
+
+    /// <summary>Crea cuenta (sorteo / Yape). Opcionalmente emite clave de periodo y fuerza cambio de contraseña.</summary>
+    [HttpPost("customers")]
+    public async Task<ActionResult<AdminCreateCustomerResponse>> CreateCustomer(
+        AdminCreateCustomerRequest request,
+        CancellationToken ct)
+    {
+        var email = (request.Email ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        {
+            return BadRequest("Correo inválido.");
+        }
+
+        if (await db.Users.AnyAsync(u => u.Email == email, ct))
+        {
+            return Conflict("Ya existe una cuenta con ese correo.");
+        }
+
+        var temp = string.IsNullOrWhiteSpace(request.TemporaryPassword)
+            ? $"Simber{Random.Shared.Next(100000, 999999)}"
+            : request.TemporaryPassword.Trim();
+        if (temp.Length < 6)
+        {
+            return BadRequest("La contraseña temporal debe tener al menos 6 caracteres.");
+        }
+
+        var now = DateTime.UtcNow;
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = email,
+            FullName = string.IsNullOrWhiteSpace(request.FullName) ? email : request.FullName.Trim(),
+            Role = Roles.Customer,
+            CreditsBalance = 0,
+            MustChangePassword = request.MustChangePassword,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        user.PasswordHash = passwordHasher.HashPassword(user, temp);
+        db.Users.Add(user);
+        await db.SaveChangesAsync(ct);
+
+        PluginPeriodKeyDto? keyDto = null;
+        if (!string.IsNullOrWhiteSpace(request.Edition) && request.Days is > 0)
+        {
+            try
+            {
+                var key = await periodKeys.IssueAsync(
+                    user.Id,
+                    request.Edition,
+                    request.Days.Value,
+                    PeriodKeySources.Manual,
+                    null,
+                    request.Note,
+                    ct);
+                keyDto = ToKeyDto(key);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Usuario creado ({user.Email}), pero no se emitió la clave: {ex.Message}");
+            }
+        }
+
+        return Ok(new AdminCreateCustomerResponse(user.Id, user.Email, temp, keyDto));
+    }
+
+    /// <summary>Emite serial de periodo (pago directo / sorteo) para un usuario existente.</summary>
+    [HttpPost("licenses/issue")]
+    public async Task<ActionResult<PluginPeriodKeyDto>> IssuePeriodKey(
+        AdminIssuePeriodKeyRequest request,
+        CancellationToken ct)
+    {
+        User? user = null;
+        if (request.UserId is Guid uid)
+        {
+            user = await db.Users.FirstOrDefaultAsync(u => u.Id == uid, ct);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        }
+
+        if (user is null)
+        {
+            return NotFound("No encontramos ese cliente.");
+        }
+
+        if (user.Role == Roles.Admin)
+        {
+            return BadRequest("No se emiten claves a un administrador.");
+        }
+
+        try
+        {
+            var key = await periodKeys.IssueAsync(
+                user.Id,
+                request.Edition,
+                request.Days <= 0 ? 30 : request.Days,
+                PeriodKeySources.Manual,
+                null,
+                request.Note,
+                ct);
+            return Ok(ToKeyDto(key));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpGet("period-keys")]
+    public async Task<ActionResult<IReadOnlyList<AdminPeriodKeyDto>>> PeriodKeys([FromQuery] string? q, CancellationToken ct)
+    {
+        var query = db.PluginPeriodKeys.Include(k => k.User).AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim().ToLower();
+            query = query.Where(k =>
+                k.User.Email.ToLower().Contains(term)
+                || k.Code.ToLower().Contains(term)
+                || (k.Note != null && k.Note.ToLower().Contains(term)));
+        }
+
+        var list = await query
+            .OrderByDescending(k => k.CreatedAt)
+            .Take(500)
+            .Select(k => new AdminPeriodKeyDto(
+                k.Id,
+                k.User.Email,
+                k.User.FullName,
+                k.Code,
+                k.Edition,
+                k.Days,
+                k.Status,
+                k.Source,
+                k.Note,
+                k.CreatedAt,
+                k.RedeemedAt))
+            .ToListAsync(ct);
+        return Ok(list);
+    }
+
+    private static PluginPeriodKeyDto ToKeyDto(PluginPeriodKey key)
+        => new(key.Id, key.Code, key.Edition, key.Days, key.Status, key.Source, key.Note, key.CreatedAt, key.RedeemedAt);
 }

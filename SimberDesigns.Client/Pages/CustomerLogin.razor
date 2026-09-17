@@ -74,6 +74,12 @@
 
             await Auth.SignInAsync(result.Token);
 
+            if (result.MustChangePassword)
+            {
+                Nav.NavigateTo("/cuenta?cambiar=1");
+                return;
+            }
+
             var returnUrl = "/catalog";
             var q = Nav.ToAbsoluteUri(Nav.Uri).Query;
             const string key = "returnUrl=";

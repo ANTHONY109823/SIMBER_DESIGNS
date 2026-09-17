@@ -10,15 +10,25 @@
     <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
     <p class="mt-1 text-sm text-cream/80">@Email</p>
 
-    <div class="mt-6">
+    <div class="mt-6 flex flex-wrap gap-3">
         <a href="/recargar" class="inline-flex rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">
             Recargar créditos
         </a>
+        <a href="/programas#planes" class="inline-flex rounded-full border border-gold/40 px-5 py-2.5 text-sm font-semibold text-gold hover:bg-gold/10">
+            Activar / renovar programa
+        </a>
     </div>
+
+    @if (_forcePwd)
+    {
+        <div class="mt-8 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+            Debes cambiar la contraseña temporal antes de seguir. Usa el formulario de abajo.
+        </div>
+    }
 
     <section class="mt-10">
         <h2 class="font-serif text-2xl text-white">Tus servicios</h2>
-        <p class="mt-1 text-sm text-cream/70">Solo lo que tienes. Los créditos son para diseños; el mes de programa es aparte.</p>
+        <p class="mt-1 text-sm text-cream/70">Solo lo que tienes. Los créditos son para diseños; el periodo del programa es aparte.</p>
         <div class="mt-5 space-y-3">
             <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -34,7 +44,7 @@
             {
                 <article class="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4">
                     <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
-                    <p class="mt-1 text-sm text-cream/60">Sin mes activo de Corel ni Illustrator.</p>
+                    <p class="mt-1 text-sm text-cream/60">Sin periodo activo de Corel ni Illustrator.</p>
                 </article>
             }
             else
@@ -55,6 +65,43 @@
                 }
             }
         </div>
+    </section>
+
+    <section class="mt-10">
+        <h2 class="font-serif text-2xl text-white">Claves de activación</h2>
+        <p class="mt-1 text-sm text-cream/70">Tras pagar (Mercado Pago o directo), canjea el serial aquí o pégalo en el .exe al entrar.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+            <input @bind="_redeemCode" placeholder="SMK-COR-XXXXXXXX" class="min-w-[16rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
+            <button type="button" disabled="@Busy" @onclick="RedeemKey"
+                    class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+                Canjear
+            </button>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(RedeemMsg))
+        {
+            <p class="mt-2 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
+        }
+        @if (PeriodKeys.Count > 0)
+        {
+            <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                @foreach (var k in PeriodKeys)
+                {
+                    <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                        <div>
+                            <p class="font-mono text-emerald-300">@k.Code</p>
+                            <p class="text-xs text-cream/45">@k.Edition · @k.Days días · @k.Status</p>
+                        </div>
+                        @if (k.Status == "Pending")
+                        {
+                            <button type="button" disabled="@Busy" @onclick="() => RedeemExisting(k.Code)"
+                                    class="rounded-full border border-emerald-400/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
+                                Canjear ahora
+                            </button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
     </section>
 
     <section class="mt-10">
@@ -164,6 +211,7 @@
     private string Email = "";
     private decimal Credits;
     private List<PluginLicenseDto> Licenses = [];
+    private List<PluginPeriodKeyDto> PeriodKeys = [];
     private List<CreditLogDto> CreditLogs = [];
     private List<TransactionDto> Transactions = [];
     private List<UnlockedDesignDto> Unlocked = [];
@@ -172,12 +220,19 @@
     private bool DownloadOk;
     private string? PasswordMsg;
     private bool PasswordOk;
+    private string? RedeemMsg;
+    private bool RedeemOk;
     private string _currentPassword = "";
     private string _newPassword = "";
     private string _newPassword2 = "";
+    private string _redeemCode = "";
+    private bool _forcePwd;
 
     protected override async Task OnInitializedAsync()
     {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        _forcePwd = uri.Query.Contains("cambiar=1", StringComparison.OrdinalIgnoreCase);
+
         var dash = await Api.GetDashboardAsync();
         if (dash is not null)
         {
@@ -191,6 +246,32 @@
 
         try { Licenses = await Api.GetPluginLicensesAsync() ?? []; }
         catch { Licenses = []; }
+
+        try { PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? []; }
+        catch { PeriodKeys = []; }
+    }
+
+    private Task RedeemKey() => RedeemExisting(_redeemCode);
+
+    private async Task RedeemExisting(string code)
+    {
+        RedeemMsg = null;
+        Busy = true;
+        try
+        {
+            await Api.RedeemPeriodKeyAsync(code);
+            RedeemOk = true;
+            RedeemMsg = "Clave canjeada. Ya puedes activar el .exe con tu cuenta.";
+            _redeemCode = "";
+            Licenses = await Api.GetPluginLicensesAsync() ?? [];
+            PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];
+        }
+        catch (Exception ex)
+        {
+            RedeemOk = false;
+            RedeemMsg = CleanError(ex.Message);
+        }
+        finally { Busy = false; }
     }
 
     private async Task Redownload(UnlockedDesignDto design)
@@ -239,6 +320,11 @@
             PasswordOk = true;
             PasswordMsg = "Contraseña actualizada.";
             _currentPassword = _newPassword = _newPassword2 = "";
+            _forcePwd = false;
+            if (Nav.Uri.Contains("cambiar=", StringComparison.OrdinalIgnoreCase))
+            {
+                Nav.NavigateTo("/cuenta");
+            }
         }
         catch (Exception ex)
         {

@@ -10,7 +10,9 @@ public interface IPaymentFulfillmentService
     Task FulfillAsync(Transaction transaction, string? mercadoPagoPaymentId, CancellationToken cancellationToken);
 }
 
-public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfillmentService
+public sealed class PaymentFulfillmentService(
+    AppDbContext db,
+    IPluginPeriodKeyService periodKeys) : IPaymentFulfillmentService
 {
     public async Task FulfillAsync(Transaction transaction, string? mercadoPagoPaymentId, CancellationToken cancellationToken)
     {
@@ -29,7 +31,16 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
 
         if (IsPluginPurchase(transaction.Notes))
         {
-            await ExtendPluginLicenseAsync(transaction.UserId, EditionFromNotes(transaction.Notes), cancellationToken);
+            var edition = EditionFromNotes(transaction.Notes);
+            var days = DaysFromNotes(transaction.Notes);
+            await periodKeys.IssueAsync(
+                transaction.UserId,
+                edition,
+                days,
+                PeriodKeySources.MercadoPago,
+                transaction.Id,
+                $"MP {days}d",
+                cancellationToken);
         }
         else if (transaction.CreditPackageId is Guid packageId)
         {
@@ -42,8 +53,6 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
     private static bool IsPluginPurchase(string? notes)
         => notes is not null && notes.StartsWith("plugin:", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Suma los créditos del paquete al saldo del usuario y deja el registro. Antes esto NO se
-    /// hacía: al pagar un paquete no se acreditaba nada.</summary>
     private async Task AcreditarCreditosAsync(Transaction transaction, Guid packageId, CancellationToken cancellationToken)
     {
         var package = await db.CreditPackages.FirstOrDefaultAsync(p => p.Id == packageId, cancellationToken);
@@ -67,54 +76,34 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
         });
     }
 
-    private async Task ExtendPluginLicenseAsync(Guid userId, string edition, CancellationToken cancellationToken)
+    /// <summary>Notas: plugin:{días o plan}:{edition} — ej. plugin:90:Corel o plugin:month-1pc:Illustrator.</summary>
+    internal static int DaysFromNotes(string? notes)
     {
-        var licenses = await db.PluginLicenses
-            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
-            .ToListAsync(cancellationToken);
-
-        PluginLicense? license = null;
-        if (!string.IsNullOrWhiteSpace(edition))
+        if (string.IsNullOrWhiteSpace(notes))
         {
-            license = licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase))
-                      ?? licenses.FirstOrDefault(l => string.IsNullOrWhiteSpace(l.Edition));
-        }
-        else
-        {
-            license = licenses.FirstOrDefault();
+            return 30;
         }
 
-        var now = DateTime.UtcNow;
-        if (license is null)
+        var parts = notes.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 2)
         {
-            db.PluginLicenses.Add(new PluginLicense
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Plan = PluginPlans.Month1Pc,
-                Status = PluginLicenseStatuses.Active,
-                Edition = edition,
-                ActivationCode = NewActivationCode(),
-                ExpiresAt = now.AddDays(30),
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-            return;
+            return 30;
         }
 
-        var start = license.ExpiresAt > now ? license.ExpiresAt : now;
-        license.ExpiresAt = start.AddDays(30);
-        license.Status = PluginLicenseStatuses.Active;
-        license.UpdatedAt = now;
-        if (string.IsNullOrWhiteSpace(license.Edition) && !string.IsNullOrWhiteSpace(edition))
+        if (int.TryParse(parts[1], out var days))
         {
-            license.Edition = edition;
+            return PluginPeriodKeyService.ClampDays(days);
         }
 
-        license.ActivationCode = NewActivationCode();
+        if (string.Equals(parts[1], PluginPlans.Month1Pc, StringComparison.OrdinalIgnoreCase))
+        {
+            return 30;
+        }
+
+        return 30;
     }
 
-    private static string EditionFromNotes(string? notes)
+    internal static string EditionFromNotes(string? notes)
     {
         if (string.IsNullOrWhiteSpace(notes))
         {
@@ -129,7 +118,4 @@ public sealed class PaymentFulfillmentService(AppDbContext db) : IPaymentFulfill
 
         return "";
     }
-
-    private static string NewActivationCode()
-        => $"SIM-{Guid.NewGuid():N}"[..12].ToUpperInvariant();
 }

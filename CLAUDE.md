@@ -4,36 +4,30 @@ Este repo es la **web/API** (Railway). El panel y los `.exe` viven en:
 
 `C:\Users\ANTHONY\Desktop\PLUGIN ARMADO EN COREL\SimberDesigns`
 
-**Lee primero** `PLUGIN ARMADO EN COREL\SimberDesigns\CLAUDE.md` (sección
-**PENDIENTE · Activación V2 tipo Adobe / Cursor**). Ahí está el checklist del
-`.exe` y el resumen de lo ya hecho en la web.
+**Lee primero** `PLUGIN ARMADO EN COREL\SimberDesigns\CLAUDE.md`.
 
-- V1 (WhatsApp) ya está: dos `.exe` + KeyGen. No la deshagas desde aquí.
+**Licencias V2 (seriales SMK-, multi-mes, admin Yape):** lee la guía completa  
+[`GUIA-CLAVES-PERIODO-V2.md`](GUIA-CLAVES-PERIODO-V2.md)  
+(canónica también en `SimberDesigns\GUIA-CLAVES-PERIODO-V2.md`).
+
+- V1 (WhatsApp): dos `.exe` + KeyGen. No la deshagas desde aquí.
 - V2: este servidor firma el token (`PluginController`) con la **misma**
   llave privada que el KeyGen (`Licensing__PrivateKey`).
-- El firmador de aquí (`SimberDesigns.Server/Licensing/`) debe coincidir
-  con el del escritorio. Si cambias el formato del token, cambia los dos.
-- Deploy: `DEPLOY-RAILWAY.md`. Plan largo: `PLUGIN ARMADO EN COREL\INTEGRACION-WEB-PLAN.md`.
+- Deploy: `DEPLOY-RAILWAY.md`. Plan: `PLUGIN ARMADO EN COREL\INTEGRACION-WEB-PLAN.md`.
 
 ### Web ya hecha (no rehacer)
 
-- `/programas`: solo Descargar Corel (verde) / Illustrator (naranja); sin precios.
-- Mes plugin: US$15 → PEN con `UsdToPenRate` (Railway).
-- Nav: Encárganos (público) / Recarga créditos (cliente logueado).
-- Catálogo: todos los diseños; registro obligatorio para descargar; Gratis del
-  día debajo de Buscar por foto (sin flash de filtros antes).
-- Login cliente ≠ admin. Salir sin “Acceso restringido”.
-- Home: hero fullscreen + carrusel vertical desktop.
-- **R2:** ZIP + previews + CMS + instaladores en Cloudflare R2 (prod).
-  Postgres solo metadatos. Activar: `CloudflareR2__UseFakeClient=false` + keys
-  (ver `DEPLOY-RAILWAY.md` §3). Dev local puede quedar en FakeClient.
+- Programas / catálogo / CMS / R2 / Haiku + tope IA oculto 15/día.
+- **Claves SMK-…**: admin emite (días libres) + MP 1/3/6/12 meses; canje en Mi cuenta / `.exe`.
+  Detalle: `GUIA-CLAVES-PERIODO-V2.md`.
 
-### Pendiente solo en el .exe (cuando Anthony lo pida)
+### Pendiente (detalle en `SimberDesigns/CLAUDE.md`)
 
-Login al abrir, bloqueo sin pago/internet, activate HWID+Edition, renew.
-**No tocar** firma / HWID / FileClockGuard / KeyGen V1.
+- [ ] Fotos/CDR reales; demos Unsplash fuera
+- [ ] Sitemap / indexación Google
+- [ ] Deploy web + rebuild `.exe` V2 (canje SMK-)
+- [ ] Marketplace diseñadores (`MARKETPLACE-DISENADORES-PLAN.md`)
 
-### Marketplace diseñadores (especificación)
+### Qué no tocar
 
-Plan completo (reglas, créditos×8, retiros, seguridad, checklist):
-**`MARKETPLACE-DISENADORES-PLAN.md`**. Aún no implementado; retomar mañana / al avanzar frontend.
+Firma / HWID / FileClockGuard / KeyGen V1 / `mSimberArmado.bas` al cliente.

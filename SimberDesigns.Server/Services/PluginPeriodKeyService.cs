@@ -1,0 +1,210 @@
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using SimberDesigns.Licensing;
+using SimberDesigns.Server.Data;
+using SimberDesigns.Server.Models;
+
+namespace SimberDesigns.Server.Services;
+
+public interface IPluginPeriodKeyService
+{
+    Task<PluginPeriodKey> IssueAsync(
+        Guid userId,
+        string edition,
+        int days,
+        string source,
+        Guid? transactionId,
+        string? note,
+        CancellationToken cancellationToken);
+
+    /// <summary>Canjea un serial pendiente: suma días a la licencia del programa (sin atar HWID).</summary>
+    Task<(PluginLicense License, PluginPeriodKey Key)> RedeemAsync(
+        Guid userId,
+        string code,
+        CancellationToken cancellationToken);
+}
+
+public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeyService
+{
+    public const int MinDays = 1;
+    public const int MaxDays = 730;
+
+    public async Task<PluginPeriodKey> IssueAsync(
+        Guid userId,
+        string edition,
+        int days,
+        string source,
+        Guid? transactionId,
+        string? note,
+        CancellationToken cancellationToken)
+    {
+        days = ClampDays(days);
+        edition = LicenseProgram.Normalizar(edition);
+        if (string.IsNullOrWhiteSpace(edition))
+        {
+            throw new InvalidOperationException("Indica Corel o Illustrator.");
+        }
+
+        var now = DateTime.UtcNow;
+        var key = new PluginPeriodKey
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Code = await NewUniqueCodeAsync(edition, cancellationToken),
+            Edition = edition,
+            Days = days,
+            Status = PeriodKeyStatuses.Pending,
+            Source = string.IsNullOrWhiteSpace(source) ? PeriodKeySources.Manual : source.Trim(),
+            TransactionId = transactionId,
+            Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim()[..Math.Min(note.Trim().Length, 300)],
+            CreatedAt = now
+        };
+        db.PluginPeriodKeys.Add(key);
+        await db.SaveChangesAsync(cancellationToken);
+        return key;
+    }
+
+    public async Task<(PluginLicense License, PluginPeriodKey Key)> RedeemAsync(
+        Guid userId,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeCode(code);
+        if (normalized.Length < 8)
+        {
+            throw new InvalidOperationException("Clave inválida.");
+        }
+
+        var key = await db.PluginPeriodKeys
+            .FirstOrDefaultAsync(k => k.Code == normalized, cancellationToken);
+        if (key is null)
+        {
+            throw new InvalidOperationException("No existe esa clave.");
+        }
+
+        if (key.UserId != userId)
+        {
+            throw new InvalidOperationException("Esa clave no pertenece a tu cuenta.");
+        }
+
+        if (key.Status == PeriodKeyStatuses.Revoked)
+        {
+            throw new InvalidOperationException("Esa clave fue anulada.");
+        }
+
+        if (key.Status == PeriodKeyStatuses.Redeemed)
+        {
+            throw new InvalidOperationException("Esa clave ya fue canjeada.");
+        }
+
+        var license = await ExtendOrCreateLicenseAsync(userId, key.Edition, key.Days, cancellationToken);
+        key.Status = PeriodKeyStatuses.Redeemed;
+        key.RedeemedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return (license, key);
+    }
+
+    public static int ClampDays(int days) => Math.Clamp(days, MinDays, MaxDays);
+
+    public static string NormalizeCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return "";
+        }
+
+        return string.Concat(code.Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
+    }
+
+    public static bool LooksLikePeriodKey(string? code)
+    {
+        var n = NormalizeCode(code);
+        return n.StartsWith("SMK-", StringComparison.Ordinal);
+    }
+
+    private async Task<PluginLicense> ExtendOrCreateLicenseAsync(
+        Guid userId,
+        string edition,
+        int days,
+        CancellationToken cancellationToken)
+    {
+        days = ClampDays(days);
+        edition = LicenseProgram.Normalizar(edition);
+        var licenses = await db.PluginLicenses
+            .Where(l => l.UserId == userId && l.Plan == PluginPlans.Month1Pc)
+            .ToListAsync(cancellationToken);
+
+        PluginLicense? license = null;
+        if (!string.IsNullOrWhiteSpace(edition))
+        {
+            license = licenses.FirstOrDefault(l => string.Equals(l.Edition, edition, StringComparison.OrdinalIgnoreCase))
+                      ?? licenses.FirstOrDefault(l => string.IsNullOrWhiteSpace(l.Edition));
+        }
+        else
+        {
+            license = licenses.FirstOrDefault();
+        }
+
+        var now = DateTime.UtcNow;
+        if (license is null)
+        {
+            license = new PluginLicense
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Plan = PluginPlans.Month1Pc,
+                Status = PluginLicenseStatuses.Active,
+                Edition = edition,
+                ActivationCode = NewLegacyActivationCode(),
+                ExpiresAt = now.AddDays(days),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            db.PluginLicenses.Add(license);
+            return license;
+        }
+
+        var start = license.ExpiresAt > now ? license.ExpiresAt : now;
+        license.ExpiresAt = start.AddDays(days);
+        license.Status = PluginLicenseStatuses.Active;
+        license.UpdatedAt = now;
+        if (string.IsNullOrWhiteSpace(license.Edition) && !string.IsNullOrWhiteSpace(edition))
+        {
+            license.Edition = edition;
+        }
+
+        return license;
+    }
+
+    private async Task<string> NewUniqueCodeAsync(string edition, CancellationToken cancellationToken)
+    {
+        var prefix = edition.Equals(LicenseProgram.Illustrator, StringComparison.OrdinalIgnoreCase) ? "SMK-ILU" : "SMK-COR";
+        for (var attempt = 0; attempt < 12; attempt++)
+        {
+            var code = $"{prefix}-{RandomSuffix(8)}";
+            if (!await db.PluginPeriodKeys.AnyAsync(k => k.Code == code, cancellationToken))
+            {
+                return code;
+            }
+        }
+
+        return $"{prefix}-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
+    }
+
+    private static string RandomSuffix(int length)
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        Span<byte> bytes = stackalloc byte[length];
+        RandomNumberGenerator.Fill(bytes);
+        var chars = new char[length];
+        for (var i = 0; i < length; i++)
+        {
+            chars[i] = alphabet[bytes[i] % alphabet.Length];
+        }
+
+        return new string(chars);
+    }
+
+    private static string NewLegacyActivationCode()
+        => $"SIM-{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+}

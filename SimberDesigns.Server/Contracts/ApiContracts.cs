@@ -12,7 +12,8 @@ public sealed record AuthResponse(
     decimal CreditsBalance,
     string? SubscriptionTier,
     int DailyLimit,
-    int DownloadsToday);
+    int DownloadsToday,
+    bool MustChangePassword = false);
 
 public sealed record DesignDto(
     Guid Id,
@@ -31,15 +32,17 @@ public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, in
 
 public sealed record PresignedUrlResponse(string UploadUrl, string FileKey);
 
-public sealed record CheckoutRequest(string? PlanKey, string? PackKey, string? Kind, Guid? PackageId);
+public sealed record CheckoutRequest(string? PlanKey, string? PackKey, string? Kind, Guid? PackageId, int? Months);
 public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bool FakeCheckout);
 public sealed record ConfirmPaymentRequest(Guid? TransactionId, string? PaymentId, string? ExternalReference);
+public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label);
 public sealed record StorefrontDto(
     IReadOnlyList<CreditPackageDto> Packages,
     decimal PluginMonthPricePen,
     string PluginPlanName,
     bool HasCorelDownload,
-    bool HasIllustratorDownload);
+    bool HasIllustratorDownload,
+    IReadOnlyList<PluginPlanOptionDto>? PluginPlans = null);
 public sealed record PluginLicenseDto(
     string Plan,
     string Status,
@@ -48,9 +51,20 @@ public sealed record PluginLicenseDto(
     bool IsActive,
     string? HardwareId,
     string Edition);
+public sealed record PluginPeriodKeyDto(
+    Guid Id,
+    string Code,
+    string Edition,
+    int Days,
+    string Status,
+    string Source,
+    string? Note,
+    DateTime CreatedAt,
+    DateTime? RedeemedAt);
 
 // El .exe manda su HWID y el programa (Corel / Illustrator); el servidor devuelve el token FIRMADO.
 public sealed record PluginActivateRequest(string HardwareId, string? Edition);
+public sealed record PluginRedeemRequest(string Code, string? HardwareId, string? Edition);
 public sealed record PluginInstallerStatusDto(
     string Edition,
     bool Ready,
@@ -81,6 +95,19 @@ public sealed record AdminLicenseDto(
     DateTime CreatedAt,
     string Edition);
 
+public sealed record AdminPeriodKeyDto(
+    Guid Id,
+    string CustomerEmail,
+    string CustomerName,
+    string Code,
+    string Edition,
+    int Days,
+    string Status,
+    string Source,
+    string? Note,
+    DateTime CreatedAt,
+    DateTime? RedeemedAt);
+
 public sealed record AdminCustomerDto(
     Guid Id,
     string Email,
@@ -91,6 +118,25 @@ public sealed record AdminCustomerDto(
     DateTime CreatedAt);
 
 public sealed record AdjustCreditsRequest(decimal Credits, string? Note);
+public sealed record AdminCreateCustomerRequest(
+    string Email,
+    string FullName,
+    string? TemporaryPassword,
+    bool MustChangePassword,
+    string? Edition,
+    int? Days,
+    string? Note);
+public sealed record AdminCreateCustomerResponse(
+    Guid UserId,
+    string Email,
+    string TemporaryPassword,
+    PluginPeriodKeyDto? PeriodKey);
+public sealed record AdminIssuePeriodKeyRequest(
+    Guid? UserId,
+    string? Email,
+    string Edition,
+    int Days,
+    string? Note);
 
 public sealed record CreditPackageDto(Guid Id, string Name, decimal CreditsAmount, decimal BonusAmount, decimal PriceUsd);
 

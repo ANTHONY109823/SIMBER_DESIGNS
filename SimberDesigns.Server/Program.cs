@@ -61,6 +61,7 @@ builder.Services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
 builder.Services.AddSingleton<ILemonSqueezySignatureVerifier, LemonSqueezySignatureVerifier>();
 builder.Services.AddHttpClient<IMercadoPagoService, MercadoPagoService>();
 builder.Services.AddScoped<IPaymentFulfillmentService, PaymentFulfillmentService>();
+builder.Services.AddScoped<IPluginPeriodKeyService, PluginPeriodKeyService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IDownloadLimitService, DownloadLimitService>();
 builder.Services.AddSingleton<PasswordHasher<User>>();

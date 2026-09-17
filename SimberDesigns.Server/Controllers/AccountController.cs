@@ -157,6 +157,7 @@ public sealed class AccountController(AppDbContext db, PasswordHasher<User> pass
         }
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+        user.MustChangePassword = false;
         user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return Ok(new { message = "Contraseña actualizada." });

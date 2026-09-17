@@ -10,7 +10,8 @@ public sealed record AuthResponse(
     decimal CreditsBalance,
     string? SubscriptionTier,
     int DailyLimit,
-    int DownloadsToday);
+    int DownloadsToday,
+    bool MustChangePassword = false);
 
 public sealed record DesignDto(
     Guid Id,
@@ -34,7 +35,10 @@ public sealed record StorefrontDto(
     decimal PluginMonthPricePen,
     string PluginPlanName,
     bool HasCorelDownload = false,
-    bool HasIllustratorDownload = false);
+    bool HasIllustratorDownload = false,
+    List<PluginPlanOptionDto>? PluginPlans = null);
+
+public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label);
 
 public sealed record PluginLicenseDto(
     string Plan,
@@ -44,6 +48,17 @@ public sealed record PluginLicenseDto(
     bool IsActive,
     string? HardwareId,
     string Edition = "");
+
+public sealed record PluginPeriodKeyDto(
+    Guid Id,
+    string Code,
+    string Edition,
+    int Days,
+    string Status,
+    string Source,
+    string? Note,
+    DateTime CreatedAt,
+    DateTime? RedeemedAt);
 
 public sealed record PluginInstallerStatusDto(
     string Edition,
@@ -105,6 +120,25 @@ public sealed record AdminLicenseDto(
     DateTime CreatedAt,
     string Edition = "");
 
+public sealed record AdminPeriodKeyDto(
+    Guid Id,
+    string CustomerEmail,
+    string CustomerName,
+    string Code,
+    string Edition,
+    int Days,
+    string Status,
+    string Source,
+    string? Note,
+    DateTime CreatedAt,
+    DateTime? RedeemedAt);
+
+public sealed record AdminCreateCustomerResponse(
+    Guid UserId,
+    string Email,
+    string TemporaryPassword,
+    PluginPeriodKeyDto? PeriodKey);
+
 public sealed record AdminCustomerDto(
     Guid Id,
     string Email,
@@ -122,6 +156,53 @@ public sealed class SimberApi(HttpClient http)
     public Task<List<AdminLicenseDto>?> GetAdminLicensesAsync(string? q = null)
         => http.GetFromJsonAsync<List<AdminLicenseDto>>(
             string.IsNullOrWhiteSpace(q) ? "api/admin/licenses" : $"api/admin/licenses?q={Uri.EscapeDataString(q)}");
+
+    public Task<List<AdminPeriodKeyDto>?> GetAdminPeriodKeysAsync(string? q = null)
+        => http.GetFromJsonAsync<List<AdminPeriodKeyDto>>(
+            string.IsNullOrWhiteSpace(q) ? "api/admin/period-keys" : $"api/admin/period-keys?q={Uri.EscapeDataString(q)}");
+
+    public async Task<AdminCreateCustomerResponse> AdminCreateCustomerAsync(
+        string email, string fullName, string? temporaryPassword, bool mustChangePassword,
+        string? edition, int? days, string? note)
+    {
+        var response = await http.PostAsJsonAsync("api/admin/customers", new
+        {
+            email,
+            fullName,
+            temporaryPassword,
+            mustChangePassword,
+            edition,
+            days,
+            note
+        });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(CleanApiError(body, "No se pudo crear el cliente."));
+        }
+
+        return (await response.Content.ReadFromJsonAsync<AdminCreateCustomerResponse>())!;
+    }
+
+    public async Task<PluginPeriodKeyDto> AdminIssuePeriodKeyAsync(
+        Guid? userId, string? email, string edition, int days, string? note)
+    {
+        var response = await http.PostAsJsonAsync("api/admin/licenses/issue", new
+        {
+            userId,
+            email,
+            edition,
+            days,
+            note
+        });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(CleanApiError(body, "No se pudo emitir la clave."));
+        }
+
+        return (await response.Content.ReadFromJsonAsync<PluginPeriodKeyDto>())!;
+    }
 
     public Task<List<AdminCustomerDto>?> GetAdminCustomersAsync(string? q = null)
         => http.GetFromJsonAsync<List<AdminCustomerDto>>(
@@ -268,9 +349,9 @@ public sealed class SimberApi(HttpClient http)
     public Task<StorefrontDto?> GetStorefrontAsync()
         => http.GetFromJsonAsync<StorefrontDto>("api/payments/storefront");
 
-    public async Task<CheckoutResponse?> CheckoutAsync(string kind, Guid? packageId, string? planKey)
+    public async Task<CheckoutResponse?> CheckoutAsync(string kind, Guid? packageId, string? planKey, int? months = null)
     {
-        var response = await http.PostAsJsonAsync("api/payments/checkout", new { kind, packageId, planKey });
+        var response = await http.PostAsJsonAsync("api/payments/checkout", new { kind, packageId, planKey, months });
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
@@ -303,6 +384,27 @@ public sealed class SimberApi(HttpClient http)
 
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<PluginLicenseDto>>() ?? [];
+    }
+
+    public Task<List<PluginPeriodKeyDto>?> GetPluginPeriodKeysAsync()
+        => http.GetFromJsonAsync<List<PluginPeriodKeyDto>>("api/plugin/keys");
+
+    public async Task RedeemPeriodKeyAsync(string code)
+    {
+        var response = await http.PostAsJsonAsync("api/plugin/redeem", new { code, hardwareId = (string?)null, edition = (string?)null });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(CleanApiError(body, "No se pudo canjear la clave."));
+        }
+    }
+
+    private static string CleanApiError(string? body, string fallback)
+    {
+        var msg = body?.Trim() ?? "";
+        if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+            msg = msg[1..^1];
+        return string.IsNullOrWhiteSpace(msg) ? fallback : msg;
     }
 
     public Task<List<PluginInstallerStatusDto>?> GetInstallersAsync()

@@ -3,82 +3,260 @@
 @attribute [Authorize(Roles = "Admin")]
 @inject SimberApi Api
 
-<PageTitle>Licencias y ventas · Simber Admin</PageTitle>
+<PageTitle>Licencias y claves · Simber Admin</PageTitle>
 
-<div class="p-6 md:p-8">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
-        <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold text-white">Licencias y ventas</h1>
-            <p class="text-slate-400 text-sm mt-1">Registro completo: a quién se vendió, licencias vigentes, PC y vencimiento. El pago es automático; este historial vive aquí para corregir o revisar reclamos.</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <input @bind="_q" @bind:event="oninput" placeholder="Buscar por email o PC…"
-                   class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm w-64" />
-            <button @onclick="Load" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm">Buscar</button>
-        </div>
+<div class="p-6 md:p-8 space-y-8">
+    <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-white">Licencias y claves</h1>
+        <p class="text-slate-400 text-sm mt-1">
+            Emite seriales por Yape/sorteo o revisa pagos de Mercado Pago. El cliente canjea la clave (web o .exe) y luego activa en su PC.
+        </p>
     </div>
 
-    <div class="flex gap-3 mb-4 text-sm">
-        <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Activas: @_rows.Count(r => r.IsActive)</span>
-        <span class="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/25">Vencidas: @_rows.Count(r => !r.IsActive)</span>
-        <span class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Total: @_rows.Count</span>
+    <div class="grid gap-6 lg:grid-cols-2">
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h2 class="text-lg font-bold text-white">Crear cliente + clave</h2>
+            <p class="text-xs text-slate-400">Sorteo o pago directo: cuenta nueva, contraseña temporal y serial pendiente.</p>
+            <input @bind="_newEmail" placeholder="Email" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <input @bind="_newName" placeholder="Nombre" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <input @bind="_newPass" placeholder="Clave temporal (opcional)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <div class="flex flex-wrap gap-3 text-sm">
+                <label class="flex items-center gap-2 text-slate-300">
+                    <input type="checkbox" @bind="_forceChange" /> Forzar cambio de clave
+                </label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <select @bind="_newEdition" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                    <option value="Corel">CorelDRAW</option>
+                    <option value="Illustrator">Illustrator</option>
+                </select>
+                <input type="number" min="1" max="730" @bind="_newDays" class="w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+                <span class="self-center text-xs text-slate-500">días</span>
+            </div>
+            <input @bind="_newNote" placeholder="Nota (Yape, sorteo…)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <button @onclick="CreateCustomer" disabled="@_busy"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm disabled:opacity-50">
+                Crear y emitir
+            </button>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h2 class="text-lg font-bold text-white">Emitir clave a cliente existente</h2>
+            <input @bind="_issueEmail" placeholder="Email del cliente" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <div class="flex flex-wrap gap-2">
+                <select @bind="_issueEdition" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+                    <option value="Corel">CorelDRAW</option>
+                    <option value="Illustrator">Illustrator</option>
+                </select>
+                <input type="number" min="1" max="730" @bind="_issueDays" class="w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+                <span class="self-center text-xs text-slate-500">días (30 / 90 / 180 / 365…)</span>
+            </div>
+            <input @bind="_issueNote" placeholder="Nota" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+            <button @onclick="IssueKey" disabled="@_busy"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg text-sm disabled:opacity-50">
+                Emitir serial
+            </button>
+        </section>
     </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-800/70 text-slate-400 text-xs uppercase">
-                    <tr>
-                        <th class="text-left px-4 py-3">Cliente</th>
-                        <th class="text-left px-4 py-3">Programa</th>
-                        <th class="text-left px-4 py-3">Plan</th>
-                        <th class="text-left px-4 py-3">Estado</th>
-                        <th class="text-left px-4 py-3">Vence</th>
-                        <th class="text-left px-4 py-3">PC (HWID)</th>
-                        <th class="text-left px-4 py-3">Código</th>
-                        <th class="text-left px-4 py-3">Alta</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (_rows.Count == 0)
-                    {
-                        <tr><td colspan="8" class="px-4 py-10 text-center text-slate-500">Sin licencias todavía. Cuando alguien pague el mes de Corel o Illustrator, aparecerá aquí.</td></tr>
-                    }
-                    @foreach (var r in _rows)
-                    {
-                        <tr class="border-t border-slate-800 hover:bg-slate-800/40">
-                            <td class="px-4 py-3">
-                                <div class="font-semibold text-white">@(string.IsNullOrWhiteSpace(r.CustomerName) ? "—" : r.CustomerName)</div>
-                                <div class="text-xs text-slate-400">@r.CustomerEmail</div>
-                            </td>
-                            <td class="px-4 py-3 text-slate-300">@(string.IsNullOrWhiteSpace(r.Edition) ? "—" : r.Edition)</td>
-                            <td class="px-4 py-3 text-slate-300">@r.Plan</td>
-                            <td class="px-4 py-3">
-                                <span class="px-2 py-0.5 rounded-full text-xs @(r.IsActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" : "bg-rose-500/10 text-rose-400 border border-rose-500/25")">
-                                    @(r.IsActive ? "Activa" : "Vencida")
-                                </span>
-                            </td>
-                            <td class="px-4 py-3 text-slate-300">@r.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                            <td class="px-4 py-3 text-slate-400 font-mono text-xs">@(string.IsNullOrWhiteSpace(r.HardwareId) ? "(sin activar)" : r.HardwareId)</td>
-                            <td class="px-4 py-3 text-slate-400 font-mono text-xs">@r.ActivationCode</td>
-                            <td class="px-4 py-3 text-slate-400 text-xs">@r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+    @if (!string.IsNullOrWhiteSpace(_msg))
+    {
+        <div class="rounded-xl border px-4 py-3 text-sm @(_msgOk ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-rose-500/40 bg-rose-500/10 text-rose-300")">
+            <pre class="whitespace-pre-wrap font-mono text-xs">@_msg</pre>
+        </div>
+    }
+
+    <section>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+            <h2 class="text-lg font-bold text-white">Seriales emitidos</h2>
+            <div class="flex items-center gap-2">
+                <input @bind="_qKeys" @bind:event="oninput" placeholder="Buscar email o SMK-…"
+                       class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm w-64" />
+                <button @onclick="LoadKeys" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2 rounded-lg text-sm">Buscar</button>
+            </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-800/70 text-slate-400 text-xs uppercase">
+                        <tr>
+                            <th class="text-left px-4 py-3">Cliente</th>
+                            <th class="text-left px-4 py-3">Clave</th>
+                            <th class="text-left px-4 py-3">Programa</th>
+                            <th class="text-left px-4 py-3">Días</th>
+                            <th class="text-left px-4 py-3">Estado</th>
+                            <th class="text-left px-4 py-3">Origen</th>
+                            <th class="text-left px-4 py-3">Nota</th>
+                            <th class="text-left px-4 py-3">Alta</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @if (_keys.Count == 0)
+                        {
+                            <tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">Sin seriales todavía.</td></tr>
+                        }
+                        @foreach (var k in _keys)
+                        {
+                            <tr class="border-t border-slate-800 hover:bg-slate-800/40">
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold text-white">@k.CustomerName</div>
+                                    <div class="text-xs text-slate-400">@k.CustomerEmail</div>
+                                </td>
+                                <td class="px-4 py-3 font-mono text-xs text-emerald-300">@k.Code</td>
+                                <td class="px-4 py-3 text-slate-300">@k.Edition</td>
+                                <td class="px-4 py-3 text-slate-300">@k.Days</td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-0.5 rounded-full text-xs @(k.Status == "Pending" ? "bg-amber-500/10 text-amber-300 border border-amber-500/25" : k.Status == "Redeemed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" : "bg-rose-500/10 text-rose-400 border border-rose-500/25")">
+                                        @k.Status
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-400 text-xs">@k.Source</td>
+                                <td class="px-4 py-3 text-slate-400 text-xs">@(k.Note ?? "—")</td>
+                                <td class="px-4 py-3 text-slate-400 text-xs">@k.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </section>
+
+    <section>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
+            <h2 class="text-lg font-bold text-white">Licencias activas en PC</h2>
+            <div class="flex items-center gap-2">
+                <input @bind="_q" @bind:event="oninput" placeholder="Buscar por email o PC…"
+                       class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm w-64" />
+                <button @onclick="LoadLicenses" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm">Buscar</button>
+            </div>
+        </div>
+        <div class="flex gap-3 mb-4 text-sm">
+            <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">Activas: @_rows.Count(r => r.IsActive)</span>
+            <span class="px-3 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/25">Vencidas: @_rows.Count(r => !r.IsActive)</span>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-800/70 text-slate-400 text-xs uppercase">
+                        <tr>
+                            <th class="text-left px-4 py-3">Cliente</th>
+                            <th class="text-left px-4 py-3">Programa</th>
+                            <th class="text-left px-4 py-3">Estado</th>
+                            <th class="text-left px-4 py-3">Vence</th>
+                            <th class="text-left px-4 py-3">PC (HWID)</th>
+                            <th class="text-left px-4 py-3">Alta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_rows.Count == 0)
+                        {
+                            <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Sin licencias canjeadas todavía.</td></tr>
+                        }
+                        @foreach (var r in _rows)
+                        {
+                            <tr class="border-t border-slate-800 hover:bg-slate-800/40">
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold text-white">@(string.IsNullOrWhiteSpace(r.CustomerName) ? "—" : r.CustomerName)</div>
+                                    <div class="text-xs text-slate-400">@r.CustomerEmail</div>
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">@(string.IsNullOrWhiteSpace(r.Edition) ? "—" : r.Edition)</td>
+                                <td class="px-4 py-3">
+                                    <span class="px-2 py-0.5 rounded-full text-xs @(r.IsActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" : "bg-rose-500/10 text-rose-400 border border-rose-500/25")">
+                                        @(r.IsActive ? "Activa" : "Vencida")
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-300">@r.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td class="px-4 py-3 text-slate-400 font-mono text-xs">@(string.IsNullOrWhiteSpace(r.HardwareId) ? "(sin activar)" : r.HardwareId)</td>
+                                <td class="px-4 py-3 text-slate-400 text-xs">@r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 </div>
 
 @code {
     private List<AdminLicenseDto> _rows = new();
+    private List<AdminPeriodKeyDto> _keys = new();
     private string _q = "";
+    private string _qKeys = "";
+    private bool _busy;
+    private string? _msg;
+    private bool _msgOk;
 
-    protected override Task OnInitializedAsync() => Load();
+    private string _newEmail = "";
+    private string _newName = "";
+    private string _newPass = "";
+    private bool _forceChange = true;
+    private string _newEdition = "Corel";
+    private int _newDays = 30;
+    private string _newNote = "";
 
-    private async Task Load()
+    private string _issueEmail = "";
+    private string _issueEdition = "Corel";
+    private int _issueDays = 30;
+    private string _issueNote = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLicenses();
+        await LoadKeys();
+    }
+
+    private async Task LoadLicenses()
     {
         try { _rows = await Api.GetAdminLicensesAsync(_q) ?? new(); }
         catch { _rows = new(); }
+    }
+
+    private async Task LoadKeys()
+    {
+        try { _keys = await Api.GetAdminPeriodKeysAsync(_qKeys) ?? new(); }
+        catch { _keys = new(); }
+    }
+
+    private async Task CreateCustomer()
+    {
+        _msg = null;
+        _busy = true;
+        try
+        {
+            var res = await Api.AdminCreateCustomerAsync(
+                _newEmail, _newName, string.IsNullOrWhiteSpace(_newPass) ? null : _newPass,
+                _forceChange, _newEdition, _newDays, _newNote);
+            _msgOk = true;
+            _msg = $"Cliente: {res.Email}\nContraseña temporal: {res.TemporaryPassword}\n"
+                   + (res.PeriodKey is null ? "(sin clave)" : $"Clave: {res.PeriodKey.Code} · {res.PeriodKey.Days} días · {res.PeriodKey.Edition}");
+            _newEmail = _newName = _newPass = _newNote = "";
+            await LoadKeys();
+        }
+        catch (Exception ex)
+        {
+            _msgOk = false;
+            _msg = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task IssueKey()
+    {
+        _msg = null;
+        _busy = true;
+        try
+        {
+            var key = await Api.AdminIssuePeriodKeyAsync(null, _issueEmail, _issueEdition, _issueDays, _issueNote);
+            _msgOk = true;
+            _msg = $"Clave emitida: {key.Code}\n{key.Days} días · {key.Edition}";
+            _issueNote = "";
+            await LoadKeys();
+        }
+        catch (Exception ex)
+        {
+            _msgOk = false;
+            _msg = ex.Message;
+        }
+        finally { _busy = false; }
     }
 }

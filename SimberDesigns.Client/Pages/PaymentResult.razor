@@ -28,7 +28,7 @@
     {
         <h1 class="font-serif text-4xl text-white">Pago listo</h1>
         <p class="mt-3 text-sm text-cream/55">@Message</p>
-        <a href="/cuenta" class="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Ver créditos y licencia</a>
+        <a href="/cuenta" class="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm font-semibold text-ink">Canjear clave en Mi cuenta</a>
     }
 
     @if (!string.IsNullOrWhiteSpace(Error))
@@ -40,7 +40,7 @@
 @code {
     private string Kind = "ok";
     private bool Confirming = true;
-    private string Message = "Si pagaste el mes, la clave está en Mi cuenta. El .exe se baja gratis desde Programas.";
+    private string Message = "Tu serial SMK-… está en Mi cuenta: canjéalo y luego activa el .exe. Descarga gratis en Programas.";
     private string? Error;
 
     protected override async Task OnInitializedAsync()
@@ -66,8 +66,8 @@
         {
             await Api.ConfirmPaymentAsync(txId == Guid.Empty ? null : txId, paymentId, external);
             Message = fake
-                ? "Pago de prueba acreditado. Cuando pongas tu cuenta Mercado Pago, esto será Yape o tarjeta de verdad."
-                : "Mercado Pago confirmó el pago.";
+                ? "Pago de prueba acreditado. Revisa Mi cuenta: ahí está tu serial para canjear."
+                : "Mercado Pago confirmó el pago. Canjea el serial en Mi cuenta (o pégalo en el .exe).";
         }
         catch (Exception ex)
         {
