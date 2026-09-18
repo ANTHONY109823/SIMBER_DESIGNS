@@ -1,5 +1,4 @@
 @inject SimberApi Api
-@inject HttpClient Http
 @implements IAsyncDisposable
 
 <section class="hero-stage relative isolate overflow-hidden bg-ink text-cream"
@@ -84,31 +83,18 @@
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
 
+        // El servidor marca en el contenido qué carruseles tienen imagen ("asset.hero-carousel-N").
+        // Leemos de ahí (sin fetch, sin CORS): así lo que subes en el admin aparece en la web.
         var urls = new List<string>();
         for (var i = 1; i <= CarouselSlots; i++)
         {
-            var url = CarouselAsset(i);
-            if (await AssetExistsAsync(url))
-                urls.Add(url);
+            if (_c.ContainsKey($"asset.hero-carousel-{i}"))
+                urls.Add(CarouselAsset(i));
         }
 
         Previews = urls.Count > 0 ? urls : FallbackUrls.ToList();
         // Duplicado: al llegar al final se anima al clon y luego se resetea sin salto
         LoopSlides = Previews.Concat(Previews).ToList();
-    }
-
-    private async Task<bool> AssetExistsAsync(string url)
-    {
-        try
-        {
-            using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            using var resp = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
-            return resp.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     protected override void OnAfterRender(bool firstRender)

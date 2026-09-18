@@ -19,6 +19,17 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
     public async Task<ActionResult<Dictionary<string, string>>> All(CancellationToken ct)
     {
         var dict = await db.SiteContents.AsNoTracking().ToDictionaryAsync(c => c.Key, c => c.Value, ct);
+
+        // Marcamos qué IMÁGENES (assets) existen realmente, para que la web sepa cuáles mostrar SIN
+        // consultarlas una por una: el endpoint asset/{key} redirige a R2 (otro dominio) y un fetch de
+        // verificación falla por CORS. Con esto la home lee la lista directo del contenido.
+        var assetKeys = await db.SiteAssets.AsNoTracking()
+            .Where(a => (a.R2Key != null && a.R2Key != "") || a.Data != null)
+            .Select(a => a.Key)
+            .ToListAsync(ct);
+        foreach (var k in assetKeys)
+            dict["asset." + k] = "1";
+
         return Ok(dict);
     }
 
