@@ -89,6 +89,12 @@
         </section>
 
         <section class="mt-6 space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-bold text-white">Imagen del hero (Programas)</h2>
+            <p class="text-xs text-slate-400">La que se ve arriba a la derecha, dentro del mockup del programa. Independiente del paso 1.</p>
+            @ImageBlock("prog-hero", "Imagen del mockup del hero", SizeGuide("prog-hero"))
+        </section>
+
+        <section class="mt-6 space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6">
             <h2 class="font-bold text-white">Imagen de armado</h2>
             <p class="text-xs text-slate-400">Sube la imagen y edita el texto que sale encima en la web.</p>
             @ImageBlock("prog-armado", "Vista previa armado", SizeGuide("prog-armado"))
@@ -175,6 +181,7 @@
         "hero-banner" => new("1920 × 1080 px", "16:9 horizontal", "Fondo fullscreen. Deja el centro libre (texto a la izquierda)."),
         var k when k.StartsWith("hero-carousel-", StringComparison.Ordinal) =>
             new("900 × 1200 px", "3:4 vertical", "Carrusel alto del hero (solo desktop)."),
+        "prog-hero" => new("1200 × 800 px", "3:2 horizontal", "Mockup del hero de Programas (arriba a la derecha)."),
         "prog-armado" => new("1920 × 1080 px", "16:9 horizontal", "Bloque grande de armado."),
         "prog-video-poster" => new("1920 × 1080 px", "16:9 horizontal", "Miniatura del video (mismo formato)."),
         "prog-1" or "prog-2" or "prog-3" or "prog-4" =>
