@@ -123,52 +123,12 @@
 </section>
 
 <section id="planes" class="border-t border-white/10 bg-ink/80">
-    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <h2 class="font-serif text-3xl text-white">Planes de activación</h2>
-        <p class="mt-2 max-w-2xl text-sm text-cream/80">
-            Cada programa se cobra aparte. Elige 1, 3, 6 o 12 meses; al pagar recibes un serial en Mi cuenta para canjear y activar el .exe.
-            Precio base: US$15/mes (Mercado Pago cobra en soles al tipo de cambio).
-        </p>
-        @if (MonthPricePen > 0)
-        {
-            <p class="mt-2 text-xs text-cream/50">Referencia hoy: S/ @MonthPricePen.ToString("0.00") por mes · Corel e Illustrator independientes.</p>
-        }
-
-        <div class="mt-8 grid gap-6 lg:grid-cols-2">
-            <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                <h3 class="text-lg font-semibold text-white">CorelDRAW</h3>
-                <div class="mt-4 space-y-2">
-                    @foreach (var plan in Plans)
-                    {
-                        var m = plan.Months;
-                        <button type="button" disabled="@Busy" @onclick="() => PayCorel(m)"
-                                class="flex w-full items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-left text-sm hover:bg-emerald-500/15 disabled:opacity-50">
-                            <span class="text-white">@plan.Label</span>
-                            <span class="font-semibold text-emerald-300">S/ @plan.PricePen.ToString("0.00")</span>
-                        </button>
-                    }
-                </div>
-            </article>
-            <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                <h3 class="text-lg font-semibold text-white">Illustrator</h3>
-                <div class="mt-4 space-y-2">
-                    @foreach (var plan in Plans)
-                    {
-                        var m = plan.Months;
-                        <button type="button" disabled="@Busy" @onclick="() => PayIlus(m)"
-                                class="flex w-full items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 text-left text-sm hover:bg-orange-500/15 disabled:opacity-50">
-                            <span class="text-white">@plan.Label</span>
-                            <span class="font-semibold text-orange-300">S/ @plan.PricePen.ToString("0.00")</span>
-                        </button>
-                    }
-                </div>
-            </article>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(PayMsg))
-        {
-            <p class="mt-4 text-sm @(PayOk ? "text-emerald-300" : "text-rose-400")">@PayMsg</p>
-        }
-        <p class="mt-4 text-xs text-cream/50">¿Pagaste por Yape? Te enviamos el serial; canjéalo en Mi cuenta o pégalo en el programa.</p>
+    <div class="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6">
+        <h2 class="font-serif text-3xl text-white">Conoce nuestros planes</h2>
+        <a href="/login?returnUrl=/recargar"
+           class="mt-6 inline-flex items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
+            Ver planes
+        </a>
     </div>
 </section>
 
@@ -178,14 +138,6 @@
     private string DemoVideoSrc => Asset("prog-video");
     private bool HasCorel;
     private bool HasIllustrator;
-    private decimal MonthPricePen;
-    private List<PluginPlanOptionDto> Plans = [];
-    private bool Busy;
-    private string? PayMsg;
-    private bool PayOk;
-
-    [Inject] private NavigationManager Nav { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthState { get; set; } = default!;
 
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
@@ -204,48 +156,6 @@
         var store = await Api.GetStorefrontAsync();
         HasCorel = store?.HasCorelDownload == true;
         HasIllustrator = store?.HasIllustratorDownload == true;
-        MonthPricePen = store?.PluginMonthPricePen ?? 0;
-        Plans = store?.PluginPlans ??
-        [
-            new(1, 30, MonthPricePen, "1 mes (30 días)"),
-            new(3, 90, MonthPricePen * 3, "3 meses (90 días)"),
-            new(6, 180, MonthPricePen * 6, "6 meses (180 días)"),
-            new(12, 365, MonthPricePen * 12, "12 meses (365 días)")
-        ];
-    }
-
-    private Task PayCorel(int months) => Pay("plugin-corel", months);
-    private Task PayIlus(int months) => Pay("plugin-illustrator", months);
-
-    private async Task Pay(string kind, int months)
-    {
-        PayMsg = null;
-        Busy = true;
-        try
-        {
-            var auth = await AuthState.GetAuthenticationStateAsync();
-            if (auth.User.Identity?.IsAuthenticated != true)
-            {
-                Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString("/programas#planes")}");
-                return;
-            }
-
-            var checkout = await Api.CheckoutAsync(kind, null, null, months);
-            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
-            {
-                PayOk = false;
-                PayMsg = "No se pudo abrir Mercado Pago.";
-                return;
-            }
-
-            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
-        }
-        catch (Exception ex)
-        {
-            PayOk = false;
-            PayMsg = ex.Message;
-        }
-        finally { Busy = false; }
     }
 
     private IEnumerable<FeatureItem> Features =>
