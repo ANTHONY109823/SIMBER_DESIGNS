@@ -111,6 +111,23 @@ public sealed class PluginInstallerStorage(
         await file.CopyToAsync(local, cancellationToken);
     }
 
+    /// <summary>Borra el instalador del programa: lo quita de R2 (o del disco local). Tras esto,
+    /// <see cref="ExistsAsync"/> devuelve false y la web deja de ofrecer la descarga.</summary>
+    public async Task DeleteAsync(string edition, CancellationToken cancellationToken = default)
+    {
+        if (r2.IsEnabled)
+        {
+            await r2.DeleteAsync(R2ObjectKey(edition), cancellationToken);
+            return;
+        }
+
+        var path = FilePath(edition);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+
     public async Task<string?> GetDownloadUrlAsync(string edition, CancellationToken cancellationToken)
     {
         if (!r2.IsEnabled)

@@ -316,6 +316,19 @@ public sealed class PluginController(
         return Ok(await StatusDtoAsync(program, cancellationToken));
     }
 
+    [HttpDelete("installers/{edition}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<PluginInstallerStatusDto>> DeleteInstaller(string edition, CancellationToken cancellationToken)
+    {
+        if (!PluginInstallerStorage.TryParseEdition(edition, out var program))
+        {
+            return BadRequest("El programa debe ser Corel o Illustrator.");
+        }
+
+        await installers.DeleteAsync(program, cancellationToken);
+        return Ok(await StatusDtoAsync(program, cancellationToken));
+    }
+
     private async Task<PluginInstallerStatusDto> StatusDtoAsync(string edition, CancellationToken cancellationToken)
     {
         var info = await installers.InfoAsync(edition, cancellationToken);

@@ -424,6 +424,16 @@ public sealed class SimberApi(HttpClient http)
         }
     }
 
+    public async Task DeleteInstallerAsync(string edition)
+    {
+        var response = await http.DeleteAsync($"api/plugin/installers/{Uri.EscapeDataString(edition)}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo eliminar el ejecutable." : body);
+        }
+    }
+
     public async Task<DesignDto?> CreateDesignAsync(
         string title,
         string category,
