@@ -18,6 +18,9 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
     [AllowAnonymous]
     public async Task<ActionResult<Dictionary<string, string>>> All(CancellationToken ct)
     {
+        // Siempre fresco: si se cachea, la web se queda con textos/imagenes viejos tras un cambio en admin.
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+
         var dict = await db.SiteContents.AsNoTracking().ToDictionaryAsync(c => c.Key, c => c.Value, ct);
 
         // Marcamos qué IMÁGENES (assets) existen realmente, para que la web sepa cuáles mostrar SIN
