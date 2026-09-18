@@ -93,6 +93,11 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
             var pub = r2.TryBuildPublicUrl(a.R2Key);
             if (!string.IsNullOrWhiteSpace(pub))
             {
+                // Propaga el cache-buster (?v=) hasta la URL FINAL de R2. El objeto se sobrescribe con
+                // el mismo nombre al re-subir; sin esto el navegador mostraría la versión cacheada vieja.
+                var v = Request.Query["v"].ToString();
+                if (!string.IsNullOrWhiteSpace(v))
+                    pub += (pub.Contains('?', StringComparison.Ordinal) ? "&" : "?") + "v=" + Uri.EscapeDataString(v);
                 return Redirect(pub);
             }
 
