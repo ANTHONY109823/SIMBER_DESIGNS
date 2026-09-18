@@ -14,17 +14,26 @@
                 <p class="text-xs uppercase tracking-[0.28em] text-gold">Trabajos realizados</p>
                 <h2 class="mt-2 font-serif text-3xl text-white">@T("encarganos.gallery.title", "Así queda en cancha")</h2>
                 <div class="mt-6 space-y-3">
-                    <figure class="overflow-hidden rounded-3xl border border-white/10">
-                        <img src="@TrabajoPrincipal" alt="Trabajo Simber" class="h-72 w-full object-cover sm:h-80" />
-                    </figure>
-                    <div class="grid grid-cols-2 gap-3">
-                        @foreach (var shot in Trabajos)
-                        {
-                            <figure class="overflow-hidden rounded-2xl border border-white/10">
-                                <img src="@shot" alt="" class="aspect-[4/5] w-full object-cover" loading="lazy" />
-                            </figure>
-                        }
-                    </div>
+                    @if (TrabajosImgs.Count > 0)
+                    {
+                        <figure class="overflow-hidden rounded-3xl border border-white/10">
+                            <img src="@TrabajoPrincipal" alt="Trabajo Simber" class="h-72 w-full object-cover sm:h-80" />
+                        </figure>
+                        <div class="grid grid-cols-2 gap-3">
+                            @foreach (var shot in Trabajos)
+                            {
+                                <figure class="overflow-hidden rounded-2xl border border-white/10">
+                                    <img src="@shot" alt="" class="aspect-[4/5] w-full object-cover" loading="lazy" />
+                                </figure>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="flex h-72 items-center justify-center rounded-3xl border border-white/10 bg-white/[0.03] text-sm text-cream/50">
+                            Pronto: nuestros trabajos
+                        </div>
+                    }
                 </div>
             </aside>
 
@@ -174,12 +183,15 @@
 
     private string Asset(string key) => $"/api/content/asset/{key}?v={CmsBust}";
 
+    // "Así queda en cancha": TUS fotos subidas en el admin (encarganos-1..5), solo las que existen.
+    private List<string> TrabajosImgs =>
+        Enumerable.Range(1, 5)
+            .Where(n => _c.ContainsKey($"asset.encarganos-{n}"))
+            .Select(n => Asset($"encarganos-{n}"))
+            .ToList();
     private string TrabajoPrincipal =>
-        Designs.Count > 0 ? Designs[0].PreviewUrl : Asset("encarganos-1");
-    private IEnumerable<string> Trabajos =>
-        Designs.Skip(1).Take(4).Select(d => d.PreviewUrl)
-            .Concat([Asset("encarganos-2"), Asset("encarganos-3")])
-            .Take(4);
+        TrabajosImgs.Count > 0 ? TrabajosImgs[0] : Asset("encarganos-1");
+    private IEnumerable<string> Trabajos => TrabajosImgs.Skip(1).Take(4);
 
     protected override async Task OnInitializedAsync()
     {

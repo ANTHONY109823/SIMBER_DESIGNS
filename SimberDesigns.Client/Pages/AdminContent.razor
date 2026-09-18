@@ -187,7 +187,7 @@
         "prog-1" or "prog-2" or "prog-3" or "prog-4" =>
             new("1200 × 900 px", "4:3 horizontal", "Tarjetas de los 4 pasos."),
         "encarganos-1" => new("1600 × 900 px", "16:9 horizontal", "Foto principal grande."),
-        "encarganos-2" or "encarganos-3" =>
+        "encarganos-2" or "encarganos-3" or "encarganos-4" or "encarganos-5" =>
             new("1080 × 1350 px", "4:5 vertical", "Miniaturas laterales."),
         _ => new("1080 × 1080 px", "1:1", "Cuadrado genérico.")
     };
@@ -254,7 +254,9 @@
         new("programas", "prog-4", "Paso 4 · resultado"),
         new("encarganos", "encarganos-1", "Trabajo principal"),
         new("encarganos", "encarganos-2", "Trabajo 2"),
-        new("encarganos", "encarganos-3", "Trabajo 3")
+        new("encarganos", "encarganos-3", "Trabajo 3"),
+        new("encarganos", "encarganos-4", "Trabajo 4"),
+        new("encarganos", "encarganos-5", "Trabajo 5")
     ];
 
     private RenderFragment Field(string key, string label, bool multiline) => __builder =>
