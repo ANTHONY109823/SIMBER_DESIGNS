@@ -387,7 +387,7 @@
             var c = await Api.GetContentAsync();
             foreach (var f in TextFields)
             {
-                if (c.TryGetValue(f.Key, out var v) && !string.IsNullOrWhiteSpace(v))
+                if (c.TryGetValue(f.Key, out var v))
                     _texts[f.Key] = v;
             }
 

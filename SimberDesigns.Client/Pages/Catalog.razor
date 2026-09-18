@@ -209,7 +209,7 @@
     private string RegisterHref => "/register?returnUrl=/catalog";
 
     private string T(string key, string fallback)
-        => _c.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : fallback;
+        => _c.TryGetValue(key, out var v) ? v : fallback;
 
     private string CatalogTitleHtml
     {
