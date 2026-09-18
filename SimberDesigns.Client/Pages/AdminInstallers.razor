@@ -25,6 +25,10 @@
                 @if (status?.Ready == true)
                 {
                     <p class="mt-3 text-sm text-emerald-300">@FormatSize(status.SizeBytes)</p>
+                    @if (status.UpdatedAt is DateTime up)
+                    {
+                        <p class="text-xs text-slate-400">Última subida: @up.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                    }
                     <a href="@($"/api/plugin/download/{slot.Slug}")" target="_blank" rel="noopener" download class="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950">Descargar</a>
                     <button type="button" disabled="@(Deleting == slot.Edition)" @onclick="() => OnDelete(slot.Edition)"
                             class="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-rose-700 px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-950/40 disabled:opacity-50">
