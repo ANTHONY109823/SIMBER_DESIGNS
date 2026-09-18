@@ -79,9 +79,18 @@
         </figure>
 
         <div class="lg:col-span-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-            <video class="aspect-video w-full bg-black object-cover" controls poster="@VideoPoster">
-                <source src="@DemoVideoSrc" type="video/mp4" />
-            </video>
+            @if (HasVideo)
+            {
+                <video class="aspect-video w-full bg-black object-cover" controls preload="none" poster="@VideoPoster">
+                    <source src="@DemoVideoSrc" type="video/mp4" />
+                </video>
+            }
+            else
+            {
+                <div class="flex aspect-video w-full items-center justify-center bg-black/70">
+                    <img src="@VideoPoster" alt="" onerror="this.style.display='none'" class="h-full w-full object-cover" />
+                </div>
+            }
             <p class="px-4 py-3 text-xs text-cream/75">@T("programas.video.caption", "Video del flujo (si está subido en Programas).")</p>
         </div>
     </div>
@@ -164,8 +173,9 @@
 </section>
 
 @code {
-    private const string DemoVideoSrc = "programas/simber-designs-demo.mp4";
     private Dictionary<string, string> _c = new();
+    private bool HasVideo => _c.ContainsKey("asset.prog-video");
+    private string DemoVideoSrc => Asset("prog-video");
     private bool HasCorel;
     private bool HasIllustrator;
     private decimal MonthPricePen;

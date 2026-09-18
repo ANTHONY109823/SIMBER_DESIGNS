@@ -101,6 +101,10 @@
                 <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">Poster del video</p>
                 @ImageBlock("prog-video-poster", "Poster del video demo", SizeGuide("prog-video-poster"))
             </div>
+            <div class="pt-2">
+                <p class="mb-2 text-xs uppercase tracking-wider text-slate-400">Video demo (MP4)</p>
+                @VideoBlock("prog-video")
+            </div>
         </section>
 
         <section class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -278,6 +282,56 @@
             </div>
         </div>
     };
+
+    private RenderFragment VideoBlock(string assetKey) => __builder =>
+    {
+        var subido = _serverSrc.ContainsKey(assetKey) || _localSrc.ContainsKey(assetKey);
+        <div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+            <div class="flex h-28 items-center justify-center bg-gradient-to-br from-slate-800 to-slate-950">
+                @if (subido) { <span class="text-sm font-semibold text-emerald-300">✓ Video subido</span> }
+                else { <span class="text-xs text-slate-500">Sin video</span> }
+            </div>
+            <div class="space-y-2 p-3">
+                <div class="rounded-md border border-orange-500/25 bg-orange-500/10 px-2.5 py-2">
+                    <p class="text-sm font-bold text-orange-300">MP4 · 720p · máx 80 MB</p>
+                    <p class="text-[11px] text-slate-300">Comprímelo en CapCut. Se guarda en R2 (sin costo por vistas).</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <InputFile OnChange="@(e => SubirVideo(assetKey, e))" accept="video/mp4,video/webm,.mp4,.webm" class="text-xs text-slate-400" />
+                    @if (_uploading == assetKey) { <span class="text-xs text-emerald-400">subiendo…</span> }
+                </div>
+            </div>
+        </div>
+    };
+
+    private async Task SubirVideo(string key, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        _uploading = key; _msg = "";
+        try
+        {
+            await using var stream = file.OpenReadStream(80_000_000);
+            await using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "video/mp4" : file.ContentType;
+            var (url, bust, _, err) = await Api.UploadAssetWithBustAsync(key, ms, file.Name, mime);
+            if (url is null) { _msg = err ?? "No se pudo subir el video."; return; }
+            if (!string.IsNullOrWhiteSpace(bust)) _bust = bust!;
+            _serverSrc[key] = $"/api/content/asset/{Uri.EscapeDataString(key)}?v={Uri.EscapeDataString(_bust)}";
+            _msg = "Video subido a R2. Ya aparece en Programas.";
+        }
+        catch (Exception ex)
+        {
+            _msg = "Error al subir el video: " + ex.Message;
+        }
+        finally
+        {
+            _uploading = null;
+            StateHasChanged();
+        }
+    }
 
     private RenderFragment StepCard(string assetKey, string textKey, string label) => __builder =>
     {

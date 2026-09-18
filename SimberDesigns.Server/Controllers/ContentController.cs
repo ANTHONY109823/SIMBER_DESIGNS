@@ -110,20 +110,34 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
 
     [HttpPost("asset/{key}")]
     [Authorize(Roles = Roles.Admin)]
-    [RequestSizeLimit(20_000_000)]
+    [RequestSizeLimit(90_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 90_000_000)]
     public async Task<IActionResult> UploadAsset(string key, IFormFile file, CancellationToken ct)
     {
         if (file is null || file.Length == 0) return BadRequest("Archivo vacío.");
-        if (file.Length > 15_000_000) return BadRequest("Máximo 15 MB por imagen.");
 
         var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
         var now = DateTime.UtcNow;
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif"))
+
+        var isVideo = ext is ".mp4" or ".webm"
+            || contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
+        if (isVideo)
         {
-            ext = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png"
-                : contentType.Contains("webp", StringComparison.OrdinalIgnoreCase) ? ".webp"
-                : ".jpg";
+            // Video (demo): va a R2 (egress gratis). Comprimir a 720p mantiene la carga rápida.
+            if (file.Length > 80_000_000) return BadRequest("Máximo 80 MB para el video. Comprímelo a 720p (p. ej. en CapCut).");
+            ext = ext == ".webm" ? ".webm" : ".mp4";
+            contentType = ext == ".webm" ? "video/webm" : "video/mp4";
+        }
+        else
+        {
+            if (file.Length > 15_000_000) return BadRequest("Máximo 15 MB por imagen.");
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp" or ".gif"))
+            {
+                ext = contentType.Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png"
+                    : contentType.Contains("webp", StringComparison.OrdinalIgnoreCase) ? ".webp"
+                    : ".jpg";
+            }
         }
 
         var safeKey = key.Trim();
