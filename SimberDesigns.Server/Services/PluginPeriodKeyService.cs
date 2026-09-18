@@ -178,17 +178,19 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
 
     private async Task<string> NewUniqueCodeAsync(string edition, CancellationToken cancellationToken)
     {
-        var prefix = edition.Equals(LicenseProgram.Illustrator, StringComparison.OrdinalIgnoreCase) ? "SMK-ILU" : "SMK-COR";
+        // Serial de 16 caracteres alfanuméricos (sin prefijo; la EDICIÓN se guarda en la fila del key,
+        // no en el serial). Alfabeto sin caracteres confusos. `edition` se conserva por compatibilidad.
+        _ = edition;
         for (var attempt = 0; attempt < 12; attempt++)
         {
-            var code = $"{prefix}-{RandomSuffix(8)}";
+            var code = RandomSuffix(16);
             if (!await db.PluginPeriodKeys.AnyAsync(k => k.Code == code, cancellationToken))
             {
                 return code;
             }
         }
 
-        return $"{prefix}-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
+        return Guid.NewGuid().ToString("N")[..16].ToUpperInvariant();
     }
 
     private static string RandomSuffix(int length)
