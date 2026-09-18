@@ -2,7 +2,6 @@
 @layout AdminLayout
 @attribute [Authorize(Roles = "Admin")]
 @inject SimberApi Api
-@inject NavigationManager Nav
 
 <PageTitle>Contenido de la web · Simber Admin</PageTitle>
 
@@ -157,7 +156,6 @@
     private readonly Dictionary<string, string> _texts = new();
     private readonly Dictionary<string, string> _localSrc = new();
     private readonly Dictionary<string, string> _serverSrc = new();
-    private readonly HashSet<string> _broken = new();
     private bool _saving;
     private string? _uploading;
     private string _msg = "";
@@ -301,9 +299,8 @@
     private RenderFragment PreviewBox(string assetKey, string label) => __builder =>
     {
         var src = PreviewSrc(assetKey);
-        var broken = _broken.Contains(assetKey);
         <div class="relative h-40 bg-gradient-to-br from-slate-800 to-slate-950">
-            @if (!string.IsNullOrWhiteSpace(src) && !broken)
+            @if (!string.IsNullOrWhiteSpace(src))
             {
                 <img @key="src" src="@src" alt="@label"
                      class="absolute inset-0 h-full w-full object-cover"
@@ -312,7 +309,7 @@
             else
             {
                 <div class="absolute inset-0 flex items-center justify-center px-3 text-center text-xs text-slate-500">
-                    @(broken ? "No se pudo cargar la vista previa" : "Sin imagen aún")
+                    Sin imagen aún — selecciona un archivo
                 </div>
             }
             <span class="absolute bottom-1 left-2 rounded bg-slate-950/70 px-1.5 text-[11px] text-slate-300">@label</span>
@@ -336,12 +333,18 @@
         }
         catch { }
 
-        foreach (var img in ImageFields)
-            _serverSrc[img.Key] = AssetUrl(img.Key);
+        try
+        {
+            // Solo keys que existen en BD/R2 (si no hay fila → "Sin imagen", no error falso).
+            var assets = await Api.GetContentAssetsAsync();
+            foreach (var (key, preview) in assets)
+            {
+                if (!string.IsNullOrWhiteSpace(preview))
+                    _serverSrc[key] = preview;
+            }
+        }
+        catch { }
     }
-
-    private string AssetUrl(string key)
-        => $"{Nav.BaseUri.TrimEnd('/')}/api/content/asset/{Uri.EscapeDataString(key)}?v={Uri.EscapeDataString(_bust)}";
 
     private string? PreviewSrc(string key)
     {
@@ -349,17 +352,16 @@
             return local;
         if (_serverSrc.TryGetValue(key, out var server) && !string.IsNullOrWhiteSpace(server))
             return server;
-        return AssetUrl(key);
+        return null; // no inventar URL 404
     }
 
     private void OnPreviewError(string key)
     {
-        // Si falló la URL de R2/servidor y no hay blob local, muestra placeholder (sin display:none eterno).
-        if (!_localSrc.ContainsKey(key))
-        {
-            _broken.Add(key);
-            StateHasChanged();
-        }
+        // Quita URL rota; muestra "Sin imagen" (no el mensaje de error eterno).
+        if (_localSrc.ContainsKey(key))
+            return;
+        _serverSrc.Remove(key);
+        StateHasChanged();
     }
 
     private static readonly Dictionary<string, string> Defaults = new()
@@ -418,33 +420,33 @@
             await stream.CopyToAsync(ms);
             var bytes = ms.ToArray();
 
-            // Vista previa inmediata (gratis, sin R2): data URL del archivo elegido.
+            // Vista previa inmediata (gratis): se queda aunque falle R2 al refrescar.
             var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
             _localSrc[key] = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
-            _broken.Remove(key);
             StateHasChanged();
 
             ms.Position = 0;
-            var (url, bust) = await Api.UploadAssetWithBustAsync(key, ms, file.Name, mime);
+            var (url, bust, preview, err) = await Api.UploadAssetWithBustAsync(key, ms, file.Name, mime);
             if (url is null)
             {
-                _msg = "No se pudo subir la imagen.";
+                _msg = err ?? "No se pudo subir la imagen.";
                 return;
             }
 
             if (!string.IsNullOrWhiteSpace(bust))
-                _bust = bust;
-            else
-                _bust = DateTime.UtcNow.Ticks.ToString();
+                _bust = bust!;
 
-            _serverSrc[key] = AssetUrl(key);
-            _localSrc.Remove(key); // pasa a la URL real (R2 vía /api/content/asset)
-            _broken.Remove(key);
-            _msg = "Imagen subida. Vista previa desde R2/servidor.";
+            if (!string.IsNullOrWhiteSpace(preview))
+                _serverSrc[key] = preview!;
+            else
+                _serverSrc[key] = $"/api/content/asset/{Uri.EscapeDataString(key)}?v={Uri.EscapeDataString(_bust)}";
+
+            // Mantiene data URL local (siempre se ve en el panel).
+            _msg = "Imagen subida. Vista previa lista.";
         }
-        catch
+        catch (Exception ex)
         {
-            _msg = "Error al subir la imagen.";
+            _msg = "Error al subir: " + ex.Message;
         }
         finally { _uploading = null; }
     }

@@ -228,7 +228,11 @@ public sealed class SimberApi(HttpClient http)
     public Task DeleteContentAsync(string key)
         => http.DeleteAsync($"api/content/{Uri.EscapeDataString(key)}");
 
-    public async Task<(string? Url, string? Bust)> UploadAssetWithBustAsync(string key, Stream data, string fileName, string contentType)
+    public async Task<Dictionary<string, string>> GetContentAssetsAsync()
+        => await http.GetFromJsonAsync<Dictionary<string, string>>("api/content/assets") ?? new();
+
+    public async Task<(string? Url, string? Bust, string? PreviewUrl, string? Error)> UploadAssetWithBustAsync(
+        string key, Stream data, string fileName, string contentType)
     {
         using var content = new MultipartFormDataContent();
         var sc = new StreamContent(data);
@@ -236,27 +240,32 @@ public sealed class SimberApi(HttpClient http)
             string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
         content.Add(sc, "file", fileName);
         var resp = await http.PostAsync($"api/content/asset/{Uri.EscapeDataString(key)}", content);
+        var body = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
         {
-            return (null, null);
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            return (null, null, null, string.IsNullOrWhiteSpace(msg) ? "No se pudo subir la imagen." : msg);
         }
 
         try
         {
-            var doc = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            var doc = System.Text.Json.JsonDocument.Parse(body).RootElement;
             var url = doc.TryGetProperty("url", out var u) ? u.GetString() : $"/api/content/asset/{key}";
             var bust = doc.TryGetProperty("bust", out var b) ? b.GetString() : null;
-            return (url, bust);
+            var preview = doc.TryGetProperty("previewUrl", out var p) ? p.GetString() : null;
+            return (url, bust, preview, null);
         }
         catch
         {
-            return ($"/api/content/asset/{key}", null);
+            return ($"/api/content/asset/{key}", null, null, null);
         }
     }
 
     public async Task<string?> UploadAssetAsync(string key, Stream data, string fileName, string contentType)
     {
-        var (url, _) = await UploadAssetWithBustAsync(key, data, fileName, contentType);
+        var (url, _, _, _) = await UploadAssetWithBustAsync(key, data, fileName, contentType);
         return url;
     }
 

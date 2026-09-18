@@ -54,6 +54,20 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
         return NoContent();
     }
 
+    [HttpGet("assets")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<Dictionary<string, string>>> ListAssets(CancellationToken ct)
+    {
+        var rows = await db.SiteAssets.AsNoTracking().ToListAsync(ct);
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var a in rows)
+        {
+            map[a.Key] = await ResolvePreviewUrlAsync(a, ct);
+        }
+
+        return Ok(map);
+    }
+
     [HttpGet("asset/{key}")]
     [AllowAnonymous]
     public async Task<IActionResult> Asset(string key, CancellationToken ct)
@@ -155,7 +169,10 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
         }
 
         await db.SaveChangesAsync(ct);
-        return Ok(new { url = $"/api/content/asset/{safeKey}", bust = bustVal });
+        var preview = await ResolvePreviewUrlAsync(
+            new SiteAsset { Key = safeKey, ContentType = contentType, Data = bytes, R2Key = r2Key },
+            ct);
+        return Ok(new { url = $"/api/content/asset/{safeKey}", bust = bustVal, previewUrl = preview });
     }
 
     [HttpDelete("asset/{key}")]
@@ -175,5 +192,21 @@ public sealed class ContentController(AppDbContext db, ICloudflareR2Service r2) 
         }
 
         return NoContent();
+    }
+
+    private async Task<string> ResolvePreviewUrlAsync(SiteAsset a, CancellationToken ct)
+    {
+        if (r2.IsEnabled && !string.IsNullOrWhiteSpace(a.R2Key))
+        {
+            var pub = r2.TryBuildPublicUrl(a.R2Key);
+            if (!string.IsNullOrWhiteSpace(pub))
+            {
+                return pub;
+            }
+
+            return await r2.GetPresignedDownloadUrlAsync(a.R2Key, ct, lifetime: r2.PreviewUrlLifetime);
+        }
+
+        return $"/api/content/asset/{Uri.EscapeDataString(a.Key)}";
     }
 }
