@@ -228,14 +228,36 @@ public sealed class SimberApi(HttpClient http)
     public Task DeleteContentAsync(string key)
         => http.DeleteAsync($"api/content/{Uri.EscapeDataString(key)}");
 
-    public async Task<string?> UploadAssetAsync(string key, Stream data, string fileName, string contentType)
+    public async Task<(string? Url, string? Bust)> UploadAssetWithBustAsync(string key, Stream data, string fileName, string contentType)
     {
         using var content = new MultipartFormDataContent();
         var sc = new StreamContent(data);
-        sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        sc.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+            string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
         content.Add(sc, "file", fileName);
         var resp = await http.PostAsync($"api/content/asset/{Uri.EscapeDataString(key)}", content);
-        return resp.IsSuccessStatusCode ? $"/api/content/asset/{key}" : null;
+        if (!resp.IsSuccessStatusCode)
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            var doc = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            var url = doc.TryGetProperty("url", out var u) ? u.GetString() : $"/api/content/asset/{key}";
+            var bust = doc.TryGetProperty("bust", out var b) ? b.GetString() : null;
+            return (url, bust);
+        }
+        catch
+        {
+            return ($"/api/content/asset/{key}", null);
+        }
+    }
+
+    public async Task<string?> UploadAssetAsync(string key, Stream data, string fileName, string contentType)
+    {
+        var (url, _) = await UploadAssetWithBustAsync(key, data, fileName, contentType);
+        return url;
     }
 
     public Task<List<DesignDto>?> GetDesignsAsync(string? category = null, string? q = null)

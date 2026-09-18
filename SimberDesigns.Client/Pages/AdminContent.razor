@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize(Roles = "Admin")]
 @inject SimberApi Api
+@inject NavigationManager Nav
 
 <PageTitle>Contenido de la web · Simber Admin</PageTitle>
 
@@ -12,7 +13,7 @@
             <p class="mt-1 text-sm text-slate-400">Textos e imágenes de Inicio, Catálogo, Programas y Encárganos.</p>
             <p class="mt-2 max-w-2xl text-xs text-emerald-400/90">
                 En Canva: tamaño personalizado con los px de cada foto → PNG o JPG → subir aquí.
-                El asunto importante va al centro (se recorta con object-cover).
+                El asunto importante va al centro (se recorta con object-cover). Vista previa aquí (R2 o local); no hace falta ir a la web pública.
             </p>
         </div>
         <button @onclick="GuardarTextos" disabled="@_saving"
@@ -154,10 +155,13 @@
 @code {
     private string _tab = "home";
     private readonly Dictionary<string, string> _texts = new();
+    private readonly Dictionary<string, string> _localSrc = new();
+    private readonly Dictionary<string, string> _serverSrc = new();
+    private readonly HashSet<string> _broken = new();
     private bool _saving;
     private string? _uploading;
     private string _msg = "";
-    private long _bust = DateTime.UtcNow.Ticks;
+    private string _bust = DateTime.UtcNow.Ticks.ToString();
 
     private sealed record Tab(string Id, string Label);
     private sealed record TextField(string Section, string Key, string Label, bool Multiline);
@@ -263,11 +267,7 @@
     private RenderFragment ImageBlock(string assetKey, string label, SizeHint size) => __builder =>
     {
         <div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-            <div class="relative h-40 bg-gradient-to-br from-slate-800 to-slate-950">
-                <img src="@($"/api/content/asset/{assetKey}?v={_bust}")" alt="@label" onerror="this.style.display='none'"
-                     class="absolute inset-0 h-full w-full object-cover" />
-                <span class="absolute bottom-1 left-2 rounded bg-slate-950/70 px-1.5 text-[11px] text-slate-300">@label</span>
-            </div>
+            @PreviewBox(assetKey, label)
             <div class="space-y-2 p-3">
                 <div class="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2">
                     <p class="text-sm font-bold text-emerald-300">Canva: @size.Px</p>
@@ -285,11 +285,7 @@
     {
         var size = SizeGuide(assetKey);
         <div class="overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-            <div class="relative h-40 bg-gradient-to-br from-slate-800 to-slate-950">
-                <img src="@($"/api/content/asset/{assetKey}?v={_bust}")" alt="@label" onerror="this.style.display='none'"
-                     class="absolute inset-0 h-full w-full object-cover" />
-                <span class="absolute bottom-1 left-2 rounded bg-slate-950/70 px-1.5 text-[11px] text-slate-300">@label</span>
-            </div>
+            @PreviewBox(assetKey, label)
             <div class="space-y-2 p-3">
                 <div class="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-2">
                     <p class="text-sm font-bold text-emerald-300">Canva: @size.Px</p>
@@ -299,6 +295,27 @@
                 @if (_uploading == assetKey) { <span class="text-xs text-emerald-400">subiendo…</span> }
                 @Field(textKey, "Texto debajo de esta imagen", false)
             </div>
+        </div>
+    };
+
+    private RenderFragment PreviewBox(string assetKey, string label) => __builder =>
+    {
+        var src = PreviewSrc(assetKey);
+        var broken = _broken.Contains(assetKey);
+        <div class="relative h-40 bg-gradient-to-br from-slate-800 to-slate-950">
+            @if (!string.IsNullOrWhiteSpace(src) && !broken)
+            {
+                <img @key="src" src="@src" alt="@label"
+                     class="absolute inset-0 h-full w-full object-cover"
+                     @onerror="() => OnPreviewError(assetKey)" />
+            }
+            else
+            {
+                <div class="absolute inset-0 flex items-center justify-center px-3 text-center text-xs text-slate-500">
+                    @(broken ? "No se pudo cargar la vista previa" : "Sin imagen aún")
+                </div>
+            }
+            <span class="absolute bottom-1 left-2 rounded bg-slate-950/70 px-1.5 text-[11px] text-slate-300">@label</span>
         </div>
     };
 
@@ -313,8 +330,36 @@
                 if (c.TryGetValue(f.Key, out var v) && !string.IsNullOrWhiteSpace(v))
                     _texts[f.Key] = v;
             }
+
+            if (c.TryGetValue("cms.bust", out var bust) && !string.IsNullOrWhiteSpace(bust))
+                _bust = bust;
         }
         catch { }
+
+        foreach (var img in ImageFields)
+            _serverSrc[img.Key] = AssetUrl(img.Key);
+    }
+
+    private string AssetUrl(string key)
+        => $"{Nav.BaseUri.TrimEnd('/')}/api/content/asset/{Uri.EscapeDataString(key)}?v={Uri.EscapeDataString(_bust)}";
+
+    private string? PreviewSrc(string key)
+    {
+        if (_localSrc.TryGetValue(key, out var local) && !string.IsNullOrWhiteSpace(local))
+            return local;
+        if (_serverSrc.TryGetValue(key, out var server) && !string.IsNullOrWhiteSpace(server))
+            return server;
+        return AssetUrl(key);
+    }
+
+    private void OnPreviewError(string key)
+    {
+        // Si falló la URL de R2/servidor y no hay blob local, muestra placeholder (sin display:none eterno).
+        if (!_localSrc.ContainsKey(key))
+        {
+            _broken.Add(key);
+            StateHasChanged();
+        }
     }
 
     private static readonly Dictionary<string, string> Defaults = new()
@@ -369,11 +414,38 @@
         try
         {
             await using var stream = file.OpenReadStream(15_000_000);
-            var url = await Api.UploadAssetAsync(key, stream, file.Name, file.ContentType);
-            _bust = DateTime.UtcNow.Ticks;
-            _msg = url is null ? "No se pudo subir la imagen." : "Imagen subida.";
+            await using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            // Vista previa inmediata (gratis, sin R2): data URL del archivo elegido.
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
+            _localSrc[key] = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+            _broken.Remove(key);
+            StateHasChanged();
+
+            ms.Position = 0;
+            var (url, bust) = await Api.UploadAssetWithBustAsync(key, ms, file.Name, mime);
+            if (url is null)
+            {
+                _msg = "No se pudo subir la imagen.";
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(bust))
+                _bust = bust;
+            else
+                _bust = DateTime.UtcNow.Ticks.ToString();
+
+            _serverSrc[key] = AssetUrl(key);
+            _localSrc.Remove(key); // pasa a la URL real (R2 vía /api/content/asset)
+            _broken.Remove(key);
+            _msg = "Imagen subida. Vista previa desde R2/servidor.";
         }
-        catch { _msg = "Error al subir la imagen."; }
+        catch
+        {
+            _msg = "Error al subir la imagen.";
+        }
         finally { _uploading = null; }
     }
 }
