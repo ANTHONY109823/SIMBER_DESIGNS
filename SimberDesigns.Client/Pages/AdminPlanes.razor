@@ -1,0 +1,130 @@
+@page "/admin/planes"
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject SimberApi Api
+
+<PageTitle>Planes y precios · Admin</PageTitle>
+
+<div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <p class="text-xs uppercase tracking-[0.28em] text-amber-400">Admin</p>
+    <h1 class="mt-2 font-serif text-4xl text-white">Planes y precios</h1>
+    <p class="mt-2 text-sm text-slate-300">Edita el precio mensual y los descuentos. Se aplica al instante en la web pública, en Mi cuenta y en el cobro.</p>
+
+    <div class="mt-8 grid gap-5 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:grid-cols-2">
+        <label class="block text-sm">
+            <span class="text-slate-300">Precio mensual (USD)</span>
+            <input type="number" step="0.01" min="1" @bind="MonthUsd" @bind:event="oninput"
+                   class="mt-2 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 text-white outline-none focus:border-amber-400/60" />
+        </label>
+        <label class="block text-sm">
+            <span class="text-slate-300">Tipo de cambio (USD → S/)</span>
+            <input type="number" step="0.01" min="1" @bind="UsdToPen" @bind:event="oninput"
+                   class="mt-2 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 text-white outline-none focus:border-amber-400/60" />
+        </label>
+        <label class="block text-sm">
+            <span class="text-slate-300">Descuento 3 meses (%)</span>
+            <input type="number" step="1" min="0" max="90" @bind="Discount3" @bind:event="oninput"
+                   class="mt-2 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 text-white outline-none focus:border-amber-400/60" />
+        </label>
+        <label class="block text-sm">
+            <span class="text-slate-300">Descuento 6 meses (%)</span>
+            <input type="number" step="1" min="0" max="90" @bind="Discount6" @bind:event="oninput"
+                   class="mt-2 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 text-white outline-none focus:border-amber-400/60" />
+        </label>
+    </div>
+
+    <h2 class="mt-8 font-serif text-2xl text-white">Vista previa</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+        @foreach (var (months, label) in Periodos)
+        {
+            var disc = DiscFor(months);
+            var usd = RoundUp(MonthUsd * months * (100 - disc) / 100m);
+            var pen = RoundUp(MonthPen * months * (100 - disc) / 100m);
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center">
+                <p class="text-xs text-slate-400">@label</p>
+                <p class="mt-1 font-serif text-3xl text-amber-300">$@usd.ToString("0.##")</p>
+                <p class="text-xs text-slate-400">S/ @pen.ToString("0.00")</p>
+                @if (disc > 0)
+                {
+                    <p class="mt-1 text-xs font-semibold text-emerald-400">−@disc% · $@((usd / months).ToString("0.##"))/mes</p>
+                }
+            </div>
+        }
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Mes en soles: S/ @MonthPen.ToString("0.00") (redondeado). Los días de cada plan no cambian: 30 / 90 / 180.</p>
+
+    <div class="mt-6 flex items-center gap-3">
+        <button type="button" disabled="@Saving" @onclick="Save"
+                class="rounded-full bg-amber-400 px-7 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-300 disabled:opacity-60">
+            @(Saving ? "Guardando..." : "Guardar precios")
+        </button>
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <span class="text-sm @(Ok ? "text-emerald-400" : "text-rose-400")">@Message</span>
+        }
+    </div>
+</div>
+
+@code {
+    private decimal MonthUsd = 12m;
+    private decimal UsdToPen = 3.75m;
+    private int Discount3 = 10;
+    private int Discount6 = 20;
+    private bool Saving;
+    private bool Ok;
+    private string? Message;
+
+    private static readonly (int Months, string Label)[] Periodos =
+        [(1, "1 mes"), (3, "3 meses"), (6, "6 meses")];
+
+    private decimal MonthPen => RoundUp0(MonthUsd * UsdToPen);
+    private int DiscFor(int months) => months switch { 3 => Discount3, 6 => Discount6, _ => 0 };
+    private static decimal RoundUp(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
+    private static decimal RoundUp0(decimal v) => Math.Round(v, 0, MidpointRounding.AwayFromZero);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var c = await Api.GetContentAsync();
+            MonthUsd = Dec(c, "plan.month_usd", 12m);
+            UsdToPen = Dec(c, "plan.usd_to_pen", 3.75m);
+            Discount3 = Int(c, "plan.discount3", 10);
+            Discount6 = Int(c, "plan.discount6", 20);
+        }
+        catch { }
+    }
+
+    private async Task Save()
+    {
+        Message = null;
+        Saving = true;
+        try
+        {
+            var items = new Dictionary<string, string>
+            {
+                ["plan.month_usd"] = MonthUsd.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["plan.usd_to_pen"] = UsdToPen.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["plan.discount3"] = Math.Clamp(Discount3, 0, 90).ToString(),
+                ["plan.discount6"] = Math.Clamp(Discount6, 0, 90).ToString()
+            };
+            await Api.SaveContentAsync(items);
+            Ok = true;
+            Message = "Precios guardados. Ya se ven en la web.";
+        }
+        catch (Exception ex)
+        {
+            Ok = false;
+            Message = ex.Message;
+        }
+        finally { Saving = false; }
+    }
+
+    private static decimal Dec(Dictionary<string, string> c, string key, decimal fallback)
+        => c.TryGetValue(key, out var v)
+           && decimal.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)
+           && d > 0 ? d : fallback;
+
+    private static int Int(Dictionary<string, string> c, string key, int fallback)
+        => c.TryGetValue(key, out var v) && int.TryParse(v, out var d) ? Math.Clamp(d, 0, 90) : fallback;
+}

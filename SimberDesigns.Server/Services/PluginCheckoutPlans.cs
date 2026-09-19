@@ -9,30 +9,23 @@ public static class PluginCheckoutPlans
 {
     private static readonly int[] AllowedMonths = [1, 3, 6];
 
-    /// <summary>Descuento por cantidad de meses: 0 %, 10 % (3m), 20 % (6m).</summary>
-    public static int DiscountPercentFor(int months) => months switch
-    {
-        3 => 10,
-        6 => 20,
-        _ => 0
-    };
+    private static decimal ConDescuento(decimal precioSinDescuento, int discountPercent)
+        => Math.Round(precioSinDescuento * (100 - discountPercent) / 100m, 2, MidpointRounding.AwayFromZero);
 
-    private static decimal ConDescuento(decimal precioSinDescuento, int months)
-        => Math.Round(precioSinDescuento * (100 - DiscountPercentFor(months)) / 100m, 2, MidpointRounding.AwayFromZero);
-
-    public static IReadOnlyList<PluginPlanOptionDto> Build(decimal monthPricePen, decimal monthPriceUsd)
+    public static IReadOnlyList<PluginPlanOptionDto> Build(PlanPricing pricing)
         => AllowedMonths.Select(m =>
         {
             var days = DaysForMonths(m);
-            var pen = ConDescuento(monthPricePen * m, m);
-            var usd = ConDescuento(monthPriceUsd * m, m);
-            return new PluginPlanOptionDto(m, days, pen, LabelFor(m, days), usd, DiscountPercentFor(m));
+            var disc = pricing.DiscountFor(m);
+            var pen = ConDescuento(pricing.MonthPen * m, disc);
+            var usd = ConDescuento(pricing.MonthUsd * m, disc);
+            return new PluginPlanOptionDto(m, days, pen, LabelFor(m, days), usd, disc);
         }).ToList();
 
     public static bool TryResolve(
         string kind,
         int? monthsRequest,
-        decimal monthPricePen,
+        PlanPricing pricing,
         out string edition,
         out int days,
         out int months,
@@ -52,10 +45,10 @@ public static class PluginCheckoutPlans
 
         months = monthsRequest is int req && AllowedMonths.Contains(req) ? req : kindMonths;
         days = DaysForMonths(months);
-        amount = ConDescuento(monthPricePen * months, months);
+        var disc = pricing.DiscountFor(months);
+        amount = ConDescuento(pricing.MonthPen * months, disc);
         // La compra puede ser genérica (edición vacía): el programa se elige al canjear.
         var prog = string.IsNullOrWhiteSpace(edition) ? "Simber Designs" : LicenseProgram.Etiqueta(edition);
-        var disc = DiscountPercentFor(months);
         var descTxt = disc > 0 ? $" (−{disc}%)" : "";
         title = months == 1
             ? $"Activación {days} días · {prog}"

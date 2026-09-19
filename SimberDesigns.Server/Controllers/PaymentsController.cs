@@ -19,6 +19,7 @@ public sealed class PaymentsController(
     IMercadoPagoService mercadoPago,
     IPaymentFulfillmentService fulfillment,
     IOptions<MercadoPagoOptions> mercadoPagoOptions,
+    IPlanPricingService planPricing,
     PluginInstallerStorage installers) : ControllerBase
 {
     [HttpGet("storefront")]
@@ -31,11 +32,11 @@ public sealed class PaymentsController(
             .OrderBy(p => p.PriceUsd)
             .Select(p => new CreditPackageDto(p.Id, p.Name, p.CreditsAmount, p.BonusAmount, p.PriceUsd))
             .ToListAsync(cancellationToken);
-        var monthPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
-        var plans = PluginCheckoutPlans.Build(monthPen, mercadoPagoOptions.Value.PluginMonthPriceUsd);
+        var pricing = await planPricing.GetAsync(cancellationToken);
+        var plans = PluginCheckoutPlans.Build(pricing);
         return Ok(new StorefrontDto(
             items,
-            monthPen,
+            pricing.MonthPen,
             "Activación por periodo · desde US$12/mes por programa",
             await installers.ExistsAsync(LicenseProgram.Corel, cancellationToken),
             await installers.ExistsAsync(LicenseProgram.Illustrator, cancellationToken),
@@ -365,9 +366,9 @@ public sealed class PaymentsController(
         CancellationToken cancellationToken)
     {
         var kind = (rawKind ?? "").Trim().ToLowerInvariant();
-        var pluginPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
+        var pricing = await planPricing.GetAsync(cancellationToken);
 
-        if (PluginCheckoutPlans.TryResolve(kind, months, pluginPen, out var edition, out var days, out _, out var amount, out var title))
+        if (PluginCheckoutPlans.TryResolve(kind, months, pricing, out var edition, out var days, out _, out var amount, out var title))
         {
             return ChargeResolution.Success(amount, title, $"plugin:{days}:{edition}", null);
         }
