@@ -1,0 +1,171 @@
+@implements IDisposable
+@inject SimberApi Api
+@inject IJSRuntime JS
+
+@* Formulario de tarjeta embebido (Mercado Pago Bricks). Se usa en Programas y en Recargar.
+   La tarjeta se tokeniza en el navegador; al servidor solo llega el token. *@
+@if (_show)
+{
+    <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" @onclick="Close">
+        <div class="mt-10 w-full max-w-md rounded-3xl border border-white/10 bg-ink p-6 shadow-2xl" @onclick:stopPropagation="true">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wider text-gold">Pago seguro con tarjeta</p>
+                    <h3 class="mt-1 font-serif text-xl text-white">@_label</h3>
+                    <p class="mt-1 text-2xl font-bold text-emerald-300">S/ @_amount.ToString("0.00")</p>
+                </div>
+                <button type="button" @onclick="Close" class="rounded-full p-2 text-cream/60 hover:bg-white/10 hover:text-white">✕</button>
+            </div>
+
+            @if (_status == "approved")
+            {
+                <div class="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                    <p class="text-lg font-semibold text-emerald-300">¡Pago aprobado!</p>
+                    <p class="mt-2 text-sm text-cream/80">@_msg</p>
+                    <a href="/cuenta" class="mt-4 inline-flex rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">Ir a Mi cuenta</a>
+                </div>
+            }
+            else if (_status == "pending")
+            {
+                <div class="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-center">
+                    <p class="text-lg font-semibold text-amber-300">Pago en revisión</p>
+                    <p class="mt-2 text-sm text-cream/80">@_msg</p>
+                    <button type="button" @onclick="Close" class="mt-4 inline-flex rounded-full border border-white/15 px-6 py-2.5 text-sm text-white hover:bg-white/10">Cerrar</button>
+                </div>
+            }
+            else
+            {
+                <div id="mp-brick" class="mt-5"></div>
+                @if (!string.IsNullOrWhiteSpace(_msg))
+                {
+                    <p class="mt-3 text-center text-sm text-rose-400">@_msg</p>
+                }
+                <p class="mt-3 text-center text-[11px] text-cream/50">Tus datos de tarjeta los procesa Mercado Pago de forma segura. No los guardamos.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private DotNetObjectReference<CardPayModal>? _selfRef;
+    private string _publicKey = "";
+    public bool CardEnabled { get; private set; }
+
+    private bool _show;
+    private bool _rendered;
+    private string _kind = "";
+    private int? _months;
+    private Guid? _packageId;
+    private decimal _amount;
+    private string _label = "";
+    private string _status = "";
+    private string? _msg;
+
+    /// <summary>Callback opcional que la página puede escuchar cuando el pago se aprueba (p. ej. refrescar saldo).</summary>
+    [Parameter] public EventCallback OnApproved { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selfRef = DotNetObjectReference.Create(this);
+        try
+        {
+            var cfg = await Api.GetPaymentConfigAsync();
+            _publicKey = cfg?.PublicKey ?? "";
+            CardEnabled = cfg?.CardEnabled == true && !string.IsNullOrWhiteSpace(_publicKey);
+        }
+        catch { CardEnabled = false; }
+    }
+
+    public void Open(string kind, int? months, Guid? packageId, decimal amount, string label)
+    {
+        _kind = kind;
+        _months = months;
+        _packageId = packageId;
+        _amount = amount;
+        _label = label;
+        _status = "";
+        _msg = null;
+        _rendered = false;
+        _show = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_show && !_rendered && _status == "")
+        {
+            _rendered = true;
+            try
+            {
+                await JS.InvokeVoidAsync("simberMp.render", _publicKey, (double)_amount, "mp-brick", _selfRef);
+            }
+            catch (Exception ex)
+            {
+                _msg = ex.Message;
+                _status = "error";
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task Close()
+    {
+        _show = false;
+        _rendered = false;
+        _status = "";
+        _msg = null;
+        try { await JS.InvokeVoidAsync("simberMp.destroy"); } catch { }
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task<string> OnBrickSubmit(string formDataJson)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(formDataJson);
+            var root = doc.RootElement;
+            var token = root.TryGetProperty("token", out var t) ? t.GetString() ?? "" : "";
+            var pmId = root.TryGetProperty("payment_method_id", out var pm) ? pm.GetString() ?? "" : "";
+            string? issuer = root.TryGetProperty("issuer_id", out var iss) && iss.ValueKind is not System.Text.Json.JsonValueKind.Null
+                ? iss.ToString()
+                : null;
+            var installments = root.TryGetProperty("installments", out var ins) && ins.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? ins.GetInt32()
+                : 1;
+            string? email = null;
+            if (root.TryGetProperty("payer", out var payer)
+                && payer.ValueKind == System.Text.Json.JsonValueKind.Object
+                && payer.TryGetProperty("email", out var em))
+            {
+                email = em.GetString();
+            }
+
+            var res = await Api.PayWithCardAsync(_kind, _months, _packageId, token, pmId, issuer, installments, email);
+            _status = res.Status;
+            _msg = res.Message;
+            StateHasChanged();
+            if (res.Status == "approved" && OnApproved.HasDelegate)
+            {
+                await OnApproved.InvokeAsync();
+            }
+            return System.Text.Json.JsonSerializer.Serialize(new { status = res.Status });
+        }
+        catch (Exception ex)
+        {
+            _status = "error";
+            _msg = ex.Message;
+            StateHasChanged();
+            return System.Text.Json.JsonSerializer.Serialize(new { status = "error" });
+        }
+    }
+
+    [JSInvokable]
+    public void OnBrickError(string message)
+    {
+        _msg = message;
+        StateHasChanged();
+    }
+
+    public void Dispose() => _selfRef?.Dispose();
+}

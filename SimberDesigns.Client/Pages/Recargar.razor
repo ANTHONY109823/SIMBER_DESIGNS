@@ -41,11 +41,14 @@
     }
 </div>
 
+<CardPayModal @ref="_payModal" OnApproved="RefreshCredits" />
+
 @code {
     private decimal Credits;
     private List<CreditPackageDto> Packages = [];
     private bool Busy;
     private string? Error;
+    private CardPayModal? _payModal;
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,9 +60,26 @@
         Packages = store?.Packages ?? [];
     }
 
+    private async Task RefreshCredits()
+    {
+        var dash = await Api.GetDashboardAsync();
+        if (dash is not null)
+            Credits = dash.CreditsBalance;
+        StateHasChanged();
+    }
+
     private async Task Pay(CreditPackageDto pack)
     {
         Error = null;
+
+        // Tarjeta en la misma web si está disponible; si no, checkout redirigido de siempre.
+        if (_payModal is { CardEnabled: true })
+        {
+            var creditos = pack.CreditsAmount + pack.BonusAmount;
+            _payModal.Open("credits", null, pack.Id, pack.PriceUsd, $"Créditos Simber · {creditos:0}");
+            return;
+        }
+
         Busy = true;
         try
         {
