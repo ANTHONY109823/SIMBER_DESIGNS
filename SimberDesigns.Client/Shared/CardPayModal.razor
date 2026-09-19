@@ -2,15 +2,15 @@
 @inject SimberApi Api
 @inject IJSRuntime JS
 
-@* Formulario de tarjeta embebido (Mercado Pago Bricks). Se usa en Programas y en Recargar.
-   La tarjeta se tokeniza en el navegador; al servidor solo llega el token. *@
+@* Pago en la misma web (Mercado Pago). Tarjeta con Brick (tokeniza en el navegador) o
+   Yape con celular + código OTP. Los datos sensibles nunca pasan por nuestro servidor. *@
 @if (_show)
 {
     <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" @onclick="Close">
         <div class="mt-10 w-full max-w-md rounded-3xl border border-white/10 bg-ink p-6 shadow-2xl" @onclick:stopPropagation="true">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p class="text-xs uppercase tracking-wider text-gold">Pago seguro con tarjeta</p>
+                    <p class="text-xs uppercase tracking-wider text-gold">Pago seguro</p>
                     <h3 class="mt-1 font-serif text-xl text-white">@_label</h3>
                     <p class="mt-1 text-2xl font-bold text-emerald-300">S/ @_amount.ToString("0.00")</p>
                 </div>
@@ -35,12 +35,43 @@
             }
             else
             {
-                <div id="mp-brick" class="mt-5"></div>
+                <div class="mt-5 grid grid-cols-2 gap-2">
+                    <button type="button" @onclick='() => SetMethod("tarjeta")' class="@MethodClass("tarjeta")">💳 Tarjeta</button>
+                    <button type="button" @onclick='() => SetMethod("yape")' class="@MethodClass("yape")">📱 Yape</button>
+                </div>
+
+                @if (_method == "tarjeta")
+                {
+                    <div id="mp-brick" class="mt-4"></div>
+                }
+                else
+                {
+                    <div class="mt-4 space-y-3">
+                        <div class="rounded-2xl border border-fuchsia-500/25 bg-fuchsia-500/5 px-4 py-3 text-xs text-cream/75">
+                            Abre tu app <span class="font-semibold text-fuchsia-300">Yape</span> → menú <span class="font-semibold">“Yape en Web” / “Aprobar compras por internet”</span> y copia el <span class="font-semibold">código de aprobación de 6 dígitos</span>.
+                        </div>
+                        <label class="block text-sm">
+                            <span class="text-cream/70">Celular Yape</span>
+                            <input @bind="_yapePhone" inputmode="numeric" maxlength="9" placeholder="9XXXXXXXX"
+                                   class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 text-white outline-none focus:border-fuchsia-400/60" />
+                        </label>
+                        <label class="block text-sm">
+                            <span class="text-cream/70">Código de aprobación (6 dígitos)</span>
+                            <input @bind="_yapeOtp" inputmode="numeric" maxlength="6" placeholder="123456"
+                                   class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2.5 font-mono tracking-widest text-white outline-none focus:border-fuchsia-400/60" />
+                        </label>
+                        <button type="button" disabled="@_yapeBusy" @onclick="PayYape"
+                                class="w-full rounded-xl bg-fuchsia-500 py-3 text-sm font-semibold text-white hover:bg-fuchsia-400 disabled:opacity-60">
+                            @(_yapeBusy ? "Procesando…" : $"Pagar S/ {_amount:0.00} con Yape")
+                        </button>
+                    </div>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(_msg))
                 {
                     <p class="mt-3 text-center text-sm text-rose-400">@_msg</p>
                 }
-                <p class="mt-3 text-center text-[11px] text-cream/50">Tus datos de tarjeta los procesa Mercado Pago de forma segura. No los guardamos.</p>
+                <p class="mt-3 text-center text-[11px] text-cream/50">Tus datos los procesa Mercado Pago de forma segura. No los guardamos.</p>
             }
         </div>
     </div>
@@ -53,6 +84,7 @@
 
     private bool _show;
     private bool _rendered;
+    private string _method = "tarjeta";
     private string _kind = "";
     private int? _months;
     private Guid? _packageId;
@@ -61,7 +93,11 @@
     private string _status = "";
     private string? _msg;
 
-    /// <summary>Callback opcional que la página puede escuchar cuando el pago se aprueba (p. ej. refrescar saldo).</summary>
+    private string _yapePhone = "";
+    private string _yapeOtp = "";
+    private bool _yapeBusy;
+
+    /// <summary>Callback opcional que la página escucha cuando el pago se aprueba (p. ej. refrescar saldo).</summary>
     [Parameter] public EventCallback OnApproved { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -85,14 +121,28 @@
         _label = label;
         _status = "";
         _msg = null;
+        _method = "tarjeta";
+        _yapePhone = "";
+        _yapeOtp = "";
         _rendered = false;
         _show = true;
         StateHasChanged();
     }
 
+    private async Task SetMethod(string m)
+    {
+        if (_method == m) return;
+        _method = m;
+        _msg = null;
+        _rendered = false;
+        // Al salir de tarjeta desmontamos el Brick; al volver, OnAfterRender lo re-crea.
+        try { await JS.InvokeVoidAsync("simberMp.destroy"); } catch { }
+        StateHasChanged();
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_show && !_rendered && _status == "")
+        if (_show && _method == "tarjeta" && !_rendered && _status == "")
         {
             _rendered = true;
             try
@@ -102,7 +152,6 @@
             catch (Exception ex)
             {
                 _msg = ex.Message;
-                _status = "error";
                 StateHasChanged();
             }
         }
@@ -118,6 +167,7 @@
         StateHasChanged();
     }
 
+    // ——— Tarjeta (Brick) ———
     [JSInvokable]
     public async Task<string> OnBrickSubmit(string formDataJson)
     {
@@ -141,15 +191,7 @@
                 email = em.GetString();
             }
 
-            var res = await Api.PayWithCardAsync(_kind, _months, _packageId, token, pmId, issuer, installments, email);
-            _status = res.Status;
-            _msg = res.Message;
-            StateHasChanged();
-            if (res.Status == "approved" && OnApproved.HasDelegate)
-            {
-                await OnApproved.InvokeAsync();
-            }
-            return System.Text.Json.JsonSerializer.Serialize(new { status = res.Status });
+            return await CompletePayment(token, pmId, issuer, installments, email);
         }
         catch (Exception ex)
         {
@@ -166,6 +208,68 @@
         _msg = message;
         StateHasChanged();
     }
+
+    // ——— Yape ———
+    private async Task PayYape()
+    {
+        _msg = null;
+        var phone = (_yapePhone ?? "").Trim();
+        var otp = (_yapeOtp ?? "").Trim();
+        if (phone.Length < 9 || otp.Length < 6)
+        {
+            _msg = "Ingresa tu celular Yape (9 dígitos) y el código de aprobación (6 dígitos).";
+            StateHasChanged();
+            return;
+        }
+
+        _yapeBusy = true;
+        StateHasChanged();
+        try
+        {
+            var token = await JS.InvokeAsync<string>("simberMp.yape", _publicKey, phone, otp);
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                _msg = "No se pudo validar Yape. Revisa el celular y genera un código nuevo en la app.";
+                return;
+            }
+
+            await CompletePayment(token, "yape", null, 1, null);
+        }
+        catch (Exception ex)
+        {
+            _msg = CleanYapeError(ex.Message);
+        }
+        finally
+        {
+            _yapeBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string CleanYapeError(string raw)
+    {
+        if (raw.Contains("otp", StringComparison.OrdinalIgnoreCase))
+            return "El código de aprobación no es válido o venció. Genera uno nuevo en tu app Yape.";
+        return "No se pudo procesar Yape. Verifica el celular y el código, e inténtalo de nuevo.";
+    }
+
+    // Común a tarjeta y Yape: crea el pago en el servidor y actualiza el estado del modal.
+    private async Task<string> CompletePayment(string token, string paymentMethodId, string? issuerId, int installments, string? email)
+    {
+        var res = await Api.PayWithCardAsync(_kind, _months, _packageId, token, paymentMethodId, issuerId, installments, email);
+        _status = res.Status;
+        _msg = res.Message;
+        StateHasChanged();
+        if (res.Status == "approved" && OnApproved.HasDelegate)
+        {
+            await OnApproved.InvokeAsync();
+        }
+        return System.Text.Json.JsonSerializer.Serialize(new { status = res.Status });
+    }
+
+    private string MethodClass(string m) => _method == m
+        ? "rounded-xl border border-gold bg-gold/15 py-2.5 text-sm font-semibold text-white"
+        : "rounded-xl border border-white/10 bg-white/[0.02] py-2.5 text-sm text-cream/70 hover:bg-white/[0.06]";
 
     public void Dispose() => _selfRef?.Dispose();
 }

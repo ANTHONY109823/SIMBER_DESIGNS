@@ -54,5 +54,20 @@ window.simberMp = {
             }
         } catch (e) { }
         this._controller = null;
+    },
+
+    // Yape: genera el token con el celular y el código OTP (6 dígitos) de la app Yape.
+    // Devuelve el token (string) o lanza un error con mensaje legible.
+    async yape(publicKey, phoneNumber, otp) {
+        if (!window.MercadoPago) {
+            throw new Error("No se pudo cargar Mercado Pago. Revisa tu conexión.");
+        }
+        const mp = new MercadoPago(publicKey, { locale: "es-PE" });
+        const yape = mp.yape({ otp: otp, phoneNumber: phoneNumber });
+        const result = await yape.create();
+        if (result && typeof result === "object") {
+            return result.id || result.token || "";
+        }
+        return result || "";
     }
 };
