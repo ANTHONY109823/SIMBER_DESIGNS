@@ -221,11 +221,7 @@
                         }
                         else
                         {
-                            <button type="button" disabled="@Busy" @onclick="() => ActivateSerial(k0.Code)"
-                                    class="mt-2 w-full rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-50">
-                                Activar en mi cuenta
-                            </button>
-                            <p class="mt-2 text-center text-xs text-cream/60">Pega el serial dentro de @k0.Edition, o toca “Activar en mi cuenta” y luego abre el programa e inicia sesión.</p>
+                            <p class="mt-2 text-center text-xs text-cream/60">Abre @k0.Edition, inicia sesión y pega este serial cuando te lo pida.</p>
                         }
                     }
                 </div>
@@ -363,28 +359,6 @@
         {
             await Api.AssignSerialEditionAsync(code, program);
             PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];
-        }
-        catch (Exception ex)
-        {
-            RedeemOk = false;
-            RedeemMsg = CleanError(ex.Message);
-        }
-        finally { Busy = false; }
-    }
-
-    // Red de seguridad: activa el serial en la cuenta (crea la licencia). Luego el .exe, al iniciar
-    // sesión, la ata a esa PC. Sirve con cualquier versión del .exe si el cliente no puede pegar el serial.
-    private async Task ActivateSerial(string code)
-    {
-        RedeemMsg = null;
-        Busy = true;
-        try
-        {
-            await Api.RedeemPeriodKeyAsync(code);
-            Licenses = await Api.GetPluginLicensesAsync() ?? [];
-            PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];
-            RedeemOk = true;
-            RedeemMsg = "¡Listo! Abre el programa e inicia sesión con tu cuenta para activarlo en esta PC.";
         }
         catch (Exception ex)
         {
