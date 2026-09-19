@@ -36,9 +36,9 @@ public sealed class MercadoPagoOptions
     public string PublicKey { get; set; } = "";
     public string WebhookSecret { get; set; } = "";
     public string PublicBaseUrl { get; set; } = "";
-    /// <summary>Precio del mes del plugin en USD (US$15). Mercado Pago cobra en PEN al tipo de cambio.</summary>
-    public decimal PluginMonthPriceUsd { get; set; } = 15m;
-    /// <summary>Tipo de cambio USD → PEN. Ej. 3.75 ⇒ US$15 ≈ S/56.</summary>
+    /// <summary>Precio del mes del plugin en USD (US$12). Mercado Pago cobra en PEN al tipo de cambio.</summary>
+    public decimal PluginMonthPriceUsd { get; set; } = 12m;
+    /// <summary>Tipo de cambio USD → PEN. Ej. 3.75 ⇒ US$12 = S/45.</summary>
     public decimal UsdToPenRate { get; set; } = 3.75m;
     /// <summary>Override opcional del monto en PEN. Si es 0, se usa USD × tipo de cambio.</summary>
     public decimal PluginMonthPricePen { get; set; } = 0m;

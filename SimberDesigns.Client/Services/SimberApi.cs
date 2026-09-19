@@ -42,7 +42,7 @@ public sealed record StorefrontDto(
     bool HasIllustratorDownload = false,
     List<PluginPlanOptionDto>? PluginPlans = null);
 
-public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label);
+public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label, decimal PriceUsd = 0, int DiscountPercent = 0);
 
 public sealed record PluginLicenseDto(
     string Plan,

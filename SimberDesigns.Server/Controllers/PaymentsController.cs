@@ -32,11 +32,11 @@ public sealed class PaymentsController(
             .Select(p => new CreditPackageDto(p.Id, p.Name, p.CreditsAmount, p.BonusAmount, p.PriceUsd))
             .ToListAsync(cancellationToken);
         var monthPen = mercadoPagoOptions.Value.ResolvePluginMonthPricePen();
-        var plans = PluginCheckoutPlans.Build(monthPen);
+        var plans = PluginCheckoutPlans.Build(monthPen, mercadoPagoOptions.Value.PluginMonthPriceUsd);
         return Ok(new StorefrontDto(
             items,
             monthPen,
-            "Activación por periodo · US$15/mes por programa",
+            "Activación por periodo · desde US$12/mes por programa",
             await installers.ExistsAsync(LicenseProgram.Corel, cancellationToken),
             await installers.ExistsAsync(LicenseProgram.Illustrator, cancellationToken),
             plans));
