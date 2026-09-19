@@ -22,13 +22,6 @@
                 <InputText @bind-Value="Title" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" placeholder="Jersey local 2026" />
             </label>
             <label class="block text-sm">
-                <span class="text-cream/70">Deporte</span>
-                <InputSelect @bind-Value="Category" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60">
-                    <option value="Fútbol">Fútbol</option>
-                    <option value="Vóley">Vóley</option>
-                </InputSelect>
-            </label>
-            <label class="block text-sm">
                 <span class="text-cream/70">Precio (USD)</span>
                 <InputNumber @bind-Value="Price" class="mt-2 w-full rounded-2xl border border-white/10 bg-ink px-4 py-3 text-white outline-none focus:border-gold/60" />
             </label>
@@ -86,7 +79,14 @@
                     <div class="min-w-0 flex-1">
                         <p class="text-xs uppercase tracking-wider text-cyan">@design.Category</p>
                         <h3 class="truncate font-semibold text-white">@design.Title</h3>
-                        <p class="mt-1 font-serif text-xl text-gold">$@design.PriceUsd.ToString("0.00")</p>
+                        @if (design.IsFreeDaily)
+                        {
+                            <p class="mt-1 font-serif text-xl text-emerald-400">Gratis del día</p>
+                        }
+                        else
+                        {
+                            <p class="mt-1 font-serif text-xl text-gold">$@design.PriceUsd.ToString("0.00")</p>
+                        }
                         <p class="text-xs text-cream/45">CDR @(string.IsNullOrWhiteSpace(design.Description) ? "—" : design.Description)</p>
                         <button type="button" class="mt-3 text-xs text-rose-400 hover:text-rose-300" @onclick="() => Remove(design)">Quitar</button>
                     </div>
@@ -98,7 +98,7 @@
 
 @code {
     private string Title { get; set; } = "";
-    private string Category { get; set; } = "Fútbol";
+    private string Category { get; set; } = "Deportivos";
     private decimal Price { get; set; } = 2;
     private string CdrVersion { get; set; } = "";
     private bool IsFreeDaily { get; set; }
@@ -143,6 +143,34 @@
     {
         DownloadFile = e.File;
         FileName = e.File?.Name;
+        if (e.File is null) return;
+
+        // Autodetección: el nombre del diseño desde el nombre del archivo (si está vacío), y la versión
+        // CDR si el nombre trae una pista (X6/X7/X8… o un año 20XX). El usuario puede corregir.
+        var baseName = Path.GetFileNameWithoutExtension(e.File.Name);
+        if (string.IsNullOrWhiteSpace(Title) && !string.IsNullOrWhiteSpace(baseName))
+            Title = LimpiarNombre(baseName);
+
+        var ver = DetectarVersionCdr(e.File.Name);
+        if (!string.IsNullOrWhiteSpace(ver))
+            CdrVersion = ver;
+    }
+
+    private static string LimpiarNombre(string raw)
+    {
+        var s = raw.Replace('_', ' ').Replace('-', ' ').Trim();
+        while (s.Contains("  ")) s = s.Replace("  ", " ");
+        return s;
+    }
+
+    private static string DetectarVersionCdr(string fileName)
+    {
+        var upper = fileName.ToUpperInvariant();
+        var mx = System.Text.RegularExpressions.Regex.Match(upper, @"X\s?(1[0-9]|[3-9])");
+        if (mx.Success) return "X" + mx.Groups[1].Value;
+        var my = System.Text.RegularExpressions.Regex.Match(fileName, @"20(1[7-9]|2[0-6])");
+        if (my.Success) return my.Value;
+        return "";
     }
 
     private async Task Submit()

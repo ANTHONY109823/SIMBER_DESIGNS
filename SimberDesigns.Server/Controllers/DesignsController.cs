@@ -27,8 +27,10 @@ public sealed class DesignsController(
         [FromQuery] string? q,
         CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+
         var query = db.Designs.AsNoTracking()
-            .Where(d => d.Category == "Fútbol" || d.Category == "Vóley" || d.Category == "Jersey" || d.Category == "Voleibol");
+            .Where(d => d.Category == "Deportivos" || d.Category == "Fútbol" || d.Category == "Vóley" || d.Category == "Jersey" || d.Category == "Voleibol");
         if (!string.IsNullOrWhiteSpace(category) && !string.Equals(category, "Todos", StringComparison.OrdinalIgnoreCase))
         {
             query = query.Where(d => d.Category == category);
