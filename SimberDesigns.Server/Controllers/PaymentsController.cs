@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SimberDesigns.Licensing;
@@ -42,6 +43,7 @@ public sealed class PaymentsController(
     }
 
     [Authorize(Roles = Roles.Customer)]
+    [EnableRateLimiting("sensitive")]
     [HttpPost("checkout")]
     public async Task<ActionResult<CheckoutResponse>> Checkout(CheckoutRequest request, CancellationToken cancellationToken)
     {
@@ -136,6 +138,7 @@ public sealed class PaymentsController(
     }
 
     [Authorize(Roles = Roles.Customer)]
+    [EnableRateLimiting("sensitive")]
     [HttpPost("confirm")]
     public async Task<IActionResult> Confirm(ConfirmPaymentRequest request, CancellationToken cancellationToken)
     {
@@ -211,6 +214,7 @@ public sealed class PaymentsController(
     }
 
     [Authorize(Roles = Roles.Customer)]
+    [EnableRateLimiting("sensitive")]
     [HttpPost("card")]
     public async Task<ActionResult<CardPaymentResponse>> Card(CardPaymentRequest request, CancellationToken cancellationToken)
     {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -95,6 +96,65 @@ builder.Services.Configure<FormOptions>(options =>
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = 110_000_000;
+    options.AddServerHeader = false; // no revelar Kestrel/versión
+});
+
+// —— Rate limiting (anti fuerza bruta y floods) ——
+static string ClientIp(HttpContext ctx)
+{
+    var fwd = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    if (!string.IsNullOrWhiteSpace(fwd))
+    {
+        return fwd.Split(',')[0].Trim();
+    }
+    return ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+}
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Global SOLO para /api por IP: frena floods a la API sin tocar los archivos de Blazor
+    // (index/wasm/dll/css/js quedan sin límite para que la web cargue normal).
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        var path = ctx.Request.Path.Value ?? "";
+        if (!path.StartsWith("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            return RateLimitPartition.GetNoLimiter("static");
+        }
+        return RateLimitPartition.GetFixedWindowLimiter("api:" + ClientIp(ctx), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Login/registro: muy estricto por IP (evita miles de intentos de contraseña).
+    options.AddPolicy("auth", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter("auth:" + ClientIp(ctx), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 8,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+
+    // Pagos y canje de serial: por IP.
+    options.AddPolicy("sensitive", ctx =>
+        RateLimitPartition.GetFixedWindowLimiter("sensitive:" + ClientIp(ctx), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsync(
+            "Demasiados intentos. Espera un momento e inténtalo de nuevo.", token);
+    };
 });
 builder.Services.AddControllers();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -119,6 +179,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseForwardedHeaders();
+
+// Cabeceras de seguridad en TODAS las respuestas (anti-clickjacking, anti-sniff, sin fugas de referer).
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";
+    h["X-Frame-Options"] = "DENY";
+    h["Referrer-Policy"] = "no-referrer";
+    h["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+    h["Cross-Origin-Opener-Policy"] = "same-origin";
+    h["Content-Security-Policy"] = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
+    await next();
+});
+
+app.UseRateLimiter();
 app.UseResponseCompression();
 
 if (!app.Environment.IsDevelopment())

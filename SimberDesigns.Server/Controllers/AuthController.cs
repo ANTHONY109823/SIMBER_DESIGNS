@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SimberDesigns.Server.Contracts;
 using SimberDesigns.Server.Data;
@@ -13,6 +14,7 @@ namespace SimberDesigns.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth")]
 public sealed class AuthController(
     AppDbContext db,
     IJwtTokenService tokens,

@@ -466,16 +466,6 @@ public sealed class SimberApi(HttpClient http)
     public Task<List<PluginPeriodKeyDto>?> GetPluginPeriodKeysAsync()
         => http.GetFromJsonAsync<List<PluginPeriodKeyDto>>("api/plugin/keys");
 
-    public async Task RedeemPeriodKeyAsync(string code, string? edition = null)
-    {
-        var response = await http.PostAsJsonAsync("api/plugin/redeem", new { code, hardwareId = (string?)null, edition });
-        var body = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(CleanApiError(body, "No se pudo canjear la clave."));
-        }
-    }
-
     private static string CleanApiError(string? body, string fallback)
     {
         var msg = body?.Trim() ?? "";

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SimberDesigns.Licensing;
 using SimberDesigns.Server.Contracts;
@@ -61,6 +62,7 @@ public sealed class PluginController(
     /// Fija el PROGRAMA (Corel/Illustrator) de un serial genérico recién comprado. El cliente elige en la
     /// web tras pagar; luego el serial solo sirve en el .exe de ESE programa.
     /// </summary>
+    [EnableRateLimiting("sensitive")]
     [HttpPost("assign-edition")]
     public async Task<IActionResult> AssignEdition(AssignEditionRequest request, CancellationToken cancellationToken)
     {
@@ -99,6 +101,7 @@ public sealed class PluginController(
     /// <summary>
     /// Canjea serial (pago MP o admin). Si mandas hardwareId, también ata la PC y firma el token.
     /// </summary>
+    [EnableRateLimiting("sensitive")]
     [HttpPost("redeem")]
     public async Task<ActionResult<object>> Redeem(PluginRedeemRequest request, CancellationToken cancellationToken)
     {
