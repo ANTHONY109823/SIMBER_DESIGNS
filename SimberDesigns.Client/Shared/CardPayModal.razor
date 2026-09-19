@@ -22,6 +22,10 @@
                 <div class="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
                     <p class="text-lg font-semibold text-emerald-300">¡Pago aprobado!</p>
                     <p class="mt-2 text-sm text-cream/80">@_msg</p>
+                    @if (_kind.StartsWith("plugin"))
+                    {
+                        <p class="mt-2 text-sm text-cream/70">Ya está activado. Abre <span class="text-white">CorelDRAW</span> o <span class="text-white">Illustrator</span> e inicia sesión con tu cuenta.</p>
+                    }
                     <a href="/cuenta" class="mt-4 inline-flex rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">Ir a Mi cuenta</a>
                 </div>
             }
