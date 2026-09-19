@@ -3,6 +3,14 @@ html, body {
     overflow-x: hidden;
 }
 
+/* ——— Catálogo: carrusel vertical de "Gratis del día" ——— */
+@keyframes free-vscroll {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+}
+.free-vtrack { animation: free-vscroll 24s linear infinite; }
+.free-vpanel:hover .free-vtrack { animation-play-state: paused; }
+
 /* ——— Nav: luz que recorre de lado a lado ——— */
 .site-nav-light {
     background: linear-gradient(
