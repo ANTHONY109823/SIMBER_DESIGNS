@@ -132,11 +132,12 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
-    // Login/registro: muy estricto por IP (evita miles de intentos de contraseña).
+    // Login/registro: frena la fuerza bruta automatizada (miles de intentos) pero es tolerante con
+    // clientes reales que comparten IP (CGNAT móvil en Perú). 20/min por IP.
     options.AddPolicy("auth", ctx =>
         RateLimitPartition.GetFixedWindowLimiter("auth:" + ClientIp(ctx), _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 8,
+            PermitLimit = 20,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         }));
