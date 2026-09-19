@@ -466,6 +466,18 @@ public sealed class SimberApi(HttpClient http)
     public Task<List<PluginPeriodKeyDto>?> GetPluginPeriodKeysAsync()
         => http.GetFromJsonAsync<List<PluginPeriodKeyDto>>("api/plugin/keys");
 
+    // Activa el serial en la cuenta (crea/renueva la licencia SIN atar PC). Luego el .exe, al iniciar
+    // sesión, la ata a esa PC. Red de seguridad para activar desde la web con cualquier versión del .exe.
+    public async Task RedeemPeriodKeyAsync(string code)
+    {
+        var response = await http.PostAsJsonAsync("api/plugin/redeem", new { code, hardwareId = (string?)null, edition = (string?)null });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(CleanApiError(body, "No se pudo activar la clave."));
+        }
+    }
+
     private static string CleanApiError(string? body, string fallback)
     {
         var msg = body?.Trim() ?? "";
