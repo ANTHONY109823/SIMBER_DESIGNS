@@ -19,7 +19,7 @@
                         <AuthorizeView Roles="Admin">
                             <Authorized Context="admin"></Authorized>
                             <NotAuthorized Context="cliente">
-                                <NavLink href="/recargar" class="hover:text-gold" ActiveClass="text-gold">Recarga créditos</NavLink>
+                                <NavLink href="/cuenta" class="hover:text-gold" ActiveClass="text-gold">Mi cuenta</NavLink>
                             </NotAuthorized>
                         </AuthorizeView>
                     </Authorized>
@@ -54,9 +54,7 @@
                 <Authorized>
                     <AuthorizeView Roles="Admin">
                         <Authorized Context="admin"></Authorized>
-                        <NotAuthorized Context="cliente">
-                            <NavLink href="/recargar">Recarga créditos</NavLink>
-                        </NotAuthorized>
+                        <NotAuthorized Context="cliente"></NotAuthorized>
                     </AuthorizeView>
                 </Authorized>
                 <NotAuthorized>
