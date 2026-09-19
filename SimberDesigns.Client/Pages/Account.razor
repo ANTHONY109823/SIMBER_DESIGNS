@@ -125,43 +125,55 @@
 
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
                 <h2 class="font-serif text-xl text-white">Claves de activación</h2>
-                <p class="mt-1 text-sm text-cream/70">Elige el programa, pega tu serial de 16 caracteres y canjéalo. Luego abre el .exe e inicia sesión para activar en tu PC.</p>
+                <p class="mt-1 text-sm text-cream/70">Cuando pagas un plan, tu clave de 16 caracteres aparece aquí. Elige el programa y toca <span class="text-cream/90">«Canjear ahora»</span>. Luego abre el .exe e inicia sesión para activar tu PC.</p>
+
                 <div class="mt-4 grid grid-cols-2 gap-2">
                     <button type="button" @onclick='() => _redeemEdition = "Corel"' class="@RedeemEditionClass("Corel")">CorelDRAW</button>
                     <button type="button" @onclick='() => _redeemEdition = "Illustrator"' class="@RedeemEditionClass("Illustrator")">Illustrator</button>
                 </div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <input @bind="_redeemCode" placeholder="Clave de 16 caracteres" class="min-w-[12rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
-                    <button type="button" disabled="@Busy" @onclick="RedeemKey"
-                            class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                        Canjear
-                    </button>
-                </div>
-                @if (!string.IsNullOrWhiteSpace(RedeemMsg))
-                {
-                    <p class="mt-2 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
-                }
+
                 @if (PeriodKeys.Count > 0)
                 {
-                    <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                    <p class="mt-4 text-xs uppercase tracking-wider text-cream/45">Tus claves</p>
+                    <ul class="mt-2 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
                         @foreach (var k in PeriodKeys)
                         {
                             <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                                 <div>
                                     <p class="font-mono text-emerald-300">@k.Code</p>
-                                    <p class="text-xs text-cream/45">@(string.IsNullOrWhiteSpace(k.Edition) ? "Sin asignar" : k.Edition) · @k.Days días · @k.Status</p>
+                                    <p class="text-xs text-cream/45">@(string.IsNullOrWhiteSpace(k.Edition) ? "Sin asignar" : k.Edition) · @k.Days días · @(k.Status == "Pending" ? "sin canjear" : k.Status == "Redeemed" ? "canjeada" : k.Status)</p>
                                 </div>
                                 @if (k.Status == "Pending")
                                 {
                                     <button type="button" disabled="@Busy" @onclick="() => RedeemExisting(k.Code)"
-                                            class="rounded-full border border-emerald-400/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
-                                        Canjear ahora
+                                            class="rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-ink hover:bg-emerald-400 disabled:opacity-50">
+                                        Canjear ahora (@_redeemEdition)
                                     </button>
                                 }
                             </li>
                         }
                     </ul>
                 }
+                else
+                {
+                    <p class="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-cream/55">Aún no tienes claves. Compra un plan arriba y tu clave aparecerá aquí automáticamente.</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(RedeemMsg))
+                {
+                    <p class="mt-2 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
+                }
+
+                <details class="mt-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                    <summary class="cursor-pointer text-xs text-cream/60">¿Recibiste una clave por WhatsApp? Pégala aquí</summary>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <input @bind="_redeemCode" placeholder="Clave de 16 caracteres" class="min-w-[12rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
+                        <button type="button" disabled="@Busy" @onclick="RedeemKey"
+                                class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+                            Canjear
+                        </button>
+                    </div>
+                </details>
             </section>
 
             <button type="button" @onclick="() => _showPwd = true"
