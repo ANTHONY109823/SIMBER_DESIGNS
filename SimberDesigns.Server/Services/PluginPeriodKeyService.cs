@@ -17,10 +17,15 @@ public interface IPluginPeriodKeyService
         string? note,
         CancellationToken cancellationToken);
 
-    /// <summary>Canjea un serial pendiente: suma días a la licencia del programa (sin atar HWID).</summary>
+    /// <summary>
+    /// Canjea un serial pendiente: suma días a la licencia del programa (sin atar HWID).
+    /// Si el serial es genérico (sin edición), <paramref name="chosenEdition"/> define el programa
+    /// (Corel o Illustrator) que el cliente eligió al canjear.
+    /// </summary>
     Task<(PluginLicense License, PluginPeriodKey Key)> RedeemAsync(
         Guid userId,
         string code,
+        string? chosenEdition,
         CancellationToken cancellationToken);
 }
 
@@ -39,11 +44,9 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
         CancellationToken cancellationToken)
     {
         days = ClampDays(days);
+        // La edición puede quedar vacía a propósito: la compra es genérica y el cliente elige
+        // Corel o Illustrator al canjear el serial (RedeemAsync).
         edition = LicenseProgram.Normalizar(edition);
-        if (string.IsNullOrWhiteSpace(edition))
-        {
-            throw new InvalidOperationException("Indica Corel o Illustrator.");
-        }
 
         var now = DateTime.UtcNow;
         var key = new PluginPeriodKey
@@ -67,6 +70,7 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
     public async Task<(PluginLicense License, PluginPeriodKey Key)> RedeemAsync(
         Guid userId,
         string code,
+        string? chosenEdition,
         CancellationToken cancellationToken)
     {
         var normalized = NormalizeCode(code);
@@ -97,9 +101,18 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
             throw new InvalidOperationException("Esa clave ya fue canjeada.");
         }
 
-        var license = await ExtendOrCreateLicenseAsync(userId, key.Edition, key.Days, cancellationToken);
+        // Edición efectiva: la del serial si ya la trae; si es genérico, la que el cliente eligió al canjear.
+        var effectiveEdition = !string.IsNullOrWhiteSpace(key.Edition)
+            ? key.Edition
+            : LicenseProgram.Normalizar(chosenEdition);
+
+        var license = await ExtendOrCreateLicenseAsync(userId, effectiveEdition, key.Days, cancellationToken);
         key.Status = PeriodKeyStatuses.Redeemed;
         key.RedeemedAt = DateTime.UtcNow;
+        if (string.IsNullOrWhiteSpace(key.Edition) && !string.IsNullOrWhiteSpace(effectiveEdition))
+        {
+            key.Edition = effectiveEdition; // deja registrado el programa elegido
+        }
         await db.SaveChangesAsync(cancellationToken);
         return (license, key);
     }

@@ -78,13 +78,8 @@
         <!-- Columna 2: planes, créditos, claves y contraseña -->
         <div class="space-y-6">
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <h2 class="font-serif text-2xl text-white">Planes</h2>
-                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige el programa y la duración; el serial llega abajo para canjearlo.</p>
-
-                <div class="mt-4 grid grid-cols-2 gap-2">
-                    <button type="button" @onclick='() => _edition = "plugin-corel"' class="@EditionClass("plugin-corel")">CorelDRAW</button>
-                    <button type="button" @onclick='() => _edition = "plugin-illustrator"' class="@EditionClass("plugin-illustrator")">Illustrator</button>
-                </div>
+                <h2 class="font-serif text-2xl text-white">Planes de programas</h2>
+                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige la duración; al <span class="text-cream/90">canjear</span> escoges CorelDRAW o Illustrator.</p>
 
                 <div class="mt-4 space-y-2">
                     @foreach (var plan in ThreePlans)
@@ -130,8 +125,12 @@
 
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
                 <h2 class="font-serif text-xl text-white">Claves de activación</h2>
-                <p class="mt-1 text-sm text-cream/70">Tras pagar, canjea aquí tu serial de 16 caracteres. Luego abre el .exe e inicia sesión para activar en tu PC.</p>
-                <div class="mt-4 flex flex-wrap gap-2">
+                <p class="mt-1 text-sm text-cream/70">Elige el programa, pega tu serial de 16 caracteres y canjéalo. Luego abre el .exe e inicia sesión para activar en tu PC.</p>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" @onclick='() => _redeemEdition = "Corel"' class="@RedeemEditionClass("Corel")">CorelDRAW</button>
+                    <button type="button" @onclick='() => _redeemEdition = "Illustrator"' class="@RedeemEditionClass("Illustrator")">Illustrator</button>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
                     <input @bind="_redeemCode" placeholder="Clave de 16 caracteres" class="min-w-[12rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
                     <button type="button" disabled="@Busy" @onclick="RedeemKey"
                             class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
@@ -150,7 +149,7 @@
                             <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                                 <div>
                                     <p class="font-mono text-emerald-300">@k.Code</p>
-                                    <p class="text-xs text-cream/45">@k.Edition · @k.Days días · @k.Status</p>
+                                    <p class="text-xs text-cream/45">@(string.IsNullOrWhiteSpace(k.Edition) ? "Sin asignar" : k.Edition) · @k.Days días · @k.Status</p>
                                 </div>
                                 @if (k.Status == "Pending")
                                 {
@@ -251,7 +250,7 @@
     private List<PluginPlanOptionDto> Plans = [];
     private List<CreditPackageDto> Packages = [];
     private CardPayModal? _payModal;
-    private string _edition = "plugin-corel";
+    private string _redeemEdition = "Corel";
     private string? BuyMsg;
     private bool Busy;
     private bool _showPwd;
@@ -308,23 +307,23 @@
         ];
     }
 
-    private string EditionClass(string ed) => _edition == ed
+    private string RedeemEditionClass(string ed) => _redeemEdition == ed
         ? "rounded-xl border border-gold bg-gold/15 py-2.5 text-sm font-semibold text-white"
         : "rounded-xl border border-white/10 bg-white/[0.02] py-2.5 text-sm text-cream/70 hover:bg-white/[0.06]";
 
+    // Compra genérica: sin programa. El cliente elige Corel/Illustrator al canjear.
     private async Task BuyPlan(int months)
     {
         BuyMsg = null;
         var plan = Plans.FirstOrDefault(p => p.Months == months);
         var pen = plan?.PricePen ?? MonthPricePen * months;
-        var progLabel = _edition.Contains("corel") ? "CorelDRAW" : "Illustrator";
-        var label = $"{progLabel} · {plan?.Label ?? $"{months} mes(es)"}";
+        var label = $"Plan Simber · {plan?.Label ?? $"{months} mes(es)"}";
         if (_payModal is { CardEnabled: true })
         {
-            _payModal.Open(_edition, months, null, pen, label);
+            _payModal.Open("plugin", months, null, pen, label);
             return;
         }
-        await RedirectCheckout(_edition, null, months);
+        await RedirectCheckout("plugin", null, months);
     }
 
     private async Task BuyCredits(CreditPackageDto pack)
@@ -377,9 +376,9 @@
         Busy = true;
         try
         {
-            await Api.RedeemPeriodKeyAsync(code);
+            await Api.RedeemPeriodKeyAsync(code, _redeemEdition);
             RedeemOk = true;
-            RedeemMsg = "Clave canjeada. Ya puedes activar el .exe con tu cuenta.";
+            RedeemMsg = $"Clave canjeada para {_redeemEdition}. Ya puedes activar el .exe con tu cuenta.";
             _redeemCode = "";
             Licenses = await Api.GetPluginLicensesAsync() ?? [];
             PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];

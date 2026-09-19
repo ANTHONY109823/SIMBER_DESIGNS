@@ -71,7 +71,7 @@ public sealed class PluginController(
 
         try
         {
-            var (license, key) = await periodKeys.RedeemAsync(userId.Value, request.Code, cancellationToken);
+            var (license, key) = await periodKeys.RedeemAsync(userId.Value, request.Code, request.Edition, cancellationToken);
             var hwid = request.HardwareId?.Trim();
             if (!string.IsNullOrWhiteSpace(hwid))
             {
@@ -103,7 +103,7 @@ public sealed class PluginController(
 
             return Ok(new
             {
-                message = $"Canjeado: +{key.Days} días de {key.Edition}.",
+                message = $"Canjeado: +{key.Days} días de {(string.IsNullOrWhiteSpace(key.Edition) ? "tu programa" : key.Edition)}.",
                 key = new PluginPeriodKeyDto(
                     key.Id, key.Code, key.Edition, key.Days, key.Status, key.Source, key.Note, key.CreatedAt, key.RedeemedAt),
                 license = ToDto(license, DateTime.UtcNow)

@@ -39,7 +39,8 @@ public static class PluginCheckoutPlans
         months = monthsRequest is int req && AllowedMonths.Contains(req) ? req : kindMonths;
         days = DaysForMonths(months);
         amount = monthPricePen * months;
-        var prog = LicenseProgram.Etiqueta(edition);
+        // La compra puede ser genérica (edición vacía): el programa se elige al canjear.
+        var prog = string.IsNullOrWhiteSpace(edition) ? "Simber Designs" : LicenseProgram.Etiqueta(edition);
         title = months == 1
             ? $"Activación {days} días · {prog} · US$15"
             : $"Activación {months} meses ({days} días) · {prog} · US${15 * months}";
@@ -51,6 +52,12 @@ public static class PluginCheckoutPlans
         edition = "";
         months = 1;
         kind = (kind ?? "").Trim().ToLowerInvariant();
+
+        // Plan genérico (sin programa): el cliente elige Corel/Illustrator al canjear.
+        if (kind is "plugin" or "plugin-any" or "plugin-1m") { edition = ""; months = 1; return true; }
+        if (kind is "plugin-3m" or "plugin-any-3m") { edition = ""; months = 3; return true; }
+        if (kind is "plugin-6m" or "plugin-any-6m") { edition = ""; months = 6; return true; }
+        if (kind is "plugin-12m" or "plugin-any-12m") { edition = ""; months = 12; return true; }
 
         if (kind is "plugin-corel" or "corel" or "plugin-corel-1m")
         {
