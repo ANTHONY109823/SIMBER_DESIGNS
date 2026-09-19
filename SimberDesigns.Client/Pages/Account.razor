@@ -5,15 +5,26 @@
 
 <PageTitle>Mi cuenta · Simber Designs</PageTitle>
 
-<div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-    <p class="text-xs uppercase tracking-[0.28em] text-gold">Mi cuenta</p>
-    <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
-    <p class="mt-1 text-sm text-cream/80">@Email</p>
-
-    <div class="mt-6 flex flex-wrap gap-3">
-        <a href="#comprar" class="inline-flex rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">
-            Comprar / activar
-        </a>
+<div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div class="flex flex-wrap items-start justify-between gap-6">
+        <div>
+            <p class="text-xs uppercase tracking-[0.28em] text-gold">Mi cuenta</p>
+            <h1 class="mt-2 font-serif text-4xl text-white">@Name</h1>
+            <p class="mt-1 text-sm text-cream/80">@Email</p>
+        </div>
+        <div class="min-w-[13rem] rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-right">
+            <p class="text-xs uppercase tracking-wider text-cream/45">Créditos</p>
+            <p class="font-serif text-4xl text-gold">@Credits.ToString("0")</p>
+            @if (Licenses.Any(l => l.IsActive))
+            {
+                <div class="mt-3 space-y-1 border-t border-white/10 pt-3 text-xs">
+                    @foreach (var lic in Licenses.Where(l => l.IsActive))
+                    {
+                        <p class="text-emerald-300">@lic.Edition · hasta @lic.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</p>
+                    }
+                </div>
+            }
+        </div>
     </div>
 
     @if (_forcePwd)
@@ -23,255 +34,190 @@
         </div>
     }
 
-    <section class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Tus servicios</h2>
-        <p class="mt-1 text-sm text-cream/70">Solo lo que tienes. Los créditos son para diseños; el periodo del programa es aparte.</p>
-        <div class="mt-5 space-y-3">
-            <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p class="text-xs uppercase tracking-wider text-cream/45">Catálogo CDR</p>
-                        <p class="mt-1 text-white">Créditos para descargar vectores</p>
-                    </div>
-                    <p class="font-serif text-3xl text-gold">@Credits.ToString("0")</p>
-                </div>
-            </article>
+    <div class="mt-10 grid items-start gap-6 lg:grid-cols-3">
 
-            @if (Licenses.Count == 0)
-            {
-                <article class="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4">
-                    <p class="text-xs uppercase tracking-wider text-cream/45">Programas</p>
-                    <p class="mt-1 text-sm text-cream/60">Sin periodo activo de Corel ni Illustrator.</p>
-                </article>
-            }
-            else
-            {
-                @foreach (var lic in Licenses)
-                {
-                    <article class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p class="text-xs uppercase tracking-wider text-cream/45">Programa</p>
-                                <p class="mt-1 text-white">@lic.Edition</p>
-                            </div>
-                            <span class="text-sm @(lic.IsActive ? "text-emerald-300" : "text-cream/50")">
-                                @(lic.IsActive ? $"activo · {lic.ExpiresAt.ToLocalTime():dd/MM/yyyy}" : "vencido")
+        <!-- Columna 1: comprar y activar -->
+        <div class="space-y-6">
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-2xl text-white">Planes</h2>
+                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige el programa y la duración; el serial llega abajo para canjearlo.</p>
+
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" @onclick='() => _edition = "plugin-corel"' class="@EditionClass("plugin-corel")">CorelDRAW</button>
+                    <button type="button" @onclick='() => _edition = "plugin-illustrator"' class="@EditionClass("plugin-illustrator")">Illustrator</button>
+                </div>
+
+                <div class="mt-4 space-y-2">
+                    @foreach (var plan in ThreePlans)
+                    {
+                        var m = plan.Months;
+                        <button type="button" disabled="@Busy" @onclick="() => BuyPlan(m)"
+                                class="flex w-full items-center justify-between rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-left hover:bg-gold/10 disabled:opacity-50">
+                            <span>
+                                <span class="block text-sm text-white">@plan.Label</span>
+                                <span class="block text-xs text-cream/45">S/ @plan.PricePen.ToString("0.00")</span>
                             </span>
-                        </div>
-                    </article>
-                }
-            }
-        </div>
-    </section>
-
-    <section id="comprar" class="mt-10 scroll-mt-24">
-        <h2 class="font-serif text-2xl text-white">Comprar y activar</h2>
-        <p class="mt-1 text-sm text-cream/70">Paga con tarjeta aquí mismo, sin salir de la web. El periodo del programa y los créditos del catálogo son cosas aparte.</p>
-
-        <div class="mt-4 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6">
-            <div class="inline-flex flex-wrap gap-1 rounded-full border border-white/10 bg-ink p-1 text-sm">
-                <button type="button" @onclick='() => _buyTab = "programa"' class="@TabClass("programa")">Programa (Corel / Illustrator)</button>
-                <button type="button" @onclick='() => _buyTab = "creditos"' class="@TabClass("creditos")">Créditos del catálogo</button>
-            </div>
-
-            @if (_buyTab == "programa")
-            {
-                <div class="mt-5 grid gap-5 sm:grid-cols-2">
-                    <div>
-                        <h3 class="text-sm font-semibold text-white">CorelDRAW</h3>
-                        <div class="mt-3 space-y-2">
-                            @foreach (var plan in Plans)
-                            {
-                                var m = plan.Months;
-                                <button type="button" disabled="@Busy" @onclick='() => BuyPlan("plugin-corel", m)'
-                                        class="flex w-full items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2.5 text-left text-sm hover:bg-emerald-500/15 disabled:opacity-50">
-                                    <span class="text-white">@plan.Label</span>
-                                    <span class="font-semibold text-emerald-300">S/ @plan.PricePen.ToString("0.00")</span>
-                                </button>
-                            }
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-white">Illustrator</h3>
-                        <div class="mt-3 space-y-2">
-                            @foreach (var plan in Plans)
-                            {
-                                var m = plan.Months;
-                                <button type="button" disabled="@Busy" @onclick='() => BuyPlan("plugin-illustrator", m)'
-                                        class="flex w-full items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-2.5 text-left text-sm hover:bg-orange-500/15 disabled:opacity-50">
-                                    <span class="text-white">@plan.Label</span>
-                                    <span class="font-semibold text-orange-300">S/ @plan.PricePen.ToString("0.00")</span>
-                                </button>
-                            }
-                        </div>
-                    </div>
+                            <span class="font-serif text-2xl text-gold">$@Usd(m).ToString("0")</span>
+                        </button>
+                    }
                 </div>
-            }
-            else
-            {
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-xl text-white">Créditos del catálogo</h2>
+                <p class="mt-1 text-sm text-cream/70">Solo para comprar diseños del catálogo.</p>
                 @if (Packages.Count == 0)
                 {
-                    <p class="mt-5 text-sm text-cream/50">No hay paquetes de créditos cargados aún.</p>
+                    <p class="mt-4 text-sm text-cream/50">No hay paquetes cargados aún.</p>
                 }
                 else
                 {
-                    <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
                         @foreach (var pack in Packages)
                         {
                             <button type="button" disabled="@Busy" @onclick="() => BuyCredits(pack)"
-                                    class="rounded-2xl border border-gold/25 bg-gold/5 p-4 text-left hover:bg-gold/10 disabled:opacity-50">
-                                <p class="font-serif text-2xl text-gold">S/ @pack.PriceUsd.ToString("0")</p>
-                                <p class="mt-1 text-sm text-cream/70">@(pack.CreditsAmount + pack.BonusAmount) créditos</p>
+                                    class="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left hover:bg-white/[0.06] disabled:opacity-50">
+                                <span class="text-sm text-cream/80">@(pack.CreditsAmount + pack.BonusAmount) créditos</span>
+                                <span class="font-serif text-xl text-gold">S/ @pack.PriceUsd.ToString("0")</span>
                             </button>
                         }
                     </div>
                 }
-            }
-
-            @if (!string.IsNullOrWhiteSpace(BuyMsg))
-            {
-                <p class="mt-3 text-sm text-rose-400">@BuyMsg</p>
-            }
-        </div>
-    </section>
-
-    <section class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Claves de activación</h2>
-        <p class="mt-1 text-sm text-cream/70">Tras pagar (Mercado Pago o directo), canjea aquí tu serial de 16 caracteres. Luego abre el .exe e inicia sesión para activar en tu PC.</p>
-        <div class="mt-4 flex flex-wrap gap-2">
-            <input @bind="_redeemCode" placeholder="Tu clave de 16 caracteres" class="min-w-[16rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
-            <button type="button" disabled="@Busy" @onclick="RedeemKey"
-                    class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                Canjear
-            </button>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(RedeemMsg))
-        {
-            <p class="mt-2 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
-        }
-        @if (PeriodKeys.Count > 0)
-        {
-            <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                @foreach (var k in PeriodKeys)
+                @if (!string.IsNullOrWhiteSpace(BuyMsg))
                 {
-                    <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                        <div>
-                            <p class="font-mono text-emerald-300">@k.Code</p>
-                            <p class="text-xs text-cream/45">@k.Edition · @k.Days días · @k.Status</p>
-                        </div>
-                        @if (k.Status == "Pending")
-                        {
-                            <button type="button" disabled="@Busy" @onclick="() => RedeemExisting(k.Code)"
-                                    class="rounded-full border border-emerald-400/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
-                                Canjear ahora
-                            </button>
-                        }
-                    </li>
+                    <p class="mt-3 text-sm text-rose-400">@BuyMsg</p>
                 }
-            </ul>
-        }
-    </section>
+            </section>
 
-    <section class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Diseños desbloqueados</h2>
-        <p class="mt-1 text-sm text-cream/70">Si ya lo pagaste o canjeaste, puedes volver a descargarlo.</p>
-        @if (Unlocked.Count == 0)
-        {
-            <p class="mt-4 text-sm text-cream/50">Aún no tienes diseños desbloqueados.</p>
-        }
-        else
-        {
-            <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                @foreach (var d in Unlocked)
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-xl text-white">Claves de activación</h2>
+                <p class="mt-1 text-sm text-cream/70">Tras pagar, canjea aquí tu serial de 16 caracteres. Luego abre el .exe e inicia sesión para activar en tu PC.</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <input @bind="_redeemCode" placeholder="Clave de 16 caracteres" class="min-w-[12rem] flex-1 rounded-xl border border-white/10 bg-ink px-3 py-2 font-mono text-sm text-white" />
+                    <button type="button" disabled="@Busy" @onclick="RedeemKey"
+                            class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
+                        Canjear
+                    </button>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(RedeemMsg))
                 {
-                    <li class="flex items-center gap-3 px-4 py-3">
-                        <img src="@d.PreviewUrl" alt="" class="h-12 w-10 shrink-0 rounded object-cover" />
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm text-white">@d.Title</p>
-                            <p class="text-xs text-cream/45">@(d.UnlockedViaSubscription ? "Por membresía" : "Canjeado / pagado")</p>
-                        </div>
-                        <button type="button" disabled="@Busy" @onclick="() => Redownload(d)"
-                                class="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-xs font-semibold text-gold hover:bg-gold/10 disabled:opacity-50">
-                            Descargar
-                        </button>
-                    </li>
+                    <p class="mt-2 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
                 }
-            </ul>
-        }
-        @if (!string.IsNullOrWhiteSpace(DownloadMsg))
-        {
-            <p class="mt-3 text-sm @(DownloadOk ? "text-emerald-300" : "text-rose-400")">@DownloadMsg</p>
-        }
-    </section>
-
-    <section class="mt-10">
-        <h2 class="font-serif text-2xl text-white">Datos de la cuenta</h2>
-        <div class="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm">
-            <div class="flex justify-between gap-4"><span class="text-cream/50">Nombre</span><span class="text-white">@Name</span></div>
-            <div class="flex justify-between gap-4"><span class="text-cream/50">Correo</span><span class="text-white">@Email</span></div>
-            <div class="flex justify-between gap-4"><span class="text-cream/50">Créditos</span><span class="text-gold">@Credits.ToString("0")</span></div>
-        </div>
-
-        <h3 class="mt-8 font-serif text-xl text-white">Cambiar contraseña</h3>
-        <div class="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <label class="block text-sm">
-                <span class="text-cream/70">Contraseña actual</span>
-                <input type="password" @bind="_currentPassword" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
-            </label>
-            <label class="block text-sm">
-                <span class="text-cream/70">Nueva contraseña</span>
-                <input type="password" @bind="_newPassword" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
-            </label>
-            <label class="block text-sm">
-                <span class="text-cream/70">Repetir nueva</span>
-                <input type="password" @bind="_newPassword2" class="mt-1 w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-white" />
-            </label>
-            <button type="button" disabled="@Busy" @onclick="ChangePassword"
-                    class="rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
-                Guardar contraseña
-            </button>
-            @if (!string.IsNullOrWhiteSpace(PasswordMsg))
-            {
-                <p class="text-sm @(PasswordOk ? "text-emerald-300" : "text-rose-400")">@PasswordMsg</p>
-            }
-        </div>
-    </section>
-
-    @if (CreditLogs.Count > 0 || Transactions.Count > 0)
-    {
-        <div class="mt-10 grid gap-6 lg:grid-cols-2">
-            @if (CreditLogs.Count > 0)
-            {
-                <section>
-                    <h2 class="font-serif text-xl text-white">Movimientos de créditos</h2>
-                    <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
-                        @foreach (var log in CreditLogs)
+                @if (PeriodKeys.Count > 0)
+                {
+                    <ul class="mt-4 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                        @foreach (var k in PeriodKeys)
                         {
-                            <li class="flex items-center justify-between px-4 py-3 text-sm">
-                                <span class="text-cream/70">@log.Description<span class="ml-2 text-xs text-cream/35">@log.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
-                                <span class="@(log.CreditsChanged >= 0 ? "text-emerald-300" : "text-rose-300")">@(log.CreditsChanged >= 0 ? "+" : "")@log.CreditsChanged.ToString("0")</span>
+                            <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                                <div>
+                                    <p class="font-mono text-emerald-300">@k.Code</p>
+                                    <p class="text-xs text-cream/45">@k.Edition · @k.Days días · @k.Status</p>
+                                </div>
+                                @if (k.Status == "Pending")
+                                {
+                                    <button type="button" disabled="@Busy" @onclick="() => RedeemExisting(k.Code)"
+                                            class="rounded-full border border-emerald-400/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
+                                        Canjear ahora
+                                    </button>
+                                }
                             </li>
                         }
                     </ul>
-                </section>
-            }
-            @if (Transactions.Count > 0)
-            {
-                <section>
-                    <h2 class="font-serif text-xl text-white">Historial de pagos</h2>
-                    <ul class="mt-3 divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02]">
+                }
+            </section>
+        </div>
+
+        <!-- Columna 2: historial -->
+        <div class="space-y-6">
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-xl text-white">Historial de pagos</h2>
+                @if (Transactions.Count == 0)
+                {
+                    <p class="mt-4 text-sm text-cream/50">Aún no tienes pagos.</p>
+                }
+                else
+                {
+                    <ul class="mt-4 divide-y divide-white/5">
                         @foreach (var tx in Transactions)
                         {
-                            <li class="flex items-center justify-between px-4 py-3 text-sm">
-                                <span class="text-cream/70">@tx.DetailName<span class="ml-2 text-xs text-cream/35">@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
-                                <span class="text-cream/60">@tx.Currency @tx.Amount.ToString("0.##") · <span class="@StatusColor(tx.Status)">@StatusText(tx.Status)</span></span>
+                            <li class="flex items-center justify-between gap-3 py-3 text-sm">
+                                <span class="min-w-0 flex-1 truncate text-cream/70">@tx.DetailName<span class="ml-2 text-xs text-cream/35">@tx.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
+                                <span class="shrink-0 text-cream/60">@tx.Currency @tx.Amount.ToString("0.##") · <span class="@StatusColor(tx.Status)">@StatusText(tx.Status)</span></span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            @if (CreditLogs.Count > 0)
+            {
+                <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                    <h2 class="font-serif text-xl text-white">Movimientos de créditos</h2>
+                    <ul class="mt-4 divide-y divide-white/5">
+                        @foreach (var log in CreditLogs)
+                        {
+                            <li class="flex items-center justify-between gap-3 py-3 text-sm">
+                                <span class="min-w-0 flex-1 truncate text-cream/70">@log.Description<span class="ml-2 text-xs text-cream/35">@log.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</span></span>
+                                <span class="shrink-0 @(log.CreditsChanged >= 0 ? "text-emerald-300" : "text-rose-300")">@(log.CreditsChanged >= 0 ? "+" : "")@log.CreditsChanged.ToString("0")</span>
                             </li>
                         }
                     </ul>
                 </section>
             }
         </div>
-    }
+
+        <!-- Columna 3: descargas + contraseña -->
+        <div class="space-y-6">
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-xl text-white">Diseños desbloqueados</h2>
+                <p class="mt-1 text-sm text-cream/70">Si ya lo pagaste o canjeaste, puedes volver a descargarlo.</p>
+                @if (Unlocked.Count == 0)
+                {
+                    <p class="mt-4 text-sm text-cream/50">Aún no tienes diseños desbloqueados.</p>
+                }
+                else
+                {
+                    <ul class="mt-4 divide-y divide-white/5">
+                        @foreach (var d in Unlocked)
+                        {
+                            <li class="flex items-center gap-3 py-3">
+                                <img src="@d.PreviewUrl" alt="" class="h-12 w-10 shrink-0 rounded object-cover" />
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm text-white">@d.Title</p>
+                                    <p class="text-xs text-cream/45">@(d.UnlockedViaSubscription ? "Por membresía" : "Canjeado / pagado")</p>
+                                </div>
+                                <button type="button" disabled="@Busy" @onclick="() => Redownload(d)"
+                                        class="shrink-0 rounded-full border border-gold/40 px-3 py-1.5 text-xs font-semibold text-gold hover:bg-gold/10 disabled:opacity-50">
+                                    Descargar
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (!string.IsNullOrWhiteSpace(DownloadMsg))
+                {
+                    <p class="mt-3 text-sm @(DownloadOk ? "text-emerald-300" : "text-rose-400")">@DownloadMsg</p>
+                }
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-xl text-white">Cambiar contraseña</h2>
+                <div class="mt-4 space-y-3">
+                    <input type="password" @bind="_currentPassword" placeholder="Contraseña actual" class="w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-sm text-white" />
+                    <input type="password" @bind="_newPassword" placeholder="Nueva contraseña" class="w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-sm text-white" />
+                    <input type="password" @bind="_newPassword2" placeholder="Repetir nueva" class="w-full rounded-xl border border-white/10 bg-ink px-3 py-2 text-sm text-white" />
+                    <button type="button" disabled="@Busy" @onclick="ChangePassword"
+                            class="rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400 disabled:opacity-60">
+                        Guardar contraseña
+                    </button>
+                    @if (!string.IsNullOrWhiteSpace(PasswordMsg))
+                    {
+                        <p class="text-sm @(PasswordOk ? "text-emerald-300" : "text-rose-400")">@PasswordMsg</p>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
 </div>
 
 <CardPayModal @ref="_payModal" OnApproved="OnPaid" />
@@ -289,7 +235,7 @@
     private List<PluginPlanOptionDto> Plans = [];
     private List<CreditPackageDto> Packages = [];
     private CardPayModal? _payModal;
-    private string _buyTab = "programa";
+    private string _edition = "plugin-corel";
     private string? BuyMsg;
     private bool Busy;
     private string? DownloadMsg;
@@ -303,6 +249,12 @@
     private string _newPassword2 = "";
     private string _redeemCode = "";
     private bool _forcePwd;
+
+    // Tres planes (1, 3 y 6 meses). US$15 por mes.
+    private IEnumerable<PluginPlanOptionDto> ThreePlans =>
+        Plans.Where(p => p.Months is 1 or 3 or 6).OrderBy(p => p.Months);
+
+    private static decimal Usd(int months) => 15m * months;
 
     protected override async Task OnInitializedAsync()
     {
@@ -338,22 +290,23 @@
         ];
     }
 
-    private string TabClass(string tab) => _buyTab == tab
-        ? "rounded-full bg-gold px-4 py-1.5 font-semibold text-ink"
-        : "rounded-full px-4 py-1.5 text-cream/70 hover:text-white";
+    private string EditionClass(string ed) => _edition == ed
+        ? "rounded-xl border border-gold bg-gold/15 py-2.5 text-sm font-semibold text-white"
+        : "rounded-xl border border-white/10 bg-white/[0.02] py-2.5 text-sm text-cream/70 hover:bg-white/[0.06]";
 
-    private async Task BuyPlan(string kind, int months)
+    private async Task BuyPlan(int months)
     {
         BuyMsg = null;
+        var plan = Plans.FirstOrDefault(p => p.Months == months);
+        var pen = plan?.PricePen ?? MonthPricePen * months;
+        var progLabel = _edition.Contains("corel") ? "CorelDRAW" : "Illustrator";
+        var label = $"{progLabel} · {plan?.Label ?? $"{months} mes(es)"}";
         if (_payModal is { CardEnabled: true })
         {
-            var plan = Plans.FirstOrDefault(p => p.Months == months);
-            var amount = plan?.PricePen ?? MonthPricePen * months;
-            var label = (kind.Contains("corel") ? "CorelDRAW · " : "Illustrator · ") + (plan?.Label ?? $"{months} mes(es)");
-            _payModal.Open(kind, months, null, amount, label);
+            _payModal.Open(_edition, months, null, pen, label);
             return;
         }
-        await RedirectCheckout(kind, null, months);
+        await RedirectCheckout(_edition, null, months);
     }
 
     private async Task BuyCredits(CreditPackageDto pack)
@@ -383,7 +336,7 @@
         finally { Busy = false; }
     }
 
-    // Tras un pago aprobado con tarjeta: refresca saldo, licencias y claves.
+    // Tras un pago aprobado con tarjeta/Yape: refresca saldo, licencias y claves.
     private async Task OnPaid()
     {
         var dash = await Api.GetDashboardAsync();
