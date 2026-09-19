@@ -57,7 +57,14 @@
                 <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
                 <span class="ml-2 text-xs text-cream/70">SIMBER DESIGNS · CorelDRAW / Illustrator</span>
             </div>
-            <img src="@HeroMockupSrc" alt="Vista del programa Simber Designs" class="h-72 w-full object-cover sm:h-80" />
+            @if (_loaded)
+            {
+                <img src="@HeroMockupSrc" alt="Vista del programa Simber Designs" class="h-72 w-full object-cover sm:h-80" />
+            }
+            else
+            {
+                <div class="h-72 w-full animate-pulse bg-white/[0.04] sm:h-80"></div>
+            }
         </div>
     </div>
 </section>
@@ -138,6 +145,7 @@
     private string DemoVideoSrc => Asset("prog-video");
     private bool HasCorel;
     private bool HasIllustrator;
+    private bool _loaded;
 
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) ? v : fallback;
@@ -155,6 +163,8 @@
     protected override async Task OnInitializedAsync()
     {
         try { _c = await Api.GetContentAsync(); } catch { _c = new(); }
+        _loaded = true;                       // ya sabemos qué imagen mostrar (sin parpadeo del paso 1)
+        StateHasChanged();
 
         var store = await Api.GetStorefrontAsync();
         HasCorel = store?.HasCorelDownload == true;
