@@ -30,6 +30,10 @@ public sealed record DownloadResponse(string DownloadUrl, DateTime ExpiresAt, in
 
 public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bool FakeCheckout);
 
+public sealed record PaymentConfigDto(string PublicKey, bool CardEnabled);
+
+public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId);
+
 public sealed record StorefrontDto(
     List<CreditPackageDto> Packages,
     decimal PluginMonthPricePen,
@@ -393,6 +397,37 @@ public sealed class SimberApi(HttpClient http)
         }
 
         return await response.Content.ReadFromJsonAsync<CheckoutResponse>();
+    }
+
+    public Task<PaymentConfigDto?> GetPaymentConfigAsync()
+        => http.GetFromJsonAsync<PaymentConfigDto?>("api/payments/config");
+
+    public async Task<CardPaymentResponse> PayWithCardAsync(
+        string? kind, int? months, Guid? packageId,
+        string token, string paymentMethodId, string? issuerId, int installments, string? payerEmail)
+    {
+        var response = await http.PostAsJsonAsync("api/payments/card", new
+        {
+            kind,
+            months,
+            packageId,
+            token,
+            paymentMethodId,
+            issuerId,
+            installments,
+            payerEmail
+        });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "No se pudo procesar el pago." : msg);
+        }
+
+        return await response.Content.ReadFromJsonAsync<CardPaymentResponse>()
+            ?? new CardPaymentResponse("error", "Sin respuesta del servidor.", Guid.Empty);
     }
 
     public async Task ConfirmPaymentAsync(Guid? transactionId, string? paymentId, string? externalReference)

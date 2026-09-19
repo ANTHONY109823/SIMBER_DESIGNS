@@ -15,9 +15,28 @@ public sealed record MercadoPagoPaymentResult(
     string? ExternalReference,
     decimal TransactionAmount);
 
+public sealed record MercadoPagoCardResult(
+    string? PaymentId,
+    string Status,
+    string? StatusDetail,
+    decimal TransactionAmount,
+    string? Error);
+
 public interface IMercadoPagoService
 {
     bool UseFakeCheckout { get; }
+    string PublicKey { get; }
+    Task<MercadoPagoCardResult> CreateCardPaymentAsync(
+        decimal amountPen,
+        string token,
+        string paymentMethodId,
+        string? issuerId,
+        int installments,
+        string payerEmail,
+        string description,
+        string externalReference,
+        string notificationUrl,
+        CancellationToken cancellationToken);
     Task<MercadoPagoPreferenceResult> CreatePreferenceAsync(
         string title,
         decimal amountPen,
@@ -51,6 +70,78 @@ public sealed class MercadoPagoService(HttpClient http, IOptions<MercadoPagoOpti
                 || string.IsNullOrWhiteSpace(token)
                 || token.StartsWith("dev-", StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    public string PublicKey => (options.Value.PublicKey ?? string.Empty).Trim();
+
+    /// <summary>
+    /// Crea un pago con TARJETA directamente en la web (Checkout API / Bricks): el navegador tokeniza la
+    /// tarjeta con la Public Key y aquí solo llega el token — los datos de la tarjeta NUNCA pasan por el
+    /// servidor. El monto lo fija el servidor (no el cliente), y luego el controlador verifica que el pago
+    /// aprobado tenga external_reference y monto correctos antes de acreditar.
+    /// </summary>
+    public async Task<MercadoPagoCardResult> CreateCardPaymentAsync(
+        decimal amountPen,
+        string token,
+        string paymentMethodId,
+        string? issuerId,
+        int installments,
+        string payerEmail,
+        string description,
+        string externalReference,
+        string notificationUrl,
+        CancellationToken cancellationToken)
+    {
+        EnsureHttpsUrl(notificationUrl, "notification_url");
+
+        var body = new Dictionary<string, object?>
+        {
+            ["transaction_amount"] = amountPen,
+            ["token"] = token,
+            ["description"] = description,
+            ["installments"] = installments <= 0 ? 1 : installments,
+            ["payment_method_id"] = paymentMethodId,
+            ["payer"] = new { email = payerEmail },
+            ["external_reference"] = externalReference,
+            ["notification_url"] = notificationUrl,
+            ["statement_descriptor"] = "SIMBER"
+        };
+        if (!string.IsNullOrWhiteSpace(issuerId))
+        {
+            body["issuer_id"] = issuerId;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.mercadopago.com/v1/payments");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.Value.AccessToken);
+        // Idempotencia por transacción: reintentos con la misma clave no duplican el cargo.
+        request.Headers.TryAddWithoutValidation("X-Idempotency-Key", externalReference);
+        request.Content = JsonContent.Create(body);
+
+        using var response = await http.SendAsync(request, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = json;
+            try
+            {
+                using var errDoc = JsonDocument.Parse(json);
+                if (errDoc.RootElement.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+                {
+                    err = m.GetString() ?? json;
+                }
+            }
+            catch (JsonException) { }
+            return new MercadoPagoCardResult(null, "error", null, amountPen, err);
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        return new MercadoPagoCardResult(
+            root.TryGetProperty("id", out var id) ? id.ToString() : null,
+            root.TryGetProperty("status", out var st) ? st.GetString() ?? "" : "",
+            root.TryGetProperty("status_detail", out var sd) ? sd.GetString() : null,
+            root.TryGetProperty("transaction_amount", out var ta) ? ta.GetDecimal() : amountPen,
+            null);
     }
 
     public async Task<MercadoPagoPreferenceResult> CreatePreferenceAsync(

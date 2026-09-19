@@ -35,6 +35,17 @@ public sealed record PresignedUrlResponse(string UploadUrl, string FileKey);
 public sealed record CheckoutRequest(string? PlanKey, string? PackKey, string? Kind, Guid? PackageId, int? Months);
 public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bool FakeCheckout);
 public sealed record ConfirmPaymentRequest(Guid? TransactionId, string? PaymentId, string? ExternalReference);
+public sealed record PaymentConfigDto(string PublicKey, bool CardEnabled);
+public sealed record CardPaymentRequest(
+    string? Kind,
+    int? Months,
+    Guid? PackageId,
+    string Token,
+    string PaymentMethodId,
+    string? IssuerId,
+    int Installments,
+    string? PayerEmail);
+public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId);
 public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label);
 public sealed record StorefrontDto(
     IReadOnlyList<CreditPackageDto> Packages,
