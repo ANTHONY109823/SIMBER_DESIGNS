@@ -133,9 +133,9 @@
 
 <section id="planes" class="border-t border-white/10 bg-ink/80">
     <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <h2 class="text-center font-serif text-3xl text-white">Planes de programas</h2>
+        <h2 class="text-center font-serif text-3xl text-white">@T("programas.planes.titulo", "Planes de programas")</h2>
         <p class="mx-auto mt-2 max-w-xl text-center text-sm text-cream/70">
-            Desde <span class="font-semibold text-gold">US$12/mes</span>. Mientras más meses, más descuento. Al pagar recibes tu serial para activar CorelDRAW o Illustrator.
+            @T("programas.planes.desc", "Desde US$12/mes. Mientras más meses, más descuento. Al pagar recibes tu serial para activar CorelDRAW o Illustrator.")
         </p>
 
         <div class="mx-auto mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
@@ -161,7 +161,7 @@
                 </article>
             }
         </div>
-        <p class="mx-auto mt-4 max-w-xl text-center text-xs text-cream/45">Un pago activa 1 PC. CorelDRAW e Illustrator se activan por separado; eliges el programa con tu serial.</p>
+        <p class="mx-auto mt-4 max-w-xl text-center text-xs text-cream/45">@T("programas.planes.nota", "Un pago activa 1 PC. CorelDRAW e Illustrator se activan por separado; eliges el programa con tu serial.")</p>
         @if (!string.IsNullOrWhiteSpace(PayMsg))
         {
             <p class="mt-4 text-center text-sm @(PayOk ? "text-emerald-300" : "text-rose-400")">@PayMsg</p>
