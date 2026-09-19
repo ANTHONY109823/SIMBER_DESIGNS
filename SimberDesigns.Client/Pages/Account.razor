@@ -78,27 +78,7 @@
         <!-- Columna 2: planes, créditos, claves y contraseña -->
         <div class="space-y-6">
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <h2 class="font-serif text-2xl text-white">Planes de programas</h2>
-                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige la duración; al <span class="text-cream/90">canjear</span> escoges CorelDRAW o Illustrator.</p>
-
-                <div class="mt-4 space-y-2">
-                    @foreach (var plan in ThreePlans)
-                    {
-                        var m = plan.Months;
-                        <button type="button" disabled="@Busy" @onclick="() => BuyPlan(m)"
-                                class="flex w-full items-center justify-between rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-left hover:bg-gold/10 disabled:opacity-50">
-                            <span>
-                                <span class="block text-sm text-white">@plan.Label</span>
-                                <span class="block text-xs text-cream/45">S/ @plan.PricePen.ToString("0.00")</span>
-                            </span>
-                            <span class="font-serif text-2xl text-gold">$@Usd(m).ToString("0")</span>
-                        </button>
-                    }
-                </div>
-            </section>
-
-            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <h2 class="font-serif text-xl text-white">Créditos del catálogo</h2>
+                <h2 class="font-serif text-2xl text-white">Créditos del catálogo</h2>
                 <p class="mt-1 text-sm text-cream/70">Solo para comprar diseños del catálogo.</p>
                 @if (Packages.Count == 0)
                 {
@@ -121,6 +101,26 @@
                 {
                     <p class="mt-3 text-sm text-rose-400">@BuyMsg</p>
                 }
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <h2 class="font-serif text-2xl text-white">Planes de programas</h2>
+                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige la duración; al <span class="text-cream/90">canjear</span> escoges CorelDRAW o Illustrator.</p>
+
+                <div class="mt-4 space-y-2">
+                    @foreach (var plan in ThreePlans)
+                    {
+                        var m = plan.Months;
+                        <button type="button" disabled="@Busy" @onclick="() => BuyPlan(m)"
+                                class="flex w-full items-center justify-between rounded-xl border border-gold/25 bg-gold/5 px-4 py-3 text-left hover:bg-gold/10 disabled:opacity-50">
+                            <span>
+                                <span class="block text-sm text-white">@plan.Label</span>
+                                <span class="block text-xs text-cream/45">S/ @plan.PricePen.ToString("0.00")</span>
+                            </span>
+                            <span class="font-serif text-2xl text-gold">$@Usd(m).ToString("0")</span>
+                        </button>
+                    }
+                </div>
             </section>
 
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
