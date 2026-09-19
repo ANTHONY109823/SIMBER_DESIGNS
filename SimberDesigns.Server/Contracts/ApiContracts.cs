@@ -45,7 +45,8 @@ public sealed record CardPaymentRequest(
     string? IssuerId,
     int Installments,
     string? PayerEmail);
-public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId);
+public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId, string? Serial = null);
+public sealed record AssignEditionRequest(string Code, string Edition);
 public sealed record PluginPlanOptionDto(int Months, int Days, decimal PricePen, string Label);
 public sealed record StorefrontDto(
     IReadOnlyList<CreditPackageDto> Packages,

@@ -32,7 +32,7 @@ public sealed record CheckoutResponse(string CheckoutUrl, Guid TransactionId, bo
 
 public sealed record PaymentConfigDto(string PublicKey, bool CardEnabled);
 
-public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId);
+public sealed record CardPaymentResponse(string Status, string Message, Guid TransactionId, string? Serial = null);
 
 public sealed record StorefrontDto(
     List<CreditPackageDto> Packages,
@@ -401,6 +401,17 @@ public sealed class SimberApi(HttpClient http)
 
     public Task<PaymentConfigDto?> GetPaymentConfigAsync()
         => http.GetFromJsonAsync<PaymentConfigDto?>("api/payments/config");
+
+    // Fija el programa (Corel/Illustrator) de un serial genérico recién comprado.
+    public async Task AssignSerialEditionAsync(string code, string edition)
+    {
+        var response = await http.PostAsJsonAsync("api/plugin/assign-edition", new { code, edition });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(CleanApiError(body, "No se pudo asignar el programa."));
+        }
+    }
 
     public async Task<CardPaymentResponse> PayWithCardAsync(
         string? kind, int? months, Guid? packageId,

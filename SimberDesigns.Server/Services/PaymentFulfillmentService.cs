@@ -33,7 +33,9 @@ public sealed class PaymentFulfillmentService(
         {
             var edition = EditionFromNotes(transaction.Notes);
             var days = DaysFromNotes(transaction.Notes);
-            var key = await periodKeys.IssueAsync(
+            // Emite el serial (Pending). NO se auto-canjea: el cliente lo pega DENTRO del .exe
+            // (elige el programa en la web, que fija la edición del serial). El .exe lo canjea.
+            await periodKeys.IssueAsync(
                 transaction.UserId,
                 edition,
                 days,
@@ -41,18 +43,6 @@ public sealed class PaymentFulfillmentService(
                 transaction.Id,
                 $"MP {days}d",
                 cancellationToken);
-
-            // Auto-activa: crea/renueva la licencia al instante para que el cliente solo abra el .exe.
-            // Si la compra es genérica (sin edición), el programa se define al abrir Corel o Illustrator.
-            // El serial queda como recibo y sigue disponible para verlo o reenviarlo.
-            try
-            {
-                await periodKeys.RedeemAsync(transaction.UserId, key.Code, edition, cancellationToken);
-            }
-            catch (InvalidOperationException)
-            {
-                // Si algo impide el canje automático, el serial queda pendiente para canjearlo a mano.
-            }
         }
         else if (transaction.CreditPackageId is Guid packageId)
         {

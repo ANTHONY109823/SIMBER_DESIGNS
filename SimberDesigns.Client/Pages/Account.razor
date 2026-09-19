@@ -105,7 +105,7 @@
 
             <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
                 <h2 class="font-serif text-2xl text-white">Planes de programas</h2>
-                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige la duración: al pagar se <span class="text-cream/90">activa solo</span>. Luego abre CorelDRAW o Illustrator e inicia sesión.</p>
+                <p class="mt-1 text-sm text-cream/70">US$15 por mes. Elige la duración; al pagar recibes tu <span class="text-cream/90">serial</span> para pegarlo en CorelDRAW o Illustrator.</p>
 
                 <div class="mt-4 space-y-2">
                     @foreach (var plan in ThreePlans)
@@ -189,10 +189,28 @@
             }
             else
             {
-                <div class="mt-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-center">
-                    <p class="text-xs uppercase tracking-wider text-cream/45">Última compra</p>
-                    <p class="mt-1 select-all font-mono text-lg tracking-wide text-emerald-300">@PeriodKeys[0].Code</p>
-                    <p class="mt-2 text-xs text-cream/70">✅ Ya está activado. Abre <span class="text-cream/90">CorelDRAW</span> o <span class="text-cream/90">Illustrator</span>, inicia sesión con tu cuenta y listo.</p>
+                var k0 = PeriodKeys[0];
+                <div class="mt-5 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                    <p class="text-center text-xs uppercase tracking-wider text-cream/45">Última compra</p>
+                    <p class="mt-1 select-all text-center font-mono text-lg tracking-widest text-emerald-300">@k0.Code</p>
+
+                    @if (string.IsNullOrWhiteSpace(k0.Edition))
+                    {
+                        <p class="mt-3 text-center text-sm text-cream/75">Elige el programa de este serial:</p>
+                        <div class="mt-2 grid grid-cols-2 gap-2">
+                            <button type="button" disabled="@Busy" @onclick='() => AssignSerial(k0.Code, "Corel")'
+                                    class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500/15 disabled:opacity-50">CorelDRAW</button>
+                            <button type="button" disabled="@Busy" @onclick='() => AssignSerial(k0.Code, "Illustrator")'
+                                    class="rounded-xl border border-orange-500/30 bg-orange-500/5 py-2.5 text-sm font-semibold text-white hover:bg-orange-500/15 disabled:opacity-50">Illustrator</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="mt-2 text-center text-xs text-cream/60">Programa: <span class="text-cream/90">@k0.Edition</span></p>
+                        <a href="@DownloadHref(k0.Edition)" target="_blank" rel="noopener" download data-enhance-nav="false"
+                           class="mt-3 block rounded-xl border border-white/15 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/10">Descargar @k0.Edition</a>
+                        <p class="mt-2 text-center text-xs text-cream/60">Abre el programa, inicia sesión y pega este serial cuando te lo pida.</p>
+                    }
                 </div>
 
                 @if (PeriodKeys.Count > 1)
@@ -203,7 +221,7 @@
                         {
                             <li class="px-4 py-2.5 text-sm">
                                 <p class="font-mono text-cream/80">@k.Code</p>
-                                <p class="text-xs text-cream/40">@(string.IsNullOrWhiteSpace(k.Edition) ? "Sin asignar" : k.Edition) · @k.Days días · @(k.Status == "Redeemed" ? "activada" : k.Status == "Pending" ? "sin canjear" : k.Status)</p>
+                                <p class="text-xs text-cream/40">@(string.IsNullOrWhiteSpace(k.Edition) ? "Sin asignar" : k.Edition) · @k.Days días · @(k.Status == "Redeemed" ? "activada" : "sin activar")</p>
                             </li>
                         }
                     </ul>
@@ -214,17 +232,6 @@
             {
                 <p class="mt-3 text-sm @(RedeemOk ? "text-emerald-300" : "text-rose-400")">@RedeemMsg</p>
             }
-
-            <details class="mt-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                <summary class="cursor-pointer text-xs text-cream/60">¿Recibiste una clave por WhatsApp? Actívala</summary>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <input @bind="_redeemCode" placeholder="Clave de 16 caracteres" class="min-w-[10rem] flex-1 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white" />
-                    <button type="button" disabled="@Busy" @onclick="RedeemKey"
-                            class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-emerald-400 disabled:opacity-60">
-                        Activar
-                    </button>
-                </div>
-            </details>
         </div>
     </div>
 }
@@ -285,7 +292,6 @@
     private string _currentPassword = "";
     private string _newPassword = "";
     private string _newPassword2 = "";
-    private string _redeemCode = "";
     private bool _forcePwd;
 
     // Tres planes (1, 3 y 6 meses). US$15 por mes.
@@ -329,7 +335,29 @@
         ];
     }
 
-    // Compra genérica: sin programa. El programa se define al abrir Corel o Illustrator.
+    private static string DownloadHref(string? edition) =>
+        (edition ?? "").Contains("Illustrator", StringComparison.OrdinalIgnoreCase)
+            ? "/api/plugin/download/illustrator"
+            : "/api/plugin/download/corel";
+
+    // Fija el programa de un serial genérico (por si cerró el modal de pago sin elegir).
+    private async Task AssignSerial(string code, string program)
+    {
+        RedeemMsg = null;
+        Busy = true;
+        try
+        {
+            await Api.AssignSerialEditionAsync(code, program);
+            PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];
+        }
+        catch (Exception ex)
+        {
+            RedeemOk = false;
+            RedeemMsg = CleanError(ex.Message);
+        }
+        finally { Busy = false; }
+    }
+
     private async Task BuyPlan(int months)
     {
         BuyMsg = null;
@@ -384,29 +412,6 @@
         try { Licenses = await Api.GetPluginLicensesAsync() ?? []; } catch { }
         try { PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? []; } catch { }
         StateHasChanged();
-    }
-
-    private Task RedeemKey() => RedeemExisting(_redeemCode);
-
-    private async Task RedeemExisting(string code)
-    {
-        RedeemMsg = null;
-        Busy = true;
-        try
-        {
-            await Api.RedeemPeriodKeyAsync(code);
-            RedeemOk = true;
-            RedeemMsg = "Clave activada. Abre el .exe (Corel o Illustrator) e inicia sesión.";
-            _redeemCode = "";
-            Licenses = await Api.GetPluginLicensesAsync() ?? [];
-            PeriodKeys = await Api.GetPluginPeriodKeysAsync() ?? [];
-        }
-        catch (Exception ex)
-        {
-            RedeemOk = false;
-            RedeemMsg = CleanError(ex.Message);
-        }
-        finally { Busy = false; }
     }
 
     private async Task Redownload(UnlockedDesignDto design)

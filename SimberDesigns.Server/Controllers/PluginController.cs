@@ -58,7 +58,46 @@ public sealed class PluginController(
     }
 
     /// <summary>
-    /// Canjea serial SMK-… (pago MP o admin). Si mandas hardwareId, también ata la PC y firma el token.
+    /// Fija el PROGRAMA (Corel/Illustrator) de un serial genérico recién comprado. El cliente elige en la
+    /// web tras pagar; luego el serial solo sirve en el .exe de ESE programa.
+    /// </summary>
+    [HttpPost("assign-edition")]
+    public async Task<IActionResult> AssignEdition(AssignEditionRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var edition = LicenseProgram.Normalizar(request.Edition);
+        if (string.IsNullOrWhiteSpace(edition))
+        {
+            return BadRequest("Elige CorelDRAW o Illustrator.");
+        }
+
+        var code = PluginPeriodKeyService.NormalizeCode(request.Code);
+        var key = await db.PluginPeriodKeys.FirstOrDefaultAsync(k => k.Code == code && k.UserId == userId, cancellationToken);
+        if (key is null)
+        {
+            return NotFound("No encontramos ese serial en tu cuenta.");
+        }
+        if (key.Status == PeriodKeyStatuses.Redeemed)
+        {
+            return BadRequest("Ese serial ya fue activado; no se puede cambiar de programa.");
+        }
+        if (!string.IsNullOrWhiteSpace(key.Edition) && !string.Equals(key.Edition, edition, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest($"Ese serial ya es para {LicenseProgram.Etiqueta(key.Edition)}.");
+        }
+
+        key.Edition = edition;
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new { code = key.Code, edition });
+    }
+
+    /// <summary>
+    /// Canjea serial (pago MP o admin). Si mandas hardwareId, también ata la PC y firma el token.
     /// </summary>
     [HttpPost("redeem")]
     public async Task<ActionResult<object>> Redeem(PluginRedeemRequest request, CancellationToken cancellationToken)

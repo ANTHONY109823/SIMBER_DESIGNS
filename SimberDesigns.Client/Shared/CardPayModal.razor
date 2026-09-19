@@ -14,19 +14,63 @@
                     <h3 class="mt-1 font-serif text-xl text-white">@_label</h3>
                     <p class="mt-1 text-2xl font-bold text-emerald-300">S/ @_amount.ToString("0.00")</p>
                 </div>
-                <button type="button" @onclick="Close" class="rounded-full p-2 text-cream/60 hover:bg-white/10 hover:text-white">✕</button>
+                @if (!MustCopy)
+                {
+                    <button type="button" @onclick="Close" class="rounded-full p-2 text-cream/60 hover:bg-white/10 hover:text-white">✕</button>
+                }
             </div>
 
-            @if (_status == "approved")
+            @if (_status == "approved" && _kind.StartsWith("plugin"))
+            {
+                <div class="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+                    <p class="text-center text-lg font-semibold text-emerald-300">¡Pago aprobado!</p>
+
+                    @if (string.IsNullOrEmpty(_chosenProgram))
+                    {
+                        <p class="mt-3 text-center text-sm text-cream/80">¿Para qué programa quieres tu serial?</p>
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+                            <button type="button" disabled="@_assignBusy" @onclick='() => ChooseProgram("Corel")'
+                                    class="rounded-xl border border-emerald-500/30 bg-emerald-500/5 py-3 text-sm font-semibold text-white hover:bg-emerald-500/15 disabled:opacity-50">CorelDRAW</button>
+                            <button type="button" disabled="@_assignBusy" @onclick='() => ChooseProgram("Illustrator")'
+                                    class="rounded-xl border border-orange-500/30 bg-orange-500/5 py-3 text-sm font-semibold text-white hover:bg-orange-500/15 disabled:opacity-50">Illustrator</button>
+                        </div>
+                        <p class="mt-2 text-center text-xs text-cream/50">Elige bien: el serial quedará amarrado a ese programa.</p>
+                        @if (!string.IsNullOrWhiteSpace(_msg2))
+                        {
+                            <p class="mt-2 text-center text-sm text-rose-400">@_msg2</p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="mt-3 text-center text-xs uppercase tracking-wider text-cream/45">Tu serial · @_chosenProgram</p>
+                        <p class="mt-1 select-all text-center font-mono text-xl tracking-widest text-emerald-300">@_serial</p>
+                        <div class="mt-3 grid gap-2">
+                            <button type="button" @onclick="CopySerial" class="rounded-xl bg-gold py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">
+                                @(_copied ? "✓ Serial copiado" : "Copiar serial")
+                            </button>
+                            <a href="@DownloadHref" target="_blank" rel="noopener" download data-enhance-nav="false"
+                               class="rounded-xl border border-white/15 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/10">
+                                Descargar @_chosenProgram
+                            </a>
+                        </div>
+                        <p class="mt-3 text-xs text-cream/60">1) Copia tu serial · 2) Descarga y abre @_chosenProgram · 3) Inicia sesión con tu cuenta · 4) Pega el serial cuando el programa te lo pida.</p>
+                        @if (_copied)
+                        {
+                            <button type="button" @onclick="Close" class="mt-3 w-full rounded-full border border-white/15 py-2.5 text-sm text-white hover:bg-white/10">Cerrar</button>
+                        }
+                        else
+                        {
+                            <p class="mt-3 text-center text-xs text-amber-300">Copia tu serial antes de cerrar.</p>
+                        }
+                    }
+                </div>
+            }
+            else if (_status == "approved")
             {
                 <div class="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
                     <p class="text-lg font-semibold text-emerald-300">¡Pago aprobado!</p>
                     <p class="mt-2 text-sm text-cream/80">@_msg</p>
-                    @if (_kind.StartsWith("plugin"))
-                    {
-                        <p class="mt-2 text-sm text-cream/70">Ya está activado. Abre <span class="text-white">CorelDRAW</span> o <span class="text-white">Illustrator</span> e inicia sesión con tu cuenta.</p>
-                    }
-                    <a href="/cuenta" class="mt-4 inline-flex rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">Ir a Mi cuenta</a>
+                    <button type="button" @onclick="Close" class="mt-4 inline-flex rounded-full bg-gold px-6 py-2.5 text-sm font-semibold text-ink hover:bg-orange-400">Cerrar</button>
                 </div>
             }
             else if (_status == "pending")
@@ -101,6 +145,19 @@
     private string _yapeOtp = "";
     private bool _yapeBusy;
 
+    // Post-pago de un plan: elegir programa (fija la edición del serial) + copiar serial obligado.
+    private string? _serial;
+    private string _chosenProgram = "";
+    private bool _copied;
+    private bool _assignBusy;
+    private string? _msg2;
+
+    private bool MustCopy =>
+        _status == "approved" && _kind.StartsWith("plugin") && !string.IsNullOrEmpty(_chosenProgram) && !_copied;
+
+    private string DownloadHref =>
+        _chosenProgram == "Corel" ? "/api/plugin/download/corel" : "/api/plugin/download/illustrator";
+
     /// <summary>Callback opcional que la página escucha cuando el pago se aprueba (p. ej. refrescar saldo).</summary>
     [Parameter] public EventCallback OnApproved { get; set; }
 
@@ -128,8 +185,46 @@
         _method = "tarjeta";
         _yapePhone = "";
         _yapeOtp = "";
+        _serial = null;
+        _chosenProgram = "";
+        _copied = false;
+        _assignBusy = false;
+        _msg2 = null;
         _rendered = false;
         _show = true;
+        StateHasChanged();
+    }
+
+    // Post-pago (plan): fija el programa del serial y muestra el serial para copiar.
+    private async Task ChooseProgram(string prog)
+    {
+        _msg2 = null;
+        _assignBusy = true;
+        StateHasChanged();
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_serial))
+            {
+                await Api.AssignSerialEditionAsync(_serial, prog);
+            }
+            _chosenProgram = prog;
+        }
+        catch (Exception ex)
+        {
+            _msg2 = ex.Message;
+        }
+        finally
+        {
+            _assignBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopySerial()
+    {
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", _serial ?? ""); }
+        catch { /* si el navegador bloquea el portapapeles, el serial está visible y es seleccionable */ }
+        _copied = true;
         StateHasChanged();
     }
 
@@ -163,6 +258,11 @@
 
     private async Task Close()
     {
+        // Obliga a copiar el serial antes de cerrar (para que no lo pierda).
+        if (MustCopy)
+        {
+            return;
+        }
         _show = false;
         _rendered = false;
         _status = "";
@@ -263,6 +363,7 @@
         var res = await Api.PayWithCardAsync(_kind, _months, _packageId, token, paymentMethodId, issuerId, installments, email);
         _status = res.Status;
         _msg = res.Message;
+        _serial = res.Serial;
         StateHasChanged();
         if (res.Status == "approved" && OnApproved.HasDelegate)
         {

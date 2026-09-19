@@ -264,7 +264,7 @@ public sealed class PaymentsController(
         if (mercadoPago.UseFakeCheckout)
         {
             await fulfillment.FulfillAsync(tx, "fake-card", cancellationToken);
-            return Ok(new CardPaymentResponse("approved", "Pago de prueba acreditado.", tx.Id));
+            return Ok(new CardPaymentResponse("approved", "Pago de prueba acreditado.", tx.Id, await SerialForAsync(tx.Id, cancellationToken)));
         }
 
         MercadoPagoCardResult result;
@@ -310,7 +310,7 @@ public sealed class PaymentsController(
             }
 
             await fulfillment.FulfillAsync(tx, result.PaymentId ?? "mp-card", cancellationToken);
-            return Ok(new CardPaymentResponse("approved", "¡Pago aprobado! Tu clave ya está en Mi cuenta.", tx.Id));
+            return Ok(new CardPaymentResponse("approved", "¡Pago aprobado! Copia tu serial y pégalo en el .exe.", tx.Id, await SerialForAsync(tx.Id, cancellationToken)));
         }
 
         if (string.Equals(result.Status, "in_process", StringComparison.OrdinalIgnoreCase)
@@ -327,6 +327,14 @@ public sealed class PaymentsController(
         await db.SaveChangesAsync(cancellationToken);
         return Ok(new CardPaymentResponse("rejected", RejectMessage(result.StatusDetail), tx.Id));
     }
+
+    // Serial (16 caracteres) recién emitido para esta compra, para mostrarlo y pegarlo en el .exe.
+    private async Task<string?> SerialForAsync(Guid transactionId, CancellationToken cancellationToken)
+        => await db.PluginPeriodKeys
+            .Where(k => k.TransactionId == transactionId)
+            .OrderByDescending(k => k.CreatedAt)
+            .Select(k => k.Code)
+            .FirstOrDefaultAsync(cancellationToken);
 
     private static string RejectMessage(string? statusDetail) => statusDetail switch
     {

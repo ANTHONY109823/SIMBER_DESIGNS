@@ -101,10 +101,20 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
             throw new InvalidOperationException("Esa clave ya fue canjeada.");
         }
 
+        // Si el serial ya está amarrado a un programa, solo se puede activar en ESE programa.
+        // (chosenEdition = el programa del .exe que intenta canjear.)
+        var chosen = LicenseProgram.Normalizar(chosenEdition);
+        if (!string.IsNullOrWhiteSpace(key.Edition)
+            && !string.IsNullOrWhiteSpace(chosen)
+            && !string.Equals(key.Edition, chosen, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Este serial es para {LicenseProgram.Etiqueta(key.Edition)}. Ábrelo en ese programa.");
+        }
+
         // Edición efectiva: la del serial si ya la trae; si es genérico, la que el cliente eligió al canjear.
         var effectiveEdition = !string.IsNullOrWhiteSpace(key.Edition)
             ? key.Edition
-            : LicenseProgram.Normalizar(chosenEdition);
+            : chosen;
 
         var license = await ExtendOrCreateLicenseAsync(userId, effectiveEdition, key.Days, cancellationToken);
         key.Status = PeriodKeyStatuses.Redeemed;
