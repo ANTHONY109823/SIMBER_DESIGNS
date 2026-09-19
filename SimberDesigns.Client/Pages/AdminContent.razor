@@ -89,6 +89,14 @@
         </section>
 
         <section class="mt-6 space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <h2 class="font-bold text-white">Planes (texto)</h2>
+            <p class="text-xs text-slate-400">Título, subtítulo y nota de la sección de planes. Los precios se editan en “Planes y precios”.</p>
+            @Field("programas.planes.titulo", "Título de la sección", false)
+            @Field("programas.planes.desc", "Subtítulo", true)
+            @Field("programas.planes.nota", "Nota inferior", true)
+        </section>
+
+        <section class="mt-6 space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6">
             <h2 class="font-bold text-white">Imagen del hero (Programas)</h2>
             <p class="text-xs text-slate-400">La que se ve arriba a la derecha, dentro del mockup del programa. Independiente del paso 1.</p>
             @ImageBlock("prog-hero", "Imagen del mockup del hero", SizeGuide("prog-hero"))
