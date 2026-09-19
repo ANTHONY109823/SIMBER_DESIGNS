@@ -1,5 +1,7 @@
 @page "/programas"
 @inject SimberApi Api
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>Programas · Simber Designs</PageTitle>
 
@@ -130,12 +132,56 @@
 </section>
 
 <section id="planes" class="border-t border-white/10 bg-ink/80">
-    <div class="mx-auto max-w-6xl px-4 py-16 text-center sm:px-6">
-        <h2 class="font-serif text-3xl text-white">Conoce nuestros planes</h2>
-        <a href="/login?returnUrl=/recargar"
-           class="mt-6 inline-flex items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
-            Ver planes
-        </a>
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        @if (isAuthenticated)
+        {
+            <h2 class="text-center font-serif text-3xl text-white">Activa o renueva tu programa</h2>
+            <p class="mx-auto mt-2 max-w-xl text-center text-sm text-cream/70">Elige el programa y la duración. Pagas con Mercado Pago y recibes tu serial en Mi cuenta para canjearlo.</p>
+            <div class="mt-8 grid gap-6 lg:grid-cols-2">
+                <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                    <h3 class="text-lg font-semibold text-white">CorelDRAW</h3>
+                    <div class="mt-4 space-y-2">
+                        @foreach (var plan in Plans)
+                        {
+                            var m = plan.Months;
+                            <button type="button" disabled="@Busy" @onclick="() => PayCorel(m)"
+                                    class="flex w-full items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-left text-sm hover:bg-emerald-500/15 disabled:opacity-50">
+                                <span class="text-white">@plan.Label</span>
+                                <span class="font-semibold text-emerald-300">S/ @plan.PricePen.ToString("0.00")</span>
+                            </button>
+                        }
+                    </div>
+                </article>
+                <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                    <h3 class="text-lg font-semibold text-white">Illustrator</h3>
+                    <div class="mt-4 space-y-2">
+                        @foreach (var plan in Plans)
+                        {
+                            var m = plan.Months;
+                            <button type="button" disabled="@Busy" @onclick="() => PayIlus(m)"
+                                    class="flex w-full items-center justify-between rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3 text-left text-sm hover:bg-orange-500/15 disabled:opacity-50">
+                                <span class="text-white">@plan.Label</span>
+                                <span class="font-semibold text-orange-300">S/ @plan.PricePen.ToString("0.00")</span>
+                            </button>
+                        }
+                    </div>
+                </article>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(PayMsg))
+            {
+                <p class="mt-4 text-center text-sm @(PayOk ? "text-emerald-300" : "text-rose-400")">@PayMsg</p>
+            }
+        }
+        else
+        {
+            <div class="text-center">
+                <h2 class="font-serif text-3xl text-white">Conoce nuestros planes</h2>
+                <a href="/login?returnUrl=/programas%23planes"
+                   class="mt-6 inline-flex items-center justify-center rounded-full bg-gold px-8 py-3 text-sm font-semibold text-ink hover:bg-orange-400">
+                    Ver planes
+                </a>
+            </div>
+        }
     </div>
 </section>
 
@@ -146,6 +192,12 @@
     private bool HasCorel;
     private bool HasIllustrator;
     private bool _loaded;
+    private bool isAuthenticated;
+    private decimal MonthPricePen;
+    private List<PluginPlanOptionDto> Plans = [];
+    private bool Busy;
+    private string? PayMsg;
+    private bool PayOk;
 
     private string T(string key, string fallback)
         => _c.TryGetValue(key, out var v) ? v : fallback;
@@ -169,6 +221,37 @@
         var store = await Api.GetStorefrontAsync();
         HasCorel = store?.HasCorelDownload == true;
         HasIllustrator = store?.HasIllustratorDownload == true;
+        MonthPricePen = store?.PluginMonthPricePen ?? 0;
+        Plans = store?.PluginPlans ??
+        [
+            new(1, 30, MonthPricePen, "1 mes (30 días)"),
+            new(3, 90, MonthPricePen * 3, "3 meses (90 días)"),
+            new(6, 180, MonthPricePen * 6, "6 meses (180 días)"),
+            new(12, 365, MonthPricePen * 12, "12 meses (365 días)")
+        ];
+
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        isAuthenticated = auth.User.Identity?.IsAuthenticated == true;
+    }
+
+    private Task PayCorel(int months) => Pay("plugin-corel", months);
+    private Task PayIlus(int months) => Pay("plugin-illustrator", months);
+
+    private async Task Pay(string kind, int months)
+    {
+        PayMsg = null; PayOk = false; Busy = true;
+        try
+        {
+            var checkout = await Api.CheckoutAsync(kind, null, null, months);
+            if (string.IsNullOrWhiteSpace(checkout?.CheckoutUrl))
+            {
+                PayMsg = "No se pudo abrir Mercado Pago. Inténtalo de nuevo.";
+                return;
+            }
+            Nav.NavigateTo(checkout.CheckoutUrl, forceLoad: true);
+        }
+        catch (Exception ex) { PayMsg = ex.Message; }
+        finally { Busy = false; }
     }
 
     private IEnumerable<FeatureItem> Features =>
