@@ -90,7 +90,7 @@ Usa doble guion bajo `__` para las secciones anidadas:
 ## 5) Primer deploy y URL pública
 - Deploy. Cuando termine, Railway te da una URL tipo `https://simber-designs-api-production.up.railway.app`.
 - Pon esa URL en `MercadoPago__PublicBaseUrl` (redeploy).
-- En el panel de Mercado Pago, configura el **webhook** apuntando a `https://<tu-url>/api/mercadopago/webhook` (o la ruta del `MercadoPagoWebhookController`).
+- En el panel de Mercado Pago, configura el **webhook** apuntando a `https://<tu-url>/api/webhooks/mercadopago` (ruta real del `MercadoPagoWebhookController`).
 
 ## 6) El botón "Descargar" (V2)
 1. Preferido: Admin → instaladores → sube Corel / Illustrator (van a R2 si está activo).

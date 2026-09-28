@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SimberDesigns.Server.Data;
+using SimberDesigns.Server.Models;
 using SimberDesigns.Server.Services;
 
 namespace SimberDesigns.Server.Controllers;
@@ -70,7 +71,7 @@ public sealed class MercadoPagoWebhookController(
         }
 
         var payment = await mercadoPago.GetPaymentAsync(dataId, cancellationToken);
-        if (payment is null || !string.Equals(payment.Status, "approved", StringComparison.OrdinalIgnoreCase))
+        if (payment is null)
         {
             return Ok();
         }
@@ -86,7 +87,34 @@ public sealed class MercadoPagoWebhookController(
             return Ok();
         }
 
-        await fulfillment.FulfillAsync(tx, payment.PaymentId, cancellationToken);
+        if (string.Equals(payment.Status, "approved", StringComparison.OrdinalIgnoreCase))
+        {
+            await fulfillment.FulfillAsync(tx, payment.PaymentId, cancellationToken);
+            return Ok();
+        }
+
+        // Si MP rechaza después (Yape/seguridad), no dejar la orden colgada en Pending.
+        if (string.Equals(payment.Status, "rejected", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(payment.Status, "cancelled", StringComparison.OrdinalIgnoreCase)
+            || LooksLikeSecurityReject(payment.StatusDetail))
+        {
+            if (tx.Status == TransactionStatuses.Pending || tx.Status == TransactionStatuses.Failed)
+            {
+                tx.Status = TransactionStatuses.Rejected;
+                tx.Notes = $"{tx.Notes}|webhook_rechazo:{payment.StatusDetail ?? payment.Status}";
+                tx.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+            }
+        }
+
         return Ok();
+    }
+
+    private static bool LooksLikeSecurityReject(string? detail)
+    {
+        if (string.IsNullOrWhiteSpace(detail)) return false;
+        return detail.Contains("high_risk", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("blacklist", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("rejected", StringComparison.OrdinalIgnoreCase);
     }
 }

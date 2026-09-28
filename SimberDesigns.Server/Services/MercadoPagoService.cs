@@ -13,7 +13,8 @@ public sealed record MercadoPagoPaymentResult(
     string PaymentId,
     string Status,
     string? ExternalReference,
-    decimal TransactionAmount);
+    decimal TransactionAmount,
+    string? StatusDetail = null);
 
 public sealed record MercadoPagoCardResult(
     string? PaymentId,
@@ -239,7 +240,8 @@ public sealed class MercadoPagoService(HttpClient http, IOptions<MercadoPagoOpti
             root.GetProperty("id").ToString(),
             root.GetProperty("status").GetString() ?? "",
             root.TryGetProperty("external_reference", out var ext) ? ext.GetString() : null,
-            root.TryGetProperty("transaction_amount", out var amount) ? amount.GetDecimal() : 0);
+            root.TryGetProperty("transaction_amount", out var amount) ? amount.GetDecimal() : 0,
+            root.TryGetProperty("status_detail", out var sd) ? sd.GetString() : null);
     }
 
     public bool IsValidWebhook(string? xSignature, string? xRequestId, string dataId)

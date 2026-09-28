@@ -247,6 +247,40 @@ public sealed class PaymentsController(
             return BadRequest(charge.Error);
         }
 
+        var isYape = string.Equals(request.PaymentMethodId, "yape", StringComparison.OrdinalIgnoreCase);
+        // Anti-fraude MP: reintentos Yape seguidos (mismo monto) suelen terminar en rechazo por seguridad.
+        if (isYape)
+        {
+            var cooldownFrom = DateTime.UtcNow.AddMinutes(-10);
+            var recentYape = await db.Transactions
+                .AsNoTracking()
+                .Where(t => t.UserId == user.Id
+                    && t.Gateway == Gateways.MercadoPago
+                    && t.Amount == charge.Amount
+                    && t.CreatedAt >= cooldownFrom
+                    && (t.Status == TransactionStatuses.Rejected
+                        || t.Status == TransactionStatuses.Pending
+                        || t.Status == TransactionStatuses.Failed))
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (recentYape is not null)
+            {
+                if (recentYape.Status == TransactionStatuses.Pending
+                    && !string.IsNullOrWhiteSpace(recentYape.ExternalReferenceId))
+                {
+                    return Ok(new CardPaymentResponse(
+                        "pending",
+                        "Ya tienes un pago Yape en revisión. Usa «Verificar pago»; no generes otro código ahora (Mercado Pago lo puede bloquear).",
+                        recentYape.Id));
+                }
+
+                return Ok(new CardPaymentResponse(
+                    "rejected",
+                    "Mercado Pago rechazó un intento Yape reciente por seguridad. Espera 10 minutos o paga con tarjeta.",
+                    recentYape.Id));
+            }
+        }
+
         var tx = new Transaction
         {
             Id = Guid.NewGuid(),
@@ -256,7 +290,7 @@ public sealed class PaymentsController(
             Gateway = Gateways.MercadoPago,
             Status = TransactionStatuses.Pending,
             CreditPackageId = charge.Package?.Id,
-            Notes = charge.Notes,
+            Notes = isYape ? $"{charge.Notes}|yape" : charge.Notes,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -293,7 +327,9 @@ public sealed class PaymentsController(
             tx.Notes = $"{charge.Notes}|card_error:{ex.Message}";
             tx.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
-            return BadRequest("No se pudo procesar la tarjeta. Intenta de nuevo.");
+            return BadRequest(isYape
+                ? "No se pudo procesar Yape. Intenta de nuevo o usa tarjeta."
+                : "No se pudo procesar la tarjeta. Intenta de nuevo.");
         }
 
         if (!string.IsNullOrWhiteSpace(result.PaymentId))
@@ -318,19 +354,114 @@ public sealed class PaymentsController(
             return Ok(new CardPaymentResponse("approved", "¡Pago aprobado! Copia tu serial y pégalo en el .exe.", tx.Id, await SerialForAsync(tx.Id, cancellationToken)));
         }
 
+        // MP a veces deja "in_process" con detalle de rechazo de seguridad.
+        if (IsHardReject(result.Status, result.StatusDetail, result.Error))
+        {
+            tx.Status = TransactionStatuses.Rejected;
+            tx.Notes = $"{tx.Notes}|rechazado:{result.StatusDetail ?? result.Error ?? result.Status}";
+            tx.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return Ok(new CardPaymentResponse("rejected", RejectMessage(result.StatusDetail, isYape), tx.Id));
+        }
+
         if (string.Equals(result.Status, "in_process", StringComparison.OrdinalIgnoreCase)
             || string.Equals(result.Status, "pending", StringComparison.OrdinalIgnoreCase))
         {
-            // No acreditamos aún: el webhook lo confirmará cuando MP apruebe.
             await db.SaveChangesAsync(cancellationToken);
-            return Ok(new CardPaymentResponse("pending", "Tu pago está en revisión. Te avisaremos cuando se apruebe.", tx.Id));
+            return Ok(new CardPaymentResponse(
+                "pending",
+                isYape
+                    ? "Tu pago Yape está en revisión en Mercado Pago. Pulsa «Verificar pago». No generes otro código ahora."
+                    : "Tu pago está en revisión. Pulsa «Verificar pago» en unos segundos.",
+                tx.Id));
         }
 
         tx.Status = TransactionStatuses.Rejected;
-        tx.Notes = $"{charge.Notes}|rechazado:{result.StatusDetail ?? result.Error ?? result.Status}";
+        tx.Notes = $"{tx.Notes}|rechazado:{result.StatusDetail ?? result.Error ?? result.Status}";
         tx.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
-        return Ok(new CardPaymentResponse("rejected", RejectMessage(result.StatusDetail), tx.Id));
+        return Ok(new CardPaymentResponse("rejected", RejectMessage(result.StatusDetail, isYape), tx.Id));
+    }
+
+    /// <summary>Reconsulta Mercado Pago para una orden Pending (Yape/tarjeta en revisión).</summary>
+    [Authorize(Roles = Roles.Customer)]
+    [EnableRateLimiting("sensitive")]
+    [HttpPost("check-status")]
+    public async Task<ActionResult<CardPaymentResponse>> CheckStatus(CheckPaymentStatusRequest request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var tx = await db.Transactions.FirstOrDefaultAsync(
+            t => t.Id == request.TransactionId && t.UserId == userId, cancellationToken);
+        if (tx is null) return NotFound("No encontramos esa orden.");
+
+        var yape = NotesLookLikeYape(tx.Notes);
+
+        if (tx.Status == TransactionStatuses.Completed)
+        {
+            return Ok(new CardPaymentResponse(
+                "approved",
+                "¡Pago aprobado! Copia tu serial y pégalo en el .exe.",
+                tx.Id,
+                await SerialForAsync(tx.Id, cancellationToken)));
+        }
+
+        if (tx.Status == TransactionStatuses.Rejected)
+        {
+            return Ok(new CardPaymentResponse(
+                "rejected",
+                RejectMessage(ExtractDetail(tx.Notes), yape),
+                tx.Id));
+        }
+
+        if (mercadoPago.UseFakeCheckout)
+        {
+            await fulfillment.FulfillAsync(tx, "fake-check", cancellationToken);
+            return Ok(new CardPaymentResponse("approved", "Pago de prueba acreditado.", tx.Id, await SerialForAsync(tx.Id, cancellationToken)));
+        }
+
+        if (string.IsNullOrWhiteSpace(tx.ExternalReferenceId))
+        {
+            return Ok(new CardPaymentResponse("pending", "Aún no hay ID de pago en Mercado Pago. Espera un momento.", tx.Id));
+        }
+
+        var payment = await mercadoPago.GetPaymentAsync(tx.ExternalReferenceId, cancellationToken);
+        if (payment is null)
+        {
+            return Ok(new CardPaymentResponse("pending", "No pudimos consultar Mercado Pago. Intenta de nuevo en unos segundos.", tx.Id));
+        }
+
+        if (string.Equals(payment.Status, "approved", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.Equals(payment.ExternalReference, tx.Id.ToString(), StringComparison.OrdinalIgnoreCase))
+                return BadRequest("El pago no corresponde a esta orden.");
+            if (payment.TransactionAmount + 0.5m < tx.Amount)
+                return BadRequest("El monto pagado no cubre esta orden.");
+
+            await fulfillment.FulfillAsync(tx, payment.PaymentId, cancellationToken);
+            return Ok(new CardPaymentResponse(
+                "approved",
+                "¡Pago aprobado! Copia tu serial y pégalo en el .exe.",
+                tx.Id,
+                await SerialForAsync(tx.Id, cancellationToken)));
+        }
+
+        if (string.Equals(payment.Status, "rejected", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(payment.Status, "cancelled", StringComparison.OrdinalIgnoreCase)
+            || LooksLikeSecurityReject(payment.StatusDetail))
+        {
+            tx.Status = TransactionStatuses.Rejected;
+            tx.Notes = $"{tx.Notes}|check_rechazo:{payment.StatusDetail ?? payment.Status}";
+            tx.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return Ok(new CardPaymentResponse("rejected", RejectMessage(payment.StatusDetail, yape), tx.Id));
+        }
+
+        return Ok(new CardPaymentResponse(
+            "pending",
+            "Mercado Pago aún lo tiene en proceso. Espera un poco y vuelve a verificar. No generes otro código Yape.",
+            tx.Id));
     }
 
     // Serial (16 caracteres) recién emitido para esta compra, para mostrarlo y pegarlo en el .exe.
@@ -341,7 +472,37 @@ public sealed class PaymentsController(
             .Select(k => k.Code)
             .FirstOrDefaultAsync(cancellationToken);
 
-    private static string RejectMessage(string? statusDetail) => statusDetail switch
+    private static bool IsHardReject(string? status, string? statusDetail, string? error)
+    {
+        if (string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return LooksLikeSecurityReject(statusDetail) || LooksLikeSecurityReject(error);
+    }
+
+    private static bool LooksLikeSecurityReject(string? detail)
+    {
+        if (string.IsNullOrWhiteSpace(detail)) return false;
+        return detail.Contains("high_risk", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("blacklist", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("cc_rejected", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool NotesLookLikeYape(string? notes)
+        => (notes ?? "").Contains("yape", StringComparison.OrdinalIgnoreCase);
+
+    private static string? ExtractDetail(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return null;
+        foreach (var m in new[] { "check_rechazo:", "webhook_rechazo:", "rechazado:" })
+        {
+            var i = notes.LastIndexOf(m, StringComparison.OrdinalIgnoreCase);
+            if (i >= 0) return notes[(i + m.Length)..].Trim();
+        }
+        return null;
+    }
+
+    private static string RejectMessage(string? statusDetail, bool preferYape = false) => statusDetail switch
     {
         "cc_rejected_insufficient_amount" => "Tarjeta sin fondos suficientes.",
         "cc_rejected_bad_filled_card_number" => "Revisa el número de la tarjeta.",
@@ -350,7 +511,12 @@ public sealed class PaymentsController(
         "cc_rejected_bad_filled_other" => "Revisa los datos de la tarjeta.",
         "cc_rejected_call_for_authorize" => "Autoriza el pago con tu banco e intenta de nuevo.",
         "cc_rejected_card_disabled" => "Activa tu tarjeta con el banco e intenta de nuevo.",
-        "cc_rejected_high_risk" => "El pago fue rechazado. Prueba con otra tarjeta.",
+        "cc_rejected_high_risk" or "cc_rejected_blacklist" or "cc_rejected_other_reason"
+            => preferYape
+                ? "Mercado Pago rechazó este Yape por seguridad (a veces pasa aunque el código sea correcto). Espera 10 minutos o paga con tarjeta."
+                : "Mercado Pago rechazó el pago por seguridad. Prueba con otro medio.",
+        _ when preferYape
+            => "Mercado Pago rechazó este Yape. Espera unos minutos o paga con tarjeta (no generes varios códigos seguidos).",
         _ => "El pago fue rechazado. Prueba con otra tarjeta o medio de pago."
     };
 

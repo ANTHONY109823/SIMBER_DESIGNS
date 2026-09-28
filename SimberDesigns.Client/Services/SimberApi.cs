@@ -441,6 +441,22 @@ public sealed class SimberApi(HttpClient http)
             ?? new CardPaymentResponse("error", "Sin respuesta del servidor.", Guid.Empty);
     }
 
+    public async Task<CardPaymentResponse> CheckPaymentStatusAsync(Guid transactionId)
+    {
+        var response = await http.PostAsJsonAsync("api/payments/check-status", new { transactionId });
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = body?.Trim() ?? "";
+            if (msg.Length >= 2 && msg[0] == '"' && msg[^1] == '"')
+                msg = msg[1..^1];
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "No se pudo verificar el pago." : msg);
+        }
+
+        return await response.Content.ReadFromJsonAsync<CardPaymentResponse>()
+            ?? new CardPaymentResponse("error", "Sin respuesta del servidor.", transactionId);
+    }
+
     public async Task ConfirmPaymentAsync(Guid? transactionId, string? paymentId, string? externalReference)
     {
         var response = await http.PostAsJsonAsync("api/payments/confirm", new { transactionId, paymentId, externalReference });
