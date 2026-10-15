@@ -101,25 +101,34 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
             throw new InvalidOperationException("Esa clave ya fue canjeada.");
         }
 
+        // Edición del serial SOLO si es un programa VÁLIDO (Corel/Illustrator). Si trae
+        // basura (p.ej. "|yape" de un fulfillment con bug), se trata como GENÉRICO y el
+        // cliente elige el programa con su .exe al canjear. Así se rescatan seriales dañados.
+        var keyEdition = LicenseProgram.Normalizar(key.Edition);
+        if (keyEdition != LicenseProgram.Corel && keyEdition != LicenseProgram.Illustrator)
+        {
+            keyEdition = "";
+        }
+
         // Si el serial ya está amarrado a un programa, solo se puede activar en ESE programa.
         // (chosenEdition = el programa del .exe que intenta canjear.)
         var chosen = LicenseProgram.Normalizar(chosenEdition);
-        if (!string.IsNullOrWhiteSpace(key.Edition)
+        if (!string.IsNullOrWhiteSpace(keyEdition)
             && !string.IsNullOrWhiteSpace(chosen)
-            && !string.Equals(key.Edition, chosen, StringComparison.OrdinalIgnoreCase))
+            && !string.Equals(keyEdition, chosen, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"Este serial es para {LicenseProgram.Etiqueta(key.Edition)}. Ábrelo en ese programa.");
+            throw new InvalidOperationException($"Este serial es para {LicenseProgram.Etiqueta(keyEdition)}. Ábrelo en ese programa.");
         }
 
-        // Edición efectiva: la del serial si ya la trae; si es genérico, la que el cliente eligió al canjear.
-        var effectiveEdition = !string.IsNullOrWhiteSpace(key.Edition)
-            ? key.Edition
+        // Edición efectiva: la del serial si ya la trae válida; si es genérico, la que el cliente eligió al canjear.
+        var effectiveEdition = !string.IsNullOrWhiteSpace(keyEdition)
+            ? keyEdition
             : chosen;
 
         var license = await ExtendOrCreateLicenseAsync(userId, effectiveEdition, key.Days, cancellationToken);
         key.Status = PeriodKeyStatuses.Redeemed;
         key.RedeemedAt = DateTime.UtcNow;
-        if (string.IsNullOrWhiteSpace(key.Edition) && !string.IsNullOrWhiteSpace(effectiveEdition))
+        if (string.IsNullOrWhiteSpace(keyEdition) && !string.IsNullOrWhiteSpace(effectiveEdition))
         {
             key.Edition = effectiveEdition; // deja registrado el programa elegido
         }
@@ -142,6 +151,11 @@ public sealed class PluginPeriodKeyService(AppDbContext db) : IPluginPeriodKeySe
     public static bool LooksLikePeriodKey(string? code)
     {
         var n = NormalizeCode(code);
+        if (n.Length == 0 || n.StartsWith("SIMBER.", StringComparison.Ordinal))
+            return false;
+        // Formato actual: 16 alfanuméricos. Legado: SMK-COR-… / SMK-ILU-…
+        if (n.Length == 16 && n.All(char.IsLetterOrDigit))
+            return true;
         return n.StartsWith("SMK-", StringComparison.Ordinal);
     }
 

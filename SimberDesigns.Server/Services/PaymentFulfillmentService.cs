@@ -86,7 +86,9 @@ public sealed class PaymentFulfillmentService(
             return 30;
         }
 
-        var parts = notes.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Quita marcadores anexados (|yape, |rechazado, |card_error, ...) antes de parsear.
+        var core = notes.Split('|')[0];
+        var parts = core.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length < 2)
         {
             return 30;
@@ -112,7 +114,9 @@ public sealed class PaymentFulfillmentService(
             return "";
         }
 
-        var parts = notes.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Quita marcadores anexados (|yape, |rechazado, ...) para que no contaminen la edicion.
+        var core = notes.Split('|')[0];
+        var parts = core.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length >= 3)
         {
             return LicenseProgram.Normalizar(parts[2]);
