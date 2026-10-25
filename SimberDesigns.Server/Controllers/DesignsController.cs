@@ -106,11 +106,8 @@ public sealed class DesignsController(
             return BadRequest("El precio no puede ser negativo.");
         }
 
-        var sport = NormalizeSport(category);
-        if (sport is null)
-        {
-            return BadRequest("La categoría debe ser Fútbol o Vóley.");
-        }
+        // Ya no se exige Fútbol/Vóley: el catálogo usa una sola categoría "Deportivos".
+        var sport = string.IsNullOrWhiteSpace(category) ? "Deportivos" : category.Trim();
 
         var previewExt = Path.GetExtension(image.FileName).ToLowerInvariant();
         if (previewExt is not (".jpg" or ".jpeg" or ".png" or ".webp"))
@@ -513,26 +510,6 @@ public sealed class DesignsController(
         }
 
         return $"/api/designs/{d.Id}/preview";
-    }
-
-    private static string? NormalizeSport(string? category)
-    {
-        var value = (category ?? "").Trim();
-        if (value.Equals("Vóley", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("Voley", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("Voleibol", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Vóley";
-        }
-
-        if (value.Equals("Fútbol", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("Futbol", StringComparison.OrdinalIgnoreCase)
-            || value.Equals("Jersey", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Fútbol";
-        }
-
-        return null;
     }
 
     private async Task<string> UniqueSlugAsync(string title, CancellationToken cancellationToken)

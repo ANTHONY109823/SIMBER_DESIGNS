@@ -1,4 +1,4 @@
-# Guía: claves de periodo V2 (SMK-…) — qué se hizo
+# Guía: claves de periodo V2 (serial 16 chars) — qué se hizo
 
 **Para Claude / agentes:** léeme antes de tocar licencias, pagos MP, admin de
 licencias o la ventana de activación del `.exe`. Esto **ya está implementado**
@@ -12,11 +12,23 @@ Código `.exe`: `C:\Users\ANTHONY\Desktop\PLUGIN ARMADO EN COREL\SimberDesigns`
 ## Idea en una frase
 
 El cliente **paga** (Mercado Pago o Yape/sorteo vía Anthony) → recibe un **serial
-tipo antivirus** (`SMK-COR-…` / `SMK-ILU-…`) → **canjea** (web o `.exe`) → eso
-suma N días a `plugin_licenses` → luego **activate** ata el HWID y firma el token.
+alfanumérico de 16 caracteres** → **canjea en el `.exe`** (tras login) → eso
+suma N días a `plugin_licenses` → **activate** ata el HWID y firma el token.
 
 Duración: **no solo 1 mes**. MP ofrece 1/3/6/12 meses. Admin puede emitir
 **cualquier cantidad de días** (1–730).
+
+---
+
+## Flujo (cliente)
+
+1. Se registra / inicia sesión en la **web** (solo email + contraseña).
+2. Paga el plan → ve el serial de 16 chars (Mi cuenta / modal de pago).
+3. Descarga el `.exe` → **login solo email + contraseña** (NO pide serial ahí).
+4. Si no hay periodo activo, el `.exe` pide el serial → canje + activa esa PC.
+
+Login web y login del `.exe` **nunca** piden SMK- ni el serial en la misma
+pantalla que la contraseña.
 
 ---
 
@@ -28,113 +40,44 @@ Duración: **no solo 1 mes**. MP ofrece 1/3/6/12 meses. Admin puede emitir
 2. `POST /api/payments/checkout` con `kind` + `months` → nota `plugin:{días}:{Edition}`.
 3. Al acreditar (`PaymentFulfillmentService`): **no** extiende la licencia directo;
    llama `IPluginPeriodKeyService.IssueAsync` → fila `plugin_period_keys` Status=`Pending`.
-4. Cliente ve el serial en **Mi cuenta** → Canjear, o lo pega en el `.exe` al entrar.
-5. Canje → suma días a `plugin_licenses` → Entrar y activar → HWID + token firmado.
-
-Precios: US$15 × meses (cobro en PEN vía MP). Días: 30 / 90 / 180 / 365.
+4. Cliente ve el serial en **Mi cuenta** (y al pagar).
+5. En el `.exe`: login → pega serial → suma días → HWID + token firmado.
 
 ### B) Admin — pago directo / Yape / transferencia
 
 1. Anthony cobra fuera de MP.
-2. `/admin/licenses`:
-   - **Cliente existente:** “Emitir clave” (email + Corel/Illustrator + días + nota).
-   - **Nuevo (sorteo):** “Crear cliente + clave” (email, temporal, forzar cambio de
-     contraseña, días, nota).
-3. WhatsApp: link descarga `.exe` + email + temporal + serial `SMK-…`.
-4. Cliente canjea / entra en el `.exe` igual que en A.
+2. `/admin/licenses` emite clave (cliente existente o nuevo + temporal).
+3. WhatsApp: link `.exe` + email + temporal + serial (16 chars).
+4. Cliente entra en el `.exe` igual que en A.
 
 ### C) Sorteo / cuenta regalada
 
 Igual que B con `MustChangePassword=true`. Al login web → `/cuenta?cambiar=1`.
-Al cambiar contraseña se limpia el flag (`AccountController`).
 
 ---
 
-## Tablas / modelo
+## Serial
 
-| Tabla / campo | Rol |
-|---|---|
-| `plugin_period_keys` | Seriales Pending / Redeemed / Revoked. `days`, `edition`, `source` (`manual` \| `mercadopago`), `note`, `transaction_id` |
-| `plugin_licenses` | Periodo vigente por usuario+edition; `expires_at`, `hardware_id` (null hasta activate) |
-| `users.must_change_password` | Cuentas creadas por admin (sorteo) |
-
-Serial: `SMK-COR-XXXXXXXX` o `SMK-ILU-XXXXXXXX` (alfanumérico sin confusos).
-
-Migración: `DbInitializer.EnsureCommerceSchemaAsync` crea la tabla y la columna
-(no hace falta migración EF aparte en este proyecto).
+- **Actual:** 16 caracteres alfanuméricos (sin prefijo; sin O/0/I/1 confusos).
+  La edición (Corel/Illustrator) vive en la fila `plugin_period_keys`, no en el código.
+- **Legado:** `SMK-COR-…` / `SMK-ILU-…` aún se reconocen al canjear.
 
 ---
-
-## Archivos clave (web)
-
-| Archivo | Qué hace |
-|---|---|
-| `SimberDesigns.Server/Models/Entities.cs` | `PluginPeriodKey`, `MustChangePassword` |
-| `SimberDesigns.Server/Services/PluginPeriodKeyService.cs` | Emitir + canjear (suma días) |
-| `SimberDesigns.Server/Services/PluginCheckoutPlans.cs` | Planes 1/3/6/12 y parseo de `kind` |
-| `SimberDesigns.Server/Services/PaymentFulfillmentService.cs` | MP → `IssueAsync` (ya no +30 fijo) |
-| `SimberDesigns.Server/Controllers/PaymentsController.cs` | Storefront con planes; checkout con `months` |
-| `SimberDesigns.Server/Controllers/PluginController.cs` | `GET keys`, `POST redeem`, `activate` |
-| `SimberDesigns.Server/Controllers/AdminController.cs` | `POST customers`, `POST licenses/issue`, `GET period-keys` |
-| `SimberDesigns.Client/Pages/AdminLicenses.razor` | UI crear/emitir + tablas |
-| `SimberDesigns.Client/Pages/Programs.razor` | `#planes` botones MP |
-| `SimberDesigns.Client/Pages/Account.razor` | Lista/canje de seriales |
 
 ## Archivos clave (`.exe`)
 
 | Archivo | Qué hace |
 |---|---|
 | `Licensing/WebLicenseClient.cs` | `RedeemAsync(code, hwid, edition)` |
-| `ActivationWindow.xaml(.cs)` | Si pega `SMK-…` + login → redeem+token; si no, `ActivateAsync` |
+| `ActivationWindow.xaml(.cs)` | Login email+pass → si 402, pide serial 16 chars → redeem+token |
 
-V1 (`SIMBER_V1`) sigue con token KeyGen; no usa SMK-.
-
----
-
-## API rápida
-
-```
-POST /api/payments/checkout   { kind: "plugin-corel", months: 3 }
-GET  /api/payments/storefront → PluginPlans[]
-
-POST /api/admin/customers     crear usuario (+ opcional Issue)
-POST /api/admin/licenses/issue { email, edition, days, note }
-GET  /api/admin/period-keys
-
-GET  /api/plugin/keys
-POST /api/plugin/redeem       { code, hardwareId?, edition? }
-POST /api/plugin/activate     { hardwareId, edition }   // requiere periodo ya canjeado
-```
-
-Notas de transacción plugin: `plugin:{días}:{Corel|Illustrator}`  
-(compat: `plugin:month-1pc:Corel` se lee como 30 días).
+V1 (`SIMBER_V1`) sigue con token KeyGen; no usa seriales de periodo.
 
 ---
 
-## Qué NO tocar / no confundir
+## Qué NO tocar
 
-- **No** reescribir firma ECDSA / HWID / `FileClockGuard` / formato `SIMBER.<payload>.<firma>`.
-- **No** mezclar con V1 KeyGen (WhatsApp). V1 no usa `plugin_period_keys`.
-- **No** volver a extender licencia solo en fulfill de MP sin emitir serial: el
-  contrato actual es serial → canje → activate.
-- Corel e Illustrator siguen siendo **cobros y filas separados**.
-- Tras canje sin HWID, `activate` sigue siendo el que ata la PC.
-
----
-
-## Pendiente ops (no es código de este diseño)
-
-1. **Deploy** de la web a Railway (schema se aplica al arrancar).
-2. **Rebuild** entregas V2 (`./build-entregas-v2.ps1`) y subir `.exe` al admin
-   para que el canje SMK- en el cliente de producción esté activo.
-3. Probar en prod: admin emite → canje cuenta → login `.exe` → revalidate.
-
----
-
-## Checklist mental si algo “no activa”
-
-1. ¿Existe fila Pending/Redeemed en `plugin_period_keys` para ese email?
-2. ¿Se canjeó? (`Redeemed`) → ¿`plugin_licenses.expires_at` > now?
-3. ¿Edition del serial coincide con el `.exe` (Corel vs Illustrator)?
-4. ¿HWID ya atado a otra PC? → 409.
-5. ¿Web vieja en Railway / `.exe` viejo sin `RedeemAsync`?
+- Firma ECDSA / HWID / `FileClockGuard` / formato `SIMBER.<payload>.<firma>`.
+- No mezclar con V1 KeyGen.
+- No pedir serial en la misma pantalla de login.
+- Corel e Illustrator = cobros y filas separados.
