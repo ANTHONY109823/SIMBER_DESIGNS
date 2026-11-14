@@ -150,8 +150,9 @@ public sealed class DesignsController(
                 embedding = await embeddings.EmbedImageAsync(embedStream, cancellationToken);
             }
 
-            previewUrl = r2.TryBuildPublicUrl(previewR2Key)
-                         ?? $"/api/designs/{id}/preview";
+            // No se guarda una URL pública permanente: el preview se resuelve
+            // siempre como URL firmada de corta duración (ver ResolvePreviewUrlAsync).
+            previewUrl = $"/api/designs/{id}/preview";
         }
         else
         {
@@ -256,12 +257,7 @@ public sealed class DesignsController(
 
         if (r2.IsEnabled && !string.IsNullOrWhiteSpace(design.PreviewR2Key))
         {
-            var publicUrl = r2.TryBuildPublicUrl(design.PreviewR2Key);
-            if (!string.IsNullOrWhiteSpace(publicUrl))
-            {
-                return Redirect(publicUrl);
-            }
-
+            // Siempre firmada y de corta duración, nunca la URL pública permanente.
             var signed = await r2.GetPresignedDownloadUrlAsync(
                 design.PreviewR2Key,
                 cancellationToken,
@@ -508,13 +504,8 @@ public sealed class DesignsController(
     {
         if (!string.IsNullOrWhiteSpace(d.PreviewR2Key) && r2.IsEnabled)
         {
-            var pub = r2.TryBuildPublicUrl(d.PreviewR2Key);
-            if (!string.IsNullOrWhiteSpace(pub))
-            {
-                return pub;
-            }
-
-            // URL firmada fresca para <img> (bucket privado)
+            // Siempre URL firmada y de corta duración (nunca la pública permanente):
+            // así el preview no queda expuesto con una URL fija y compartible del bucket.
             return await r2.GetPresignedDownloadUrlAsync(
                 d.PreviewR2Key,
                 cancellationToken,

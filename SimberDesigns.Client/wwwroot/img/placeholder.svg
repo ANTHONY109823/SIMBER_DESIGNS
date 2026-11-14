@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" width="320" height="400" role="img" aria-label="Imagen no disponible">
+  <rect width="320" height="400" fill="#0b1220"/>
+  <rect x="0.5" y="0.5" width="319" height="399" fill="none" stroke="#ffffff14"/>
+  <g fill="none" stroke="#ff6a1a" stroke-opacity="0.5" stroke-width="2">
+    <circle cx="160" cy="168" r="34"/>
+    <path d="M132 232h56l-14-26-12 14-8-10z"/>
+  </g>
+  <text x="160" y="300" fill="#e8eef8" fill-opacity="0.55" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" text-anchor="middle">SIMBER DESIGNS</text>
+  <text x="160" y="326" fill="#e8eef8" fill-opacity="0.35" font-family="Segoe UI, Arial, sans-serif" font-size="13" text-anchor="middle">Vista previa no disponible</text>
+</svg>
