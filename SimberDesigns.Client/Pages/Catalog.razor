@@ -157,14 +157,6 @@
                                 </article>
                             }
                         </div>
-                        @if (visibleCount < filteredDesigns.Count)
-                        {
-                            <div class="mt-10 text-center">
-                                <button type="button" @onclick="LoadMore" class="min-h-11 rounded-full border border-white/20 px-6 py-3 text-sm hover:border-gold/50">
-                                    Cargar más (@(filteredDesigns.Count - visibleCount) restantes)
-                                </button>
-                            </div>
-                        }
                     }
                 </div>
 
@@ -212,7 +204,6 @@
 </div>
 
 @code {
-    private const int PageSize = 12;
     private static readonly string[] Filters = ["Todos", "Deportivos", "Gratis", "Recientes"];
 
     private bool isLoading = true;
@@ -221,14 +212,13 @@
     private string selectedFilter = "Todos";
     private string searchDraft = "";
     private string searchText = "";
-    private int visibleCount = PageSize;
     private List<DesignItem> allDesigns = new();
     private List<DesignItem> filteredDesigns = new();
     private string? errorMessage;
     private Dictionary<string, string> _c = new();
 
     private List<DesignItem> FreeDaily => allDesigns.Where(d => d.IsFreeDaily).ToList();
-    private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns.Take(visibleCount);
+    private IEnumerable<DesignItem> VisibleDesigns => filteredDesigns;
     private string RegisterHref => "/register?returnUrl=/catalog";
 
     private string T(string key, string fallback)
@@ -317,11 +307,8 @@
         ApplyFilters();
     }
 
-    private void LoadMore() => visibleCount += PageSize;
-
     private void ApplyFilters()
     {
-        visibleCount = PageSize;
         IEnumerable<DesignItem> query = allDesigns;
 
         query = selectedFilter switch
