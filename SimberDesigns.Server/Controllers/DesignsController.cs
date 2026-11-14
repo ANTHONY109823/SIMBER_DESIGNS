@@ -18,7 +18,8 @@ public sealed class DesignsController(
     IEmbeddingService embeddings,
     ICloudflareR2Service r2,
     IDownloadLimitService downloadLimits,
-    LocalCatalogStorage localFiles) : ControllerBase
+    LocalCatalogStorage localFiles,
+    ILogger<DesignsController> logger) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -211,17 +212,28 @@ public sealed class DesignsController(
             return NotFound();
         }
 
-        if (!string.IsNullOrWhiteSpace(design.R2Key))
+        // La limpieza de archivos es best-effort: aunque R2/local falle (por ejemplo
+        // un preview roto o ausente), el registro SIEMPRE se elimina de la base para
+        // que el diseño deje de mostrarse.
+        try
         {
-            await r2.DeleteAsync(design.R2Key, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(design.R2Key))
+            {
+                await r2.DeleteAsync(design.R2Key, cancellationToken);
+            }
+
+            if (!string.IsNullOrWhiteSpace(design.PreviewR2Key))
+            {
+                await r2.DeleteAsync(design.PreviewR2Key, cancellationToken);
+            }
+
+            localFiles.Delete(id, design.PreviewUrl);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudieron limpiar los archivos del diseño {DesignId}; se elimina el registro igualmente.", id);
         }
 
-        if (!string.IsNullOrWhiteSpace(design.PreviewR2Key))
-        {
-            await r2.DeleteAsync(design.PreviewR2Key, cancellationToken);
-        }
-
-        localFiles.Delete(id, design.PreviewUrl);
         db.Designs.Remove(design);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
