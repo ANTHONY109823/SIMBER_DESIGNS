@@ -566,4 +566,14 @@ public sealed class SimberApi(HttpClient http)
             throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo borrar el diseño." : body);
         }
     }
+
+    public async Task SetFreeDailyAsync(Guid id, bool value)
+    {
+        var response = await http.PatchAsync($"api/designs/{id}/free?value={(value ? "true" : "false")}", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo actualizar el diseño." : body);
+        }
+    }
 }

@@ -23,8 +23,8 @@
                          style="transform: translate3d(0, -@(Active * 100)%, 0);">
                         @foreach (var url in LoopSlides)
                         {
-                            <div class="hero-v-card block h-full w-full shrink-0 overflow-hidden rounded-xl border border-white/15 bg-ink">
-                                <img src="@url" alt="" class="h-full w-full object-cover" loading="lazy" />
+                            <div class="media-guard hero-v-card block h-full w-full shrink-0 overflow-hidden rounded-xl border border-white/15 bg-ink">
+                                <img src="@url" alt="" draggable="false" class="h-full w-full object-cover" loading="lazy" />
                             </div>
                         }
                     </div>

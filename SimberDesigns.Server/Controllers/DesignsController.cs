@@ -226,6 +226,23 @@ public sealed class DesignsController(
         return NoContent();
     }
 
+    /// <summary>Marca o desmarca un diseño como "gratis del día" sin borrarlo (el precio guardado se conserva).</summary>
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPatch("{id:guid}/free")]
+    public async Task<IActionResult> SetFreeDaily(Guid id, [FromQuery] bool value, CancellationToken cancellationToken)
+    {
+        var design = await db.Designs.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (design is null)
+        {
+            return NotFound();
+        }
+
+        design.IsFreeDaily = value;
+        design.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Preview público: 302 a R2 (sin pasar los bytes por Railway) o archivo local en modo falso.</summary>
     [HttpGet("{id:guid}/preview")]
     [AllowAnonymous]

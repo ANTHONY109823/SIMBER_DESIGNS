@@ -3,6 +3,43 @@ html, body {
     overflow-x: hidden;
 }
 
+/* ——— Anti-copia casual de los diseños ———
+   No se puede arrastrar ni seleccionar la imagen, y una capa transparente
+   intercepta el clic derecho para que no aparezca "abrir imagen en pestaña nueva".
+   La marca de agua grabada en la foto sigue siendo la protección real. */
+
+/* Base para TODA imagen (aunque no esté envuelta en .media-guard): sin arrastre
+   y sin el menú de pulsación larga en iOS. Se respeta data-allow-copy="true". */
+img:not([data-allow-copy="true"]) {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    -webkit-touch-callout: none;
+}
+
+.media-guard {
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.media-guard img {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    -webkit-touch-callout: none;
+    pointer-events: none;
+}
+.media-guard::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+}
+
 /* ——— Catálogo: carrusel vertical de "Gratis del día" ——— */
 @keyframes free-vscroll {
     from { transform: translateY(0); }
